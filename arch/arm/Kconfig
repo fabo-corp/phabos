@@ -34,9 +34,16 @@ config LITTLE_ENDIAN
 choice
     prompt "Machine"
 
+    config MACH_TSB
+        bool "Toshiba Bridge"
+
     config MACH_STELLARIS
         bool "TI Stellaris"
 endchoice
+
+if MACH_TSB
+source "arch/$ARCH/mach-tsb/Kconfig"
+endif
 
 if MACH_STELLARIS
 source "arch/$ARCH/mach-stellaris/Kconfig"
