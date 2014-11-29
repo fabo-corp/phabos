@@ -28,6 +28,9 @@ include arch/$(ARCH)/Makefile.build
 subdirs-y := arch kernel lib
 clean-y := config.h $(KERNEL_NAME).elf objects.lst
 
+linker-y += kernel/kernel.ld
+linker_files = $(foreach linker-file,$(linker-y), -T $(linker-file))
+
 .config:
 	echo "ERROR: No config file loaded."
 	exit 1

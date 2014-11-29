@@ -4,3 +4,6 @@
 # Provided under the three clause BSD license found in the LICENSE file.
 
 obj-y := main.o
+obj-y += libc-support.o
+
+ld-script-y += kernel.ld
