@@ -1,0 +1,9 @@
+.config
+.config.*
+objects.lst
+*.d
+*.d.*
+*.elf
+*.o
+config.h
+*.ld

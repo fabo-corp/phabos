@@ -1,0 +1,24 @@
+=== Build ===
+
+In order to build the kernel you must define and export the following
+variables: ARCH, ARCH_TRIPLE, and LD_CROSS_COMPILE.
+
+If the cross compiler contains a prefix to its name then you must also define
+the CROSS_COMPILE variable.
+
+
+=== Toolchain versioning ===
+
+If you are not using the default version of the toolchain present on your
+system then you can export the TOOLCHAIN_VERSION variable. This will allow
+you to use another version of the toolchain than the default one.
+
+
+=== Example ===
+
+Building for the arm architecture:
+export ARCH := arm
+export ARCH_TRIPLE := arm-none-eabi
+export LD_CROSS_COMPILE := $(ARCH_TRIPLE)-
+make xxx_defconfig
+make

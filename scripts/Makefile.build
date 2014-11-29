@@ -1,0 +1,82 @@
+# Copyright (C) 2014-2015 Fabien Parent. All rights reserved.
+# Author: Fabien Parent <parent.f@gmail.com>
+#
+# Provided under the three clause BSD license found in the LICENSE file.
+
+ifeq (${MAKELEVEL}, 0)
+	ifdef CONFIG_TOOLCHAIN_GCC
+		COMPILER ?= gcc
+	endif
+
+	ifdef CONFIG_TOOLCHAIN_CLANG
+		COMPILER ?= clang
+
+		ifdef ARCH_TRIPLE
+			CFLAGS += -target $(ARCH_TRIPLE)
+			ASFLAGS += -target $(ARCH_TRIPLE)
+		endif
+	endif
+
+	LD_CROSS_COMPILE ?= $(CROSS_COMPILE)
+	COMPILER ?= clang
+	AR := $(CROSS_COMPILE)ar$(TOOLCHAIN_VERSION)
+	AS := $(CROSS_COMPILE)$(COMPILER)$(TOOLCHAIN_VERSION)
+	CC := $(CROSS_COMPILE)$(COMPILER)$(TOOLCHAIN_VERSION)
+	LD := $(LD_CROSS_COMPILE)ld$(LD_TOOLCHAIN_VERSION)
+
+	ifdef CONFIG_TOOLCHAIN_CLANG
+		AR := $(CROSS_COMPILE)llvm-ar$(TOOLCHAIN_VERSION)
+	endif
+
+	CFLAGS   += -std=gnu11 -Wall -fno-stack-protector -g \
+	            $(CONFIG_OPTIMIZATION_LEVEL)
+	CPPFLAGS += -ffreestanding\
+	            -I. \
+	            -Iarch/$(ARCH)/include/ \
+	            -Iinclude/
+	LDFLAGS  += -nostartfiles -nostdlib
+endif
+
+build = echo "    $1 $@"
+
+depend = \
+	sed 's,\($*\)\.o[ :]*,\1.o $(@:.o=.d): ,g' < $(@:.o=.d) > $(@:.o=.d).$$$$; \
+	rm $(@:.o=.d); \
+	mv $(@:.o=.d).$$$$ $(@:.o=.d)
+
+depend-ld = \
+	sed 's,\($*\)\.ld:,\1.ld $(@:.ld=.d): ,g' < $(@:.ld=.d) > $(@:.ld=.d).$$$$; \
+	rm $(@:.ld=.d); \
+	mv $(@:.ld=.d).$$$$ $(@:.ld=.d)
+
+%.o: %.S config.h
+	$(call build,AS)
+	$(AS) -MMD -MP $(CPPFLAGS) $(ASFLAGS) -c $(firstword $^) -o $@
+	$(call depend)
+
+%.o: %.c config.h
+	$(call build,CC)
+	$(CC) -MMD -MP $(CPPFLAGS) $(CFLAGS) -c $(firstword $^) -o $@
+	$(call depend)
+
+%.ld: %.ld.in config.h
+	$(call build,CPP)
+	$(CPP) -MMD -MP $(CPPFLAGS) -x c -P -E $< -o $@
+	$(call depend-ld)
+
+generate-config := \
+	echo '\#ifndef __CONFIG_H__' > config.h; \
+	echo '\#define __CONFIG_H__' >> config.h; \
+	while read -r line; do \
+		if [[ `expr "$$line" : "CONFIG_"` -ne 7 ]]; then \
+			continue; \
+		fi; \
+		name=`echo $$line | cut -d"=" -f1`; \
+		value=`echo $$line | cut -d"=" -f2`; \
+		value=$${value/\#\'/}; \
+		value=$${value/%\'/}; \
+		value=$${value/\#\"/}; \
+		value=$${value/%\"/}; \
+		echo "\#define $$name $$value" >> config.h; \
+	done <<< "`set`"; \
+	echo '\#endif /* __CONFIG_H__ */' >> config.h;
