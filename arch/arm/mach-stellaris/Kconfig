@@ -1,0 +1,20 @@
+# Copyright (C) 2014-2015 Fabien Parent. All rights reserved.
+# Author: Fabien Parent <parent.f@gmail.com>
+#
+# Provided under the three clause BSD license found in the LICENSE file.
+
+config MACH_NAME
+    string
+    default "stellaris"
+
+choice
+    prompt "Board"
+
+    config BOARD_LM3S6965
+        bool "Luminaris Cortex-M3 S6965"
+        select CPU_ARM_CORTEX_M3
+endchoice
+
+config MACH_LINKER_SCRIPT
+    string
+    default "lm3s6965"

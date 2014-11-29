@@ -26,6 +26,17 @@ config CPU_ARM_CORTEX_M3
     select CPU_ARMV7M
 
 choice
+    prompt "Machine"
+
+    config MACH_STELLARIS
+        bool "TI Stellaris"
+endchoice
+
+if MACH_STELLARIS
+source "arch/$ARCH/mach-stellaris/Kconfig"
+endif
+
+choice
     prompt "Boot Mode"
 
     config BOOT_FLASH
