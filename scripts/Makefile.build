@@ -28,11 +28,12 @@ ifeq (${MAKELEVEL}, 0)
 		AR := $(CROSS_COMPILE)llvm-ar$(TOOLCHAIN_VERSION)
 	endif
 
-	CFLAGS   += -std=gnu11 -Wall -fno-stack-protector -g \
+	CFLAGS   += -std=gnu11 -Wall -fno-stack-protector -g -fshort-enums \
 	            $(CONFIG_OPTIMIZATION_LEVEL)
 	CPPFLAGS += -ffreestanding\
 	            -I. \
 	            -Iarch/$(ARCH)/include/ \
+	            -Ilibc/include/ \
 	            -Iinclude/
 	LDFLAGS  += -nostartfiles -nostdlib
 endif

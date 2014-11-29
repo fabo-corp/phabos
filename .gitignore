@@ -7,3 +7,4 @@ objects.lst
 *.o
 config.h
 *.ld
+libc/
