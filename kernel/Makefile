@@ -3,12 +3,4 @@
 #
 # Provided under the three clause BSD license found in the LICENSE file.
 
-mainmenu "phabos kernel configuration"
-
-config ARCH
-    string
-    option env="ARCH"
-
-source "arch/$ARCH/Kconfig"
-source kernel/Kconfig
-source scripts/Kconfig
+obj-y := main.o
