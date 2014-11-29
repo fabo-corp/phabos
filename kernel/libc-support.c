@@ -7,6 +7,9 @@
 
 #include <stdint.h>
 #include <asm/spinlock.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <sys/stat.h>
 
 static struct spinlock malloc_spinlock = SPINLOCK_INIT(malloc_spinlock);
 
@@ -50,4 +53,41 @@ int _kill(int pid, int sig)
 void _exit(int code)
 {
     while (1);
+}
+
+int _write(int fd, char *buffer, int count)
+{
+    return low_write(buffer, count);
+}
+
+int _close(int fd)
+{
+    return -1;
+}
+
+int _fstat(int fd, struct stat *stat)
+{
+    return -1;
+}
+
+int _read(int fd, char *buffer, int count)
+{
+    int c;
+    size_t nread = 0;
+
+    buffer[nread++] = low_getchar(true);
+    while ((c = low_getchar(false)) != EOF)
+        buffer[nread++] = (char) c;
+
+    return nread;
+}
+
+int _lseek(int fd, int offset, int whence)
+{
+    return -1;
+}
+
+int _isatty(int file)
+{
+    return -1;
 }
