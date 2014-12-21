@@ -36,3 +36,18 @@ void __malloc_unlock(struct _reent *reent)
 {
     spinlock_unlock(&malloc_spinlock);
 }
+
+int _getpid(void)
+{
+    return 1;
+}
+
+int _kill(int pid, int sig)
+{
+    return 0;
+}
+
+void _exit(int code)
+{
+    while (1);
+}
