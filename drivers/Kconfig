@@ -3,13 +3,6 @@
 #
 # Provided under the three clause BSD license found in the LICENSE file.
 
-mainmenu "phabos kernel configuration"
+menu "Drivers"
 
-config ARCH
-    string
-    option env="ARCH"
-
-source "arch/$ARCH/Kconfig"
-source kernel/Kconfig
-source drivers/Kconfig
-source scripts/Kconfig
+endmenu
