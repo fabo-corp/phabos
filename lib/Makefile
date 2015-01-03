@@ -9,3 +9,4 @@ obj-y += time.o
 obj-y += semaphore.o
 obj-y += sleep.o
 obj-y += workqueue.o
+obj-y += hashtable.o
