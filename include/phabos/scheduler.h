@@ -12,6 +12,7 @@
 
 #include <asm/scheduler.h>
 #include <phabos/list.h>
+#include <phabos/mutex.h>
 
 struct task {
     int id;
@@ -20,6 +21,10 @@ struct task {
     void *allocated_stack;
 
     struct list_head list;
+};
+
+struct task_cond {
+    struct list_head wait_list;
 };
 
 typedef void (*task_entry_t)(void *data);
@@ -70,6 +75,10 @@ struct task *task_get_running(void);
 
 void sched_lock(void);
 void sched_unlock(void);
+
+void task_cond_wait(struct task_cond* cond, struct mutex *mutex);
+void task_cond_signal(struct task_cond* cond);
+void task_cond_broadcast(struct task_cond* cond);
 
 #endif /* __SCHEDULER_H__ */
 

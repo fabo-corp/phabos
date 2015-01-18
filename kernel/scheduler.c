@@ -46,6 +46,25 @@ static struct task *task_create(void)
     return task;
 }
 
+void task_cond_wait(struct task_cond* cond, struct mutex *mutex)
+{
+    mutex_unlock(mutex);
+    task_add_to_wait_list(task_get_running(), &cond->wait_list);
+    mutex_lock(mutex);
+}
+
+void task_cond_signal(struct task_cond* cond)
+{
+    task_remove_from_wait_list(list_first_entry(&cond->wait_list,
+                                                struct task, list));
+}
+
+void task_cond_broadcast(struct task_cond* cond)
+{
+    list_foreach_safe(&cond->wait_list, iter)
+        task_remove_from_wait_list(list_entry(iter, struct task, list));
+}
+
 static void task_destroy(struct task *task)
 {
     // assert
