@@ -17,6 +17,7 @@ struct task;
 enum register_offset
 {
     SP_REG = 0,
+    REENT_REG,
     R4_REG,
     R5_REG,
     R6_REG,

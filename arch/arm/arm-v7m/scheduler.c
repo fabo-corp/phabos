@@ -49,6 +49,7 @@ static const char* const reg_names[] = {
     [PSR_REG] = "PSR",
     [EXC_RETURN_REG] = "EXC_RETURN",
     [BASEPRI_REG] = "BASEPRI",
+    [REENT_REG] = "REENT",
 };
 #endif
 
@@ -78,12 +79,18 @@ void task_init_registers(struct task *task, void *task_entry, void *data,
                          uint32_t stack_addr)
 {
     memset(&task->registers, 0, sizeof(task->registers));
-    task->registers[SP_REG] = stack_addr - sizeof(task->registers);
+    task->registers[SP_REG] = stack_addr - sizeof(struct _reent);
     task->registers[PC_REG] = ((uint32_t) task_entry) & ~1; /* Store PC as ARM addr */
     task->registers[LR_REG] = (uint32_t) task_exit;
     task->registers[PSR_REG] = NEW_TASK_PSR;
     task->registers[EXC_RETURN_REG] = RETURN_TO_SUPERVISOR_THREAD;
     task->registers[R0_REG] = (uint32_t) data;
+
+    /* init task's libc */
+    task->registers[REENT_REG] = task->registers[SP_REG];
+    _REENT_INIT_PTR((struct _reent*) task->registers[REENT_REG]);
+
+    task->registers[SP_REG] -= sizeof(task->registers);
 }
 
 void task_yield(void)

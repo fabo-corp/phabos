@@ -10,6 +10,7 @@
 
 .extern pendsv_handler
 .extern systick_handler
+.extern _impure_ptr
 
 .global _pendsv_handler
 .global _systick_handler
@@ -19,12 +20,18 @@
     mrs r0, basepri
     push {r0}
     push {r4 - r11}
+    ldr r0, =_impure_ptr
+    ldr r0, [r0]
+    push {r0}
 
     mov r0, r13
     push {r0}
 .endm
 
 .macro RESTORE_CONTEXT
+    pop {r1}
+    ldr r0, =_impure_ptr
+    str r1, [r0]
     pop {r4 - r11}
     pop {r0}
     msr basepri, r0
