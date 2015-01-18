@@ -115,4 +115,9 @@ __boot__ void reset_handler(void)
 
 void default_handler(void)
 {
+    int psr;
+    asm volatile("mrs %0, xpsr" : "=r"(psr));
+    printf("unhandled interrupt: %d\n", psr & 0xFF);
+    while (1)
+        asm volatile("nop");
 }
