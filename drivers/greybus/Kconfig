@@ -28,3 +28,8 @@ config GREYBUS_GPIO
     bool "GPIO PHY"
     default y
     select GPIO
+
+config GREYBUS_I2C
+    bool "I2C PHY"
+    default y
+    select I2C
