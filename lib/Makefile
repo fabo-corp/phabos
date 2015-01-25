@@ -6,3 +6,4 @@
 obj-y += kprintf.o
 obj-y += list.o
 obj-y += time.o
+obj-y += semaphore.o
