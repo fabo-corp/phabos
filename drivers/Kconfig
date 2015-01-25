@@ -28,4 +28,11 @@ if UNIPRO
 source drivers/unipro/Kconfig
 endif
 
+menuconfig I2C
+    bool "I2C"
+
+if I2C
+source drivers/i2c/Kconfig
+endif
+
 endmenu
