@@ -26,3 +26,4 @@
 
 obj-y += greybus-core.o
 obj-y += greybus-unipro.o
+obj-$(CONFIG_GREYBUS_GPIO) += gpio.o
