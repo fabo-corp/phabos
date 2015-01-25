@@ -49,4 +49,11 @@ if GPIO
 source drivers/gpio/Kconfig
 endif
 
+menuconfig GREYBUS
+    bool "Greybus"
+
+if GREYBUS
+source drivers/greybus/Kconfig
+endif
+
 endmenu

@@ -7,5 +7,6 @@ subdirs-$(CONFIG_SERIAL) += serial
 subdirs-$(CONFIG_I2C) += i2c
 subdirs-$(CONFIG_USB) += usb
 subdirs-$(CONFIG_GPIO) += gpio
+subdirs-$(CONFIG_GREYBUS) += greybus
 
 obj-y += core.o
