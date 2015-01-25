@@ -25,3 +25,4 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 obj-y += lowio.o
+obj-y += scm.o
