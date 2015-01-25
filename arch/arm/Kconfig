@@ -42,6 +42,10 @@ if MACH_STELLARIS
 source "arch/$ARCH/mach-stellaris/Kconfig"
 endif
 
+config ARCH_HAS_SCHEDULER_WATCHDOG
+    bool
+    default y
+
 choice
     prompt "Boot Mode"
 

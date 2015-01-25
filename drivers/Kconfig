@@ -5,4 +5,13 @@
 
 menu "Drivers"
 
+choice
+    prompt "Watchdog"
+    default NO_WATCHDOG
+
+    config SCHEDULER_WATCHDOG
+        bool "Watchdog provided by the scheduler"
+        depends on ARCH_HAS_SCHEDULER_WATCHDOG
+endchoice
+
 endmenu

@@ -57,6 +57,7 @@ extern struct task *current;
 extern bool need_resched;
 
 uint64_t scheduler_ticks;
+void watchdog_check_expired(void);
 
 void scheduler_arch_init(void)
 {
@@ -102,6 +103,10 @@ void task_yield(void)
 uint32_t systick_handler(uint32_t *stack_top)
 {
     scheduler_ticks++;
+
+#ifdef CONFIG_SCHEDULER_WATCHDOG
+    watchdog_check_expired();
+#endif
 
     uint32_t exception = stack_top[PSR_REG] & PSR_ISR_NUM_MASK;
     if (exception == EXCEPTION_THREAD_MODE) {

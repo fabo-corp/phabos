@@ -11,5 +11,6 @@ obj-y += spinlock.o
 obj-y += atomic.o
 obj-y += scheduler.o
 obj-y += irq-handler.o
+obj-$(CONFIG_SCHEDULER_WATCHDOG) += watchdog.o
 
 ld-script-y += arm-v7m.ld

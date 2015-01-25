@@ -10,24 +10,15 @@
 
 struct watchdog {
     void (*timeout)(struct watchdog *wd);
+    void *priv;
+    void *user_priv;
 };
 
-static inline void watchdog_start(struct watchdog *wd, unsigned long timeout)
-{
-
-}
-
-static inline void watchdog_cancel(struct watchdog *wd)
-{
-}
-
-static inline void watchdog_init(struct watchdog *wd)
-{
-}
-
-static inline void watchdog_delete(struct watchdog *wd)
-{
-}
+void watchdog_start(struct watchdog *wd, unsigned long timeout);
+void watchdog_cancel(struct watchdog *wd);
+void watchdog_init(struct watchdog *wd);
+void watchdog_delete(struct watchdog *wd);
+bool watchdog_has_expired(struct watchdog *wd);
 
 #endif /* __WATCHDOG_H__ */
 
