@@ -35,4 +35,11 @@ if I2C
 source drivers/i2c/Kconfig
 endif
 
+menuconfig USB
+    bool "USB"
+
+if USB
+source drivers/usb/Kconfig
+endif
+
 endmenu
