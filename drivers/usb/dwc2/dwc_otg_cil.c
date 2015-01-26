@@ -4545,10 +4545,6 @@ void dump_msg(const u8 * buf, unsigned int length)
 		length -= num;
 	}
 }
-#else
-static inline void dump_msg(const u8 * buf, unsigned int length)
-{
-}
 #endif
 
 /**
@@ -4603,7 +4599,7 @@ void dwc_otg_ep_write_packet(dwc_otg_core_if_t * core_if, dwc_ep_t * ep,
 	 * is not a multiple of DWORD */
 	dword_count = (byte_count + 3) / 4;
 
-#ifdef VERBOSE
+#ifdef DEBUG
 	dump_msg(ep->xfer_buff, byte_count);
 #endif
 

@@ -10,3 +10,10 @@ config USB_HOST
 config USB_DEVICE
     bool "Device support"
     default y
+
+menuconfig USB_DWC2
+    bool "Designware USB2 support"
+
+if USB_DWC2
+source drivers/usb/dwc2/Kconfig
+endif

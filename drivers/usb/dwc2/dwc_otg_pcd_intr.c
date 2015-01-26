@@ -111,40 +111,6 @@ static inline void print_ep0_state(dwc_otg_pcd_t * pcd)
 #endif
 }
 
-/**
- * This function calculate the size of the payload in the memory 
- * for out endpoints and prints size for debug purposes(used in 
- * 2.93a DevOutNak feature).
- */
-static inline void print_memory_payload(dwc_otg_pcd_t * pcd,  dwc_ep_t * ep)
-{
-#ifdef DEBUG
-	deptsiz_data_t deptsiz_init = {.d32 = 0 };
-	deptsiz_data_t deptsiz_updt = {.d32 = 0 };
-	int pack_num;
-	unsigned payload;
-	
-	deptsiz_init.d32 = pcd->core_if->start_doeptsiz_val[ep->num];
-	deptsiz_updt.d32 =
-		DWC_READ_REG32(&pcd->core_if->dev_if->
-						out_ep_regs[ep->num]->doeptsiz);
-	/* Payload will be */
-	payload = deptsiz_init.b.xfersize - deptsiz_updt.b.xfersize;
-	/* Packet count is decremented every time a packet
-	 * is written to the RxFIFO not in to the external memory
-	 * So, if payload == 0, then it means no packet was sent to ext memory*/
-	pack_num = (!payload) ? 0 : (deptsiz_init.b.pktcnt - deptsiz_updt.b.pktcnt);
-	DWC_DEBUGPL(DBG_PCDV,
-		"Payload for EP%d-%s\n",
-		ep->num, (ep->is_in ? "IN" : "OUT"));
-	DWC_DEBUGPL(DBG_PCDV,
-		"Number of transfered bytes = 0x%08x\n", payload);
-	DWC_DEBUGPL(DBG_PCDV,
-		"Number of transfered packets = %d\n", pack_num);	
-#endif	
-}
-
-
 #ifdef DWC_UTE_CFI
 static inline void print_desc(struct dwc_otg_dma_desc *ddesc,
 			      const uint8_t * epname, int descnum)
@@ -3848,31 +3814,6 @@ static inline void handle_in_ep_timeout_intr(dwc_otg_pcd_t * pcd,
 }
 
 /**
- * Handler for the IN EP NAK interrupt.
- */
-static inline int32_t handle_in_ep_nak_intr(dwc_otg_pcd_t * pcd,
-					    const uint32_t epnum)
-{
-	/** @todo implement ISR */
-	dwc_otg_core_if_t *core_if;
-	diepmsk_data_t intr_mask = {.d32 = 0 };
-
-	DWC_PRINTF("INTERRUPT Handler not implemented for %s\n", "IN EP NAK");
-	core_if = GET_CORE_IF(pcd);
-	intr_mask.b.nak = 1;
-
-	if (core_if->multiproc_int_enable) {
-		DWC_MODIFY_REG32(&core_if->dev_if->dev_global_regs->
-				 diepeachintmsk[epnum], intr_mask.d32, 0);
-	} else {
-		DWC_MODIFY_REG32(&core_if->dev_if->dev_global_regs->diepmsk,
-				 intr_mask.d32, 0);
-	}
-
-	return 1;
-}
-
-/**
  * Handler for the OUT EP Babble interrupt.
  */
 static inline int32_t handle_out_ep_babble_intr(dwc_otg_pcd_t * pcd,
@@ -4491,7 +4432,7 @@ do { \
 													req->buf + ep->dwc_ep.xfer_count, 8);
 										}
 										req->actual = ep->dwc_ep.xfer_count;
-										dwc_otg_request_done(ep, req, -ECONNRESET);
+										dwc_otg_request_done(ep, req, -DWC_E_DISCONNECT);
 										ep->dwc_ep.start_xfer_buff = 0;
 										ep->dwc_ep.xfer_buff = 0;
 										ep->dwc_ep.xfer_len = 0;
@@ -4641,7 +4582,7 @@ retry:
 													req->buf + ep->dwc_ep.xfer_count, 8);
 										}
 										req->actual = ep->dwc_ep.xfer_count;
-										dwc_otg_request_done(ep, req, -ECONNRESET);
+										dwc_otg_request_done(ep, req, -DWC_E_DISCONNECT);
 										ep->dwc_ep.start_xfer_buff = 0;
 										ep->dwc_ep.xfer_buff = 0;
 										ep->dwc_ep.xfer_len = 0;
