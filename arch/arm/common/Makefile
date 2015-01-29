@@ -3,4 +3,5 @@
 #
 # Provided under the three clause BSD license found in the LICENSE file.
 
+obj-y += lowio.o
 obj-$(CONFIG_ARM_SEMIHOSTING) += semihosting.o
