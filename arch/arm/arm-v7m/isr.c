@@ -78,6 +78,10 @@ static void move_isr(void)
     write32(ARM_SCB_VTOR, &intr_vector);
 }
 
+__attribute__((weak)) void machine_init(void)
+{
+}
+
 static void _start(void)
 {
     clear_bss_section();
@@ -85,6 +89,8 @@ static void _start(void)
     move_isr();
 
     irq_initialize();
+
+    machine_init();
 
     main();
 
