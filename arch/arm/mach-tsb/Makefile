@@ -26,3 +26,4 @@
 
 obj-y += lowio.o
 obj-y += scm.o
+obj-y += tsb.o
