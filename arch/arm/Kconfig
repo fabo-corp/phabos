@@ -55,4 +55,6 @@ choice
         bool "boot from ram"
 endchoice
 
+source "arch/$ARCH/common/Kconfig"
+
 endmenu

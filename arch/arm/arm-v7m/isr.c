@@ -8,6 +8,7 @@
 #include <asm/machine.h>
 #include <asm/hwio.h>
 #include <asm/irq.h>
+#include <asm/semihosting.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -87,6 +88,10 @@ static void _start(void)
     clear_bss_section();
     copy_data_section();
     move_isr();
+
+#ifdef CONFIG_ARM_SEMIHOSTING
+    semihosting_init();
+#endif
 
     irq_initialize();
 
