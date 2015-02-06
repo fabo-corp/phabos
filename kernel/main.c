@@ -10,15 +10,18 @@
 #include <phabos/kprintf.h>
 #include <phabos/scheduler.h>
 
-void shell_main(int argc, char **argv);
+int CONFIG_INIT_TASK_NAME(int argc, char **argv);
+
+#define xstr(s) str(s)
+#define str(s) #s
 
 void init(void *data)
 {
     char* argv[] = {
-        "shell_main",
+        xstr(CONFIG_INIT_TASK_NAME),
         NULL
     };
-    shell_main(1, argv);
+    CONFIG_INIT_TASK_NAME(1, argv);
 
     while (1);
 }

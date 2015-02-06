@@ -5,4 +5,8 @@
 
 menu "Kernel configuration"
 
+config INIT_TASK_NAME
+    string "Init task name"
+    default "shell_main"
+
 endmenu
