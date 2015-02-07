@@ -2,3 +2,5 @@
 # Author: Fabien Parent <parent.f@gmail.com>
 #
 # Provided under the three clause BSD license found in the LICENSE file.
+
+obj-y += core.o

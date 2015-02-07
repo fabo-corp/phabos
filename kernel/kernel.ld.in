@@ -19,6 +19,10 @@ SECTIONS
         _syscall = .;
         KEEP(*(.syscall))
         _esyscall = .;
+
+        _driver = .;
+        KEEP(*(.driver))
+        _edriver = .;
     } DATA_STORAGE
 
     .heap : {

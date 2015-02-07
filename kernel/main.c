@@ -6,10 +6,11 @@
  */
 
 #include <config.h>
-#include <stdlib.h>
+
 #include <phabos/kprintf.h>
 #include <phabos/scheduler.h>
 #include <phabos/syscall.h>
+#include <phabos/driver.h>
 
 int CONFIG_INIT_TASK_NAME(int argc, char **argv);
 
@@ -40,5 +41,7 @@ void main(void)
     task_init();
     syscall_init();
     scheduler_init();
+    driver_init();
+
     task_run(init, NULL, 0);
 }
