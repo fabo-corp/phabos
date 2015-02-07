@@ -46,6 +46,13 @@ choice
         select MACH_TSB_COMMON
 endchoice
 
+choice
+    prompt "Bridge configuration"
+
+    config TSB_APB2
+        bool "APB2"
+endchoice
+
 config MACH_LINKER_SCRIPT
     string
     default "tsb"
