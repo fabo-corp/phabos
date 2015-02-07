@@ -8,17 +8,25 @@
 #include <config.h>
 #include <stdlib.h>
 #include <phabos/kprintf.h>
-#include <kernel/scheduler.h>
+#include <phabos/scheduler.h>
 
 void shell_main(int argc, char **argv);
 
-void main(void)
+void init(void *data)
 {
-    scheduler_init();
-
     char* argv[] = {
         "shell_main",
         NULL
     };
     shell_main(1, argv);
+
+    while (1);
+}
+
+void main(void)
+{
+    kprintf("booting phabos...\n");
+
+    scheduler_init();
+    task_run(init, NULL, 0);
 }
