@@ -211,3 +211,50 @@ void sched_unlock(void)
 {
     atomic_dec(&is_locked);
 }
+
+static struct task *find_task_by_id(int id)
+{
+    struct task *task;
+
+    irq_disable();
+    list_foreach(&runqueue, iter) {
+        task = list_entry(iter, struct task, list);
+        if (id == task->id)
+            break;
+        task = NULL;
+    }
+    irq_enable();
+
+    return task;
+}
+
+int _getpid(void)
+{
+    return current->id;
+}
+
+int _kill(int pid, int sig)
+{
+    struct task *task = find_task_by_id(pid);
+    if (!task) {
+        errno = ESRCH;
+        return -1;
+    }
+
+    task_kill(task);
+
+    return 0;
+}
+
+void _exit(int code)
+{
+    // Trying to kill init process
+    if (current->id == 0) {
+        printf(""); // FIXME print something here
+        sched_lock();
+        while (1);
+    }
+
+    task_kill(current);
+    while (1);
+}
