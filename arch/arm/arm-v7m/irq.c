@@ -12,6 +12,7 @@
 #include <asm/machine.h>
 #include <asm/hwio.h>
 #include <asm/irq.h>
+#include <phabos/kprintf.h>
 
 #define SETENA0 0xE000E100
 #define CLRENA0 0xE000E180
@@ -19,9 +20,18 @@
 #define ARM_CM_NUM_EXCEPTION 16
 
 extern irq_handler_t intr_vector[CPU_NUM_IRQ + ARM_CM_NUM_EXCEPTION];
+extern struct irq_handler irq_vector[CPU_NUM_IRQ + ARM_CM_NUM_EXCEPTION];
 
 static unsigned int irq_global_state;
 static uint8_t irq_state[CPU_NUM_IRQ];
+
+void default_irq_handler(int irq, void *data)
+{
+    kprintf("unhandled interrupt: %d\n", irq);
+
+    while (1)
+        asm volatile("nop");
+}
 
 void irq_initialize(void)
 {
@@ -67,14 +77,15 @@ void irq_enable(void)
         asm volatile("cpsie i");
 }
 
-int irq_attach(int line, irq_handler_t handler)
+int irq_attach(int line, irq_handler_t handler, void *data)
 {
     assert(line >= 0);
 
     if (line >= CPU_NUM_IRQ)
         return -EINVAL;
 
-    intr_vector[ARM_CM_NUM_EXCEPTION + line] = handler;
+    irq_vector[ARM_CM_NUM_EXCEPTION + line].handler = handler;
+    irq_vector[ARM_CM_NUM_EXCEPTION + line].data = data;
     return 0;
 }
 
@@ -85,8 +96,8 @@ void irq_detach(int line)
     if (line >= CPU_NUM_IRQ)
         return;
 
-    void default_handler(void);
-    intr_vector[ARM_CM_NUM_EXCEPTION + line] = default_handler;
+    irq_vector[ARM_CM_NUM_EXCEPTION + line].handler = default_irq_handler;
+    irq_vector[ARM_CM_NUM_EXCEPTION + line].data = NULL;
 }
 
 int irq_get_active_line(void)
