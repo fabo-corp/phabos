@@ -9,8 +9,9 @@
 #include <asm/hwio.h>
 #include <asm/irq.h>
 #include <asm/semihosting.h>
+#include <asm/scheduler.h>
+#include <phabos/kprintf.h>
 
-#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include <config.h>
@@ -42,11 +43,14 @@ typedef void (*intr_handler_t)(void);
 
 extern void _eor(void);
 void reset_handler(void) __boot__;
+void hardfault_handler(uint32_t *data);
 static void irq_common_isr(void);
 void main(void);
 void _pendsv_handler(void);
 void _systick_handler(void);
+void _hardfault_handler(void);
 void default_irq_handler(int irq, void *data);
+void analyze_status_registers(void);
 
 #define __vector__ __attribute__((section(".isr_vector")))
 __vector__ intr_handler_t boot_vector[] = {
@@ -58,7 +62,9 @@ __vector__ intr_handler_t boot_vector[] = {
 __vector_align__ intr_handler_t intr_vector[LAST_HANDLER + 1] = {
     [STACK] = _eor,
     [RESET_HANDLER] = reset_handler,
-    [NMI_HANDLER ... PENDSV_HANDLER - 1] = irq_common_isr,
+    [NMI_HANDLER] = irq_common_isr,
+    [HARD_FAULT_HANDLER] = _hardfault_handler,
+    [MEM_FAULT_HANDLER ... PENDSV_HANDLER - 1] = irq_common_isr,
     [PENDSV_HANDLER] = _pendsv_handler,
     [SYSTICK_HANDLER] = _systick_handler,
     [IRQ0_HANDLER... LAST_HANDLER] = irq_common_isr,
@@ -121,6 +127,30 @@ __boot__ void reset_handler(void)
 #endif
     asm volatile("mov r13, %0" ::"r"(_eor));
     _start();
+}
+
+void hardfault_handler(uint32_t *context)
+{
+    kprintf("=== Hard Fault Handler ===\n");
+
+    kprintf("R0  = %#.8X\tR1  = %#.8X\tR2  = %#.8X\tR3  = %#.8X\n"
+            "R4  = %#.8X\tR5  = %#.8X\tR6  = %#.8X\tR7  = %#.8X\n"
+            "R8  = %#.8X\tR9  = %#.8X\tR10 = %#.8X\tR11 = %#.8X\n"
+            "R12 = %#.8X\tSP  = %#.8X\tLR  = %#.8X\tPC  = %#.8X\n"
+            "PSR = %#.8X\tBASEPRI = %#.8X\n",
+            context[R0_REG], context[R1_REG], context[R2_REG], context[R3_REG],
+            context[R4_REG], context[R5_REG], context[R6_REG], context[R7_REG],
+            context[R8_REG], context[R9_REG], context[R10_REG],
+            context[R11_REG], context[R12_REG], context[SP_REG],
+            context[LR_REG], context[PC_REG], context[PSR_REG],
+            context[BASEPRI_REG]);
+
+    kprintf("\n");
+
+    analyze_status_registers();
+
+    while (1)
+        asm volatile("nop");
 }
 
 static void irq_common_isr(void)

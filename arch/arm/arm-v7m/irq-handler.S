@@ -8,12 +8,14 @@
 .syntax unified
 .thumb
 
+.extern hardfault_handler
 .extern pendsv_handler
 .extern systick_handler
 .extern _impure_ptr
 
 .global _pendsv_handler
 .global _systick_handler
+.global _hardfault_handler
 
 .macro SAVE_CONTEXT
     push {lr}
@@ -54,4 +56,11 @@ _systick_handler:
     mov r1, #0
     bl systick_handler
     mov r13, r0
+    RESTORE_CONTEXT
+
+.thumb_func
+_hardfault_handler:
+    SAVE_CONTEXT
+    mov r0, r13
+    bl hardfault_handler
     RESTORE_CONTEXT
