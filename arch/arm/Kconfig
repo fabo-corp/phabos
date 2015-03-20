@@ -25,6 +25,12 @@ config CPU_ARM_CORTEX_M3
     bool
     select CPU_ARMV7M
 
+config BIG_ENDIAN
+    bool
+
+config LITTLE_ENDIAN
+    bool
+
 choice
     prompt "Machine"
 
