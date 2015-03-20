@@ -51,6 +51,7 @@ choice
 
     config TSB_APB2
         bool "APB2"
+        depends on TSB_BOARD_BDB
 endchoice
 
 config MACH_LINKER_SCRIPT
