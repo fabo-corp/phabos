@@ -7,5 +7,6 @@ obj-y := isr.o
 obj-y += aeabi.o
 obj-y += boot.o
 obj-y += irq.o
+obj-y += spinlock.o
 
 ld-script-y += arm-v7m.ld
