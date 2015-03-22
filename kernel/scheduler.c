@@ -16,6 +16,7 @@
 #include <phabos/scheduler.h>
 #include <phabos/utils.h>
 #include <phabos/assert.h>
+#include <phabos/panic.h>
 #include <asm/scheduler.h>
 #include <asm/irq.h>
 #include <asm/atomic.h>
@@ -82,11 +83,8 @@ void task_add_to_wait_list(struct task *task, struct list_head *wait_list)
 {
     irq_disable();
 
-    if (task->id == 0) {
-        printf("PANIC: Trying to remove idle task from runqueue\n");
-        sched_lock();
-        while (1);
-    }
+    if (task->id == 0)
+        panic("PANIC: Trying to remove idle task from runqueue\n");
 
     list_del(&task->list);
     list_add(wait_list, &task->list);
@@ -140,9 +138,7 @@ void task_kill(struct task *task)
         irq_enable(); // FIXME: force enable the interrupts in order for
                       // PendSV to work
         task_exit();
-        // assert
-        printf("Unreachable...\n");
-        return;
+        panic("scheduler: reach unreachable...\n");
     }
 
     list_del(&task->list);
@@ -162,7 +158,9 @@ void scheduler_init(void)
     struct task *task;
 
     task = task_create();
-    // FIXME: assert here
+    if (!task)
+        panic("scheduler: cannot allocate memory.\n");
+
     task->state = TASK_RUNNING;
 
     list_add(&runqueue, &task->list);
@@ -182,10 +180,8 @@ void schedule(uint32_t *stack_top)
     if (atomic_get(&is_locked))
         return;
 
-    if (list_is_empty(&runqueue)) {
-        // FIXME assert here
-        return;
-    }
+    if (list_is_empty(&runqueue))
+        panic("scheduler: no idle task to run\n");
 
     memcpy(&current->registers, stack_top, sizeof(current->registers));
 
@@ -249,12 +245,9 @@ int _kill(int pid, int sig)
 void _exit(int code)
 {
     // Trying to kill init process
-    if (current->id == 0) {
-        printf(""); // FIXME print something here
-        sched_lock();
-        while (1);
-    }
+    if (current->id == 0)
+        panic("scheduler: trying to exit from idle task.\n");
 
     task_kill(current);
-    while (1);
+    panic("scheduler: reach unreachable...\n");
 }
