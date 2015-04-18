@@ -47,6 +47,16 @@ choice
 endchoice
 
 choice
+    prompt "Chip Revision"
+
+    config TSB_ES1
+        bool "ES1"
+
+    config TSB_ES2
+        bool "ES2"
+endchoice
+
+choice
     prompt "Bridge configuration"
 
     config TSB_APB2
@@ -56,4 +66,5 @@ endchoice
 
 config MACH_LINKER_SCRIPT
     string
-    default "tsb"
+    default "tsb-es1" if TSB_ES1
+    default "tsb-es2" if TSB_ES2
