@@ -4,3 +4,4 @@
 # Provided under the three clause BSD license found in the LICENSE file.
 
 obj-y += kprintf.o
+obj-y += list.o
