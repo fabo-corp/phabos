@@ -33,6 +33,7 @@ enum exception_handler {
     BUS_FAULT_HANDLER,
     USAGE_FAULT_HANDLER,
 
+    SVCALL_HANDLER = 11,
     PENDSV_HANDLER = 14,
     SYSTICK_HANDLER = 15,
     IRQ0_HANDLER = 16,
@@ -49,6 +50,7 @@ void main(void);
 void _pendsv_handler(void);
 void _systick_handler(void);
 void _hardfault_handler(void);
+void _svcall_handler(void);
 void default_irq_handler(int irq, void *data);
 void analyze_status_registers(void);
 
@@ -64,7 +66,9 @@ __vector_align__ intr_handler_t intr_vector[LAST_HANDLER + 1] = {
     [RESET_HANDLER] = reset_handler,
     [NMI_HANDLER] = irq_common_isr,
     [HARD_FAULT_HANDLER] = _hardfault_handler,
-    [MEM_FAULT_HANDLER ... PENDSV_HANDLER - 1] = irq_common_isr,
+    [MEM_FAULT_HANDLER ... SVCALL_HANDLER - 1] = irq_common_isr,
+    [SVCALL_HANDLER] = _svcall_handler,
+    [SVCALL_HANDLER + 1 ... PENDSV_HANDLER -1] = irq_common_isr,
     [PENDSV_HANDLER] = _pendsv_handler,
     [SYSTICK_HANDLER] = _systick_handler,
     [IRQ0_HANDLER... LAST_HANDLER] = irq_common_isr,

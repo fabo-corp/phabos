@@ -13,5 +13,6 @@ obj-y += scheduler.o
 obj-y += irq-handler.o
 obj-y += error-handling.o
 obj-$(CONFIG_SCHEDULER_WATCHDOG) += watchdog.o
+obj-y += syscall.o
 
 ld-script-y += arm-v7m.ld
