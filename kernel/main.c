@@ -26,8 +26,14 @@ void init(void *data)
     while (1);
 }
 
+static void clear_screen(void)
+{
+    kprintf("\r%c[2J",27);
+}
+
 void main(void)
 {
+    clear_screen();
     kprintf("booting phabos...\n");
 
     scheduler_init();
