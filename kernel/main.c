@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <phabos/kprintf.h>
 #include <phabos/scheduler.h>
+#include <phabos/syscall.h>
 
 int CONFIG_INIT_TASK_NAME(int argc, char **argv);
 
@@ -36,6 +37,7 @@ void main(void)
     clear_screen();
     kprintf("booting phabos...\n");
 
+    syscall_init();
     scheduler_init();
     task_run(init, NULL, 0);
 }

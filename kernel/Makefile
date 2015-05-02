@@ -8,5 +8,6 @@ obj-y += libc-support.o
 obj-y += shell.o
 obj-y += scheduler.o
 obj-y += panic.o
+obj-y += syscall.o
 
 ld-script-y += kernel.ld

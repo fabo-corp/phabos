@@ -15,6 +15,12 @@ SECTIONS
         _eshell_command = .;
     } DATA_STORAGE
 
+    .syscall : {
+        _syscall = .;
+        KEEP(*(.syscall))
+        _esyscall = .;
+    } DATA_STORAGE
+
     .heap : {
         _sheap = .;
     } > SRAM
