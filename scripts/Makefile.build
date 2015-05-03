@@ -34,7 +34,7 @@ ifeq (${MAKELEVEL}, 0)
 	CPPFLAGS += -ffreestanding\
 	            -I. \
 	            -Iarch/$(ARCH)/include/ \
-	            -Ilibc/include/ \
+	            -Ilibc/$(ARCH_ID)/include/ \
 	            -Iinclude/
 	LDFLAGS  += -nostartfiles -nostdlib
 	ifndef CONFIG_DEBUG

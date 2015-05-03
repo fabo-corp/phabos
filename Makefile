@@ -45,15 +45,15 @@ config.h: .config
 distclean: clean
 	$(MAKE) -C ./scripts/ distclean
 
-libc:
+libc/$(ARCH_ID):
 	$(MAKE) -C ./scripts/ libc
 
-$(KERNEL_NAME).elf: config.h libc
+$(KERNEL_NAME).elf: config.h libc/$(ARCH_ID)
 	rm -f objects.lst
 	$(MAKE) -f scripts/Makefile.common dir=. all
 	$(call build,LD)
 	$(LD) $(LDFLAGS) $(linker_files) -o $@ \
-		`cat objects.lst | tr '\n' ' '` libc/lib/libc.a
+		`cat objects.lst | tr '\n' ' '` libc/$(ARCH_ID)/lib/libc.a
 
 menuconfig: scripts/kconfig-frontends/bin/kconfig-mconf
 	scripts/kconfig-frontends/bin/kconfig-mconf Kconfig

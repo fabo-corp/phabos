@@ -3,11 +3,19 @@
 #
 # Provided under the three clause BSD license found in the LICENSE file.
 
+ARCH_ID     := arm
 ARM_DIR     := arch/$(ARCH)
 MACHINE_DIR := $(ARM_DIR)/mach-$(CONFIG_MACH_NAME)
 LDFLAGS     += -T $(MACHINE_DIR)/$(CONFIG_MACH_LINKER_SCRIPT).ld
 CPPFLAGS    += -I$(ARM_DIR)/mach-$(CONFIG_MACH_NAME)/include
 CPPFLAGS    += -I$(ARM_DIR)/include
+
+ifeq ($(CONFIG_CPU_ARMV7M),y)
+	ARCH_ID := $(ARCH_ID)-v7m
+	CFLAGS  += -march=armv7-m
+	ASFLAGS += -march=armv7-m
+	LDFLAGS  += -T $(ARM_DIR)/arm-v7m/arm-v7m.ld
+endif
 
 ifeq ($(CONFIG_CPU_ARM_THUMB),y)
 	CFLAGS  += -mthumb
@@ -15,10 +23,7 @@ ifeq ($(CONFIG_CPU_ARM_THUMB),y)
 endif
 
 ifeq ($(CONFIG_CPU_ARM_CORTEX_M3),y)
-	CFLAGS  += -mcpu=cortex-m3
-	ASFLAGS += -mcpu=cortex-m3
-endif
-
-ifeq ($(CONFIG_CPU_ARMV7M),y)
-	LDFLAGS  += -T $(ARM_DIR)/arm-v7m/arm-v7m.ld
+	ARCH_ID := $(ARCH_ID)-cm3
+	CFLAGS  += -mtune=cortex-m3
+	ASFLAGS += -mtune=cortex-m3
 endif

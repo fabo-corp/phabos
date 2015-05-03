@@ -57,10 +57,10 @@ $(NEWLIB_REPO_NAME):
 libc: $(NEWLIB_REPO_NAME)
 	echo "    GEN $@"
 	cd ./$(NEWLIB_REPO_NAME)/newlib; \
-	unset CFLAGS CPPLAGS LDFLAGS MAKEFILES; \
-	CC=$(CC) CFLAGS="$(CFLAGS)" \
+	unset CFLAGS ASFLAGS CPPLAGS LDFLAGS MAKEFILES; \
+	CC=$(CC) CFLAGS="$(CFLAGS)" ASFLAGS="$(ASFLAGS)" \
 	./configure --build=$(call compiler-triple) \
-	            --prefix=$(KERNEL_ROOT)/libc \
+	            --prefix=$(KERNEL_ROOT)/libc/$(ARCH_ID) \
 	            --disable-newlib-supplied-syscalls \
 	            1>./configure.log 2>&1; \
 	if [ $$? -ne 0 ]; \
