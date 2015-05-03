@@ -16,6 +16,15 @@
 
 #define __weak__ __attribute__((weak))
 
+#define MAX(x, y) ({ \
+    typeof(x) __a = (x); \
+    typeof(y) __b = (y); \
+    __a > __b ? __a : __b; })
+#define MIN(x, y) ({ \
+    typeof(x) __a = (x); \
+    typeof(y) __b = (y); \
+    __a < __b ? __a : __b; })
+
 static inline void *zalloc(size_t size)
 {
     void *ptr = malloc(size);
