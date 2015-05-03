@@ -6,3 +6,4 @@
 obj-y += fs.o
 obj-y += inode.o
 obj-y += fd.o
+obj-y += ramfs.o

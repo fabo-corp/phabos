@@ -5,4 +5,14 @@
 
 menu "Filesystem"
 
+menu "ramfs"
+    config RAMFS_MAX_FILENAME_SIZE
+        int "Max filename size"
+        default 255
+
+    config RAMFS_DATA_BLOCK_SIZE
+        int "Data block size"
+        default 256
+endmenu
+
 endmenu
