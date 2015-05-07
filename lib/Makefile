@@ -10,3 +10,4 @@ obj-y += semaphore.o
 obj-y += sleep.o
 obj-y += workqueue.o
 obj-y += hashtable.o
+obj-y += string.o
