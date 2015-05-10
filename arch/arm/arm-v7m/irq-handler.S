@@ -20,7 +20,8 @@
 .macro SAVE_CONTEXT
     push {lr}
     mrs r0, basepri
-    push {r0}
+    mrs r1, control
+    push {r0 - r1}
     push {r4 - r11}
     ldr r0, =_impure_ptr
     ldr r0, [r0]
@@ -35,7 +36,8 @@
     ldr r0, =_impure_ptr
     str r1, [r0]
     pop {r4 - r11}
-    pop {r0}
+    pop {r0 - r1}
+    msr control, r1
     msr basepri, r0
     pop {pc}
 .endm

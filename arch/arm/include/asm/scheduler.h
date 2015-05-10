@@ -27,6 +27,7 @@ enum register_offset
     R10_REG,
     R11_REG,
     BASEPRI_REG,
+    CONTROL_REG,
     EXC_RETURN_REG,
     R0_REG,
     R1_REG,
