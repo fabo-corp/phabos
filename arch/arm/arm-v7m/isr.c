@@ -44,6 +44,8 @@ extern void _eor(void);
 void reset_handler(void) __boot__;
 void default_handler(void);
 void main(void);
+void _pendsv_handler(void);
+void _systick_handler(void);
 
 #define __vector__ __attribute__((section(".isr_vector")))
 __vector__ intr_handler_t boot_vector[] = {
@@ -55,7 +57,10 @@ __vector__ intr_handler_t boot_vector[] = {
 __vector_align__ intr_handler_t intr_vector[LAST_HANDLER + 1] = {
     [STACK] = _eor,
     [RESET_HANDLER] = reset_handler,
-    [RESET_HANDLER + 1 ... LAST_HANDLER] = default_handler,
+    [NMI_HANDLER ... PENDSV_HANDLER - 1] = default_handler,
+    [PENDSV_HANDLER] = _pendsv_handler,
+    [SYSTICK_HANDLER] = _systick_handler,
+    [IRQ0_HANDLER... LAST_HANDLER] = default_handler,
 };
 
 static void clear_bss_section(void)

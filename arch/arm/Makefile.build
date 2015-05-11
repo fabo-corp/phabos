@@ -7,6 +7,7 @@ ARM_DIR     := arch/$(ARCH)
 MACHINE_DIR := $(ARM_DIR)/mach-$(CONFIG_MACH_NAME)
 LDFLAGS     += -T $(MACHINE_DIR)/$(CONFIG_MACH_LINKER_SCRIPT).ld
 CPPFLAGS    += -I$(ARM_DIR)/mach-$(CONFIG_MACH_NAME)/include
+CPPFLAGS    += -I$(ARM_DIR)/include
 
 ifeq ($(CONFIG_CPU_ARM_THUMB),y)
 	CFLAGS  += -mthumb

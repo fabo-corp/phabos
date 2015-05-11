@@ -9,5 +9,7 @@ obj-y += boot.o
 obj-y += irq.o
 obj-y += spinlock.o
 obj-y += atomic.o
+obj-y += scheduler.o
+obj-y += irq-handler.o
 
 ld-script-y += arm-v7m.ld
