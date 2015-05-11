@@ -12,3 +12,7 @@ ifeq ($(CONFIG_CPU_ARM_THUMB),y)
 	CFLAGS  += -mthumb
 	ASFLAGS += -mthumb
 endif
+
+ifeq ($(CONFIG_CPU_ARMV7M),y)
+	LDFLAGS  += -T $(ARM_DIR)/arm-v7m/arm-v7m.ld
+endif

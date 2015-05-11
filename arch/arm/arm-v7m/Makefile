@@ -3,4 +3,8 @@
 #
 # Provided under the three clause BSD license found in the LICENSE file.
 
-subdirs-$(CONFIG_CPU_ARMV7M) += arm-v7m
+obj-y := isr.o
+obj-y += aeabi.o
+obj-y += boot.o
+
+ld-script-y += arm-v7m.ld

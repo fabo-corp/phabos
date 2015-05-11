@@ -16,6 +16,11 @@ config CPU_ARMV7
 config CPU_ARM_THUMB
     bool
 
+config CPU_ARMV7M
+    bool
+    select CPU_ARMV7
+    select CPU_ARM_THUMB
+
 choice
     prompt "Boot Mode"
 

@@ -1,0 +1,58 @@
+/*
+ * Copyright (C) 2014-2015 Fabien Parent. All rights reserved.
+ * Author: Fabien Parent <parent.f@gmail.com>
+ *
+ * Provided under the three clause BSD license found in the LICENSE file.
+ */
+
+#include <asm/linker-utils.h>
+
+ENTRY(reset_handler)
+SECTIONS
+{
+    .isr_vector : {
+        KEEP(*(.isr_vector))
+    } BOOT_STORAGE
+
+    .boot : {
+        *(.boot)
+    } BOOT_STORAGE
+
+    .bss : {
+        _bss = .;
+        *(.bss)
+        _ebss = .;
+    } > SRAM
+
+    .text : {
+        *(.text)
+        *(.rodata*)
+    } CODE_STORAGE
+
+    _text_lma = LOADADDR(.text);
+    _text_vma = ADDR(.text);
+    _text_size = SIZEOF(.text);
+
+    .boot.text : {
+        *(.boot.text)
+    } CODE_STORAGE
+
+    _boot_text_lma = LOADADDR(.boot.text);
+    _boot_text_vma = ADDR(.boot.text);
+    _boot_text_size = SIZEOF(.boot.text);
+
+    .data : {
+        *(.data)
+    } DATA_STORAGE
+
+    _data_lma = LOADADDR(.data);
+    _data_vma = ADDR(.data);
+    _data_size = SIZEOF(.data);
+
+    _bor = ORIGIN(SRAM);
+    _eor = ORIGIN(SRAM) + LENGTH(SRAM);
+
+    /DISCARD/ : {
+        *(.ARM.exidx*)
+    }
+}
