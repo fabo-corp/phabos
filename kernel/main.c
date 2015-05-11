@@ -8,11 +8,14 @@
 #include <config.h>
 #include <stdlib.h>
 #include <phabos/kprintf.h>
+#include <kernel/scheduler.h>
 
 void shell_main(int argc, char **argv);
 
 void main(void)
 {
+    scheduler_init();
+
     char* argv[] = {
         "shell_main",
         NULL
