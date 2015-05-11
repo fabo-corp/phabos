@@ -1,0 +1,28 @@
+# Copyright (C) 2014-2015 Fabien Parent. All rights reserved.
+# Author: Fabien Parent <parent.f@gmail.com>
+#
+# Provided under the three clause BSD license found in the LICENSE file.
+
+menu "System configuration"
+
+config CPU_ARM
+    bool
+    default y
+
+config CPU_ARM_THUMB
+    bool
+
+choice
+    prompt "Boot Mode"
+
+    config BOOT_FLASH
+        bool "boot from flash"
+
+    config BOOT_COPYTORAM
+        bool "boot from flash then copy to ram"
+
+    config BOOT_RAM
+        bool "boot from ram"
+endchoice
+
+endmenu
