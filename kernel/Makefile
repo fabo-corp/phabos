@@ -6,5 +6,6 @@
 obj-y := main.o
 obj-y += libc-support.o
 obj-y += shell.o
+obj-y += scheduler.o
 
 ld-script-y += kernel.ld
