@@ -13,6 +13,11 @@ ifeq ($(CONFIG_CPU_ARM_THUMB),y)
 	ASFLAGS += -mthumb
 endif
 
+ifeq ($(CONFIG_CPU_ARM_CORTEX_M3),y)
+	CFLAGS  += -mcpu=cortex-m3
+	ASFLAGS += -mcpu=cortex-m3
+endif
+
 ifeq ($(CONFIG_CPU_ARMV7M),y)
 	LDFLAGS  += -T $(ARM_DIR)/arm-v7m/arm-v7m.ld
 endif

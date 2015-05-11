@@ -21,6 +21,10 @@ config CPU_ARMV7M
     select CPU_ARMV7
     select CPU_ARM_THUMB
 
+config CPU_ARM_CORTEX_M3
+    bool
+    select CPU_ARMV7M
+
 choice
     prompt "Boot Mode"
 
