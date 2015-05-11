@@ -9,6 +9,10 @@ config CPU_ARM
     bool
     default y
 
+config CPU_ARMV7
+    bool
+    select CPU_ARM
+
 config CPU_ARM_THUMB
     bool
 
