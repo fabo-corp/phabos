@@ -11,8 +11,10 @@
 .syntax unified
 .thumb
 
+#define USER_THREAD_BIT 0
+
 .thumb_func
-_svcall_handler:
+syscall_handler:
     push {r8, lr}
     mov r8, r0
     mov r0, r7
@@ -28,8 +30,50 @@ _svcall_handler:
     blx r12
     pop {r4 - r6}
 
-    str r0, [sp, #8]
-    pop {r8, pc}
+    pop {r8, lr}
+
+    orr r12, lr, #1
+    pop {r1 - r2, lr}
+    msr xpsr, r1
+    msr control, r2
+
+    ands r1, r1, #(1 << 9)
+    it ne
+    addne sp, sp, #4 // FIXME: is it here the best place to do it?
+
+    bx r12
+
+.thumb_func
+_svcall_handler:
+    mrs r0, control
+    mov r1, r0
+    bfc r0, #USER_THREAD_BIT, #1
+    msr control, r0
+
+    mov r12, sp
+    sub sp, sp, #12
+    mov r0, sp
+    push {r4 - r9}
+
+    ldm r12, {r2 - r9}
+    stm r0, {r2 - r9}
+
+    str r1, [r0, #36]
+
+    ldr r1, [r0, #20]
+    str r1, [r0, #40]
+
+    ldr r1, [r0, #28]
+    str r1, [r0, #32]
+
+    ldr r1, [r0, #24]
+    str r1, [r0, #20]
+
+    ldr r1, =syscall_handler
+    str r1, [r0, #24]
+
+    pop {r4 - r9}
+    bx lr
 
 .thumb_func
 syscall:
