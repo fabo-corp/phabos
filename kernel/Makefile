@@ -5,5 +5,6 @@
 
 obj-y := main.o
 obj-y += libc-support.o
+obj-y += shell.o
 
 ld-script-y += kernel.ld

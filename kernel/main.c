@@ -5,8 +5,17 @@
  * Provided under the three clause BSD license found in the LICENSE file.
  */
 
+#include <config.h>
+#include <stdlib.h>
 #include <phabos/kprintf.h>
+
+void shell_main(int argc, char **argv);
 
 void main(void)
 {
+    char* argv[] = {
+        "shell_main",
+        NULL
+    };
+    shell_main(1, argv);
 }
