@@ -74,6 +74,7 @@ struct task *task_create(void)
     RET_IF_FAIL(task, NULL);
 
     list_init(&task->list);
+    hashtable_init_uint(&task->fd);
 
     irq_disable();
     task->id = next_task_id++;
