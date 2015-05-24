@@ -14,4 +14,11 @@ choice
         depends on ARCH_HAS_SCHEDULER_WATCHDOG
 endchoice
 
+menuconfig SERIAL
+    bool "Serial"
+
+if SERIAL
+source drivers/serial/Kconfig
+endif
+
 endmenu
