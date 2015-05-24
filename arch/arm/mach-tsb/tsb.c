@@ -30,7 +30,10 @@
 #include "chip.h"
 
 #include <asm/hwio.h>
+#include <asm/tsb-irq.h>
+#include <phabos/driver.h>
 #include <phabos/mm.h>
+#include <phabos/serial/uart16550.h>
 
 #define UART_RBR_THR_DLL            (UART_BASE + 0x0)
 #define UART_IER_DLH                (UART_BASE + 0x4)
@@ -46,6 +49,19 @@
 #define UART_FCR_IIR_IID0_FIFOE     (1 << 0)
 #define UART_FCR_IIR_IID1_RFIFOR    (1 << 1)
 #define UART_FCR_IIR_IID1_XFIFOR    (1 << 2)
+
+extern struct driver uart16550_driver;
+
+static struct uart16550_device uart16550_device = {
+    .base = (void*) UART_BASE,
+    .irq = TSB_IRQ_UART,
+
+    .device = {
+        .name = "dw_apb_uart",
+        .description = "Designware UART16550 compatible UART",
+        .driver = "uart16550",
+    },
+};
 
 void tsb_uart_init(void)
 {
@@ -78,4 +94,6 @@ void machine_init(void)
     mm_add_region(BUFRAM3_BASE, order, MM_DMA);
 
     tsb_uart_init();
+
+    device_register(&uart16550_device.device);
 }
