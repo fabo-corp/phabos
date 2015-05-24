@@ -2,3 +2,12 @@
 # Author: Fabien Parent <parent.f@gmail.com>
 #
 # Provided under the three clause BSD license found in the LICENSE file.
+
+menuconfig UART16550
+    bool "UART 16550"
+
+if UART16550
+config UART16550_RX_BUFFER_SIZE
+    int "RX Buffer Size"
+    default "64"
+endif
