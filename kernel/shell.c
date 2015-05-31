@@ -319,6 +319,7 @@ static void shell_process_line(char *line)
 int shell_main(int argc, char **argv)
 {
     setbuf(stdout, NULL);
+    setbuf(stdin, NULL);
 
     while (1) {
         printf("%s", SHELL_PROMPT);
