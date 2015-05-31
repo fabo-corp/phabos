@@ -45,7 +45,7 @@ int _write(int fd, char *buffer, int count)
 
 int _close(int fd)
 {
-    return -1;
+    return close(fd);
 }
 
 int _fstat(int fd, struct stat *stat)
@@ -60,7 +60,7 @@ int _read(int fd, char *buffer, int count)
 
 int _lseek(int fd, int offset, int whence)
 {
-    return -1;
+    return lseek(fd, offset, whence);
 }
 
 int _isatty(int file)
