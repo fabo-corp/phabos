@@ -7,5 +7,6 @@ obj-y += fs.o
 obj-y += inode.o
 obj-y += fd.o
 obj-y += fs-user.o
+obj-y += fs-libc.o
 obj-y += ramfs.o
 obj-y += devfs.o

@@ -7,11 +7,7 @@
 
 #include <stdint.h>
 #include <asm/spinlock.h>
-#include <stdbool.h>
 #include <stdio.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <fcntl.h>
 
 static struct spinlock malloc_spinlock = SPINLOCK_INIT(malloc_spinlock);
 
@@ -37,39 +33,4 @@ void __malloc_lock(struct _reent *reent)
 void __malloc_unlock(struct _reent *reent)
 {
     spinlock_unlock(&malloc_spinlock);
-}
-
-int _write(int fd, char *buffer, int count)
-{
-    return write(fd, buffer, count);
-}
-
-int _open(const char *pathname, int flags, mode_t mode)
-{
-    return open(pathname, flags, mode);
-}
-
-int _close(int fd)
-{
-    return close(fd);
-}
-
-int _fstat(int fd, struct stat *stat)
-{
-    return -1;
-}
-
-int _read(int fd, char *buffer, int count)
-{
-    return read(fd, buffer, count);
-}
-
-int _lseek(int fd, int offset, int whence)
-{
-    return lseek(fd, offset, whence);
-}
-
-int _isatty(int file)
-{
-    return -1;
 }
