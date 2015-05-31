@@ -133,6 +133,11 @@ error_stack:
 
 void task_kill(struct task *task)
 {
+    if (task->id == 0) {
+        kprintf("Oops: trying to kill idle task...\n");
+        return;
+    }
+
     irq_disable();
     if (current == task) {
         irq_enable(); // FIXME: force enable the interrupts in order for
