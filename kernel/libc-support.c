@@ -10,11 +10,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 static struct spinlock malloc_spinlock = SPINLOCK_INIT(malloc_spinlock);
-
-ssize_t low_write(char *buffer, int count);
-int low_getchar(bool wait);
 
 uint32_t _sbrk(int incr)
 {
@@ -42,7 +40,7 @@ void __malloc_unlock(struct _reent *reent)
 
 int _write(int fd, char *buffer, int count)
 {
-    return low_write(buffer, count);
+    return write(fd, buffer, count);
 }
 
 int _close(int fd)
@@ -57,14 +55,7 @@ int _fstat(int fd, struct stat *stat)
 
 int _read(int fd, char *buffer, int count)
 {
-    int c;
-    size_t nread = 0;
-
-    buffer[nread++] = low_getchar(true);
-    while ((c = low_getchar(false)) != EOF)
-        buffer[nread++] = (char) c;
-
-    return nread;
+    return read(fd, buffer, count);
 }
 
 int _lseek(int fd, int offset, int whence)
