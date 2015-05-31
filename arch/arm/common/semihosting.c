@@ -118,6 +118,12 @@ ssize_t semihosting_read(struct file *file, void *buffer, size_t buflen)
 
     nread = semihosting_syscall(SYSCALL_READ, &params[0]);
 
+    for (int i = 0; i < buflen - nread; i++) {
+        char *buf = (char*) buffer;
+        if (buf[i] == '\r')
+            buf[i] = '\n';
+    }
+
     return buflen - nread;
 }
 
