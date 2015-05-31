@@ -16,6 +16,7 @@
 
 #define SETENA0 0xE000E100
 #define CLRENA0 0xE000E180
+#define CLRPEND0 0xE000E280
 
 #define ARM_CM_NUM_EXCEPTION 16
 
@@ -50,6 +51,14 @@ void irq_disable_line(int line)
     write32(CLRENA0 + 4 * (line / 32), 1 << (line % 32));
 
     irq_enable();
+}
+
+void irq_clear(int line)
+{
+    assert(line < CPU_NUM_IRQ);
+    assert(line != 0xFF);
+
+    write32(CLRPEND0 + 4 * (line / 32), 1 << (line % 32));
 }
 
 void irq_enable_line(int line)
