@@ -35,22 +35,11 @@
 
 #define UART_RBR_THR_DLL            (UART_BASE + 0x0)
 #define UART_LSR                    (UART_BASE + 0x14)
-#define UART_USR                    (UART_BASE + 0x7c)
 
 #define UART_LSR_THRE               (1 << 5)
-#define UART_USR_RFNE               (1 << 3)
 
 void machine_lowputchar(char c)
 {
     while ((read32(UART_LSR) & UART_LSR_THRE) != UART_LSR_THRE);
     write32(UART_RBR_THR_DLL, c);
-}
-
-int machine_lowgetchar(bool wait)
-{
-    if (!wait && (read32(UART_USR) & UART_USR_RFNE) == 0)
-        return EOF;
-
-    while ((read32(UART_USR) & UART_USR_RFNE) == 0);
-    return read32(UART_RBR_THR_DLL);
 }
