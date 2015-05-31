@@ -32,18 +32,3 @@ ssize_t low_write(char *buffer, int count)
     return count;
 #endif
 }
-
-int low_getchar(bool wait)
-{
-#ifdef CONFIG_ARM_SEMIHOSTING
-    char c;
-
-    if (!wait)
-        return EOF;
-
-    semihosting_read(&c, 1);
-    return c;
-#else
-    return machine_lowgetchar(wait);
-#endif
-}
