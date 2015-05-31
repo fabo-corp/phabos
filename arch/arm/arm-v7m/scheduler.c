@@ -122,7 +122,16 @@ uint32_t systick_handler(uint32_t *stack_top)
 
 uint32_t pendsv_handler(uint32_t *stack_top)
 {
+    uint32_t sp;
+
+    irq_disable();
+
     if (need_resched)
         schedule(stack_top);
-    return current->registers[SP_REG];
+
+    sp = current->registers[SP_REG];
+
+    irq_enable();
+
+    return sp;
 }
