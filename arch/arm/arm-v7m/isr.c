@@ -8,7 +8,6 @@
 #include <asm/machine.h>
 #include <asm/hwio.h>
 #include <asm/irq.h>
-#include <asm/semihosting.h>
 #include <asm/scheduler.h>
 #include <asm/mpu.h>
 
@@ -121,10 +120,6 @@ static void _start(void)
 
 #ifdef CONFIG_MPU
     mpu_init();
-#endif
-
-#ifdef CONFIG_ARM_SEMIHOSTING
-    semihosting_init();
 #endif
 
     irq_initialize();

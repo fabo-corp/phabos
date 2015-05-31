@@ -12,10 +12,16 @@
 #include <stddef.h>
 #include <stdio.h>
 
-ssize_t semihosting_read(char *buffer, size_t buflen);
-ssize_t semihosting_write(const char *buffer, size_t buflen);
+#include <phabos/driver.h>
+
+static inline ssize_t semihosting_write_stdout(const char *buffer,
+                                               size_t buflen)
+{
+    ssize_t semihosting_write(struct file*, const void*, size_t);
+    return semihosting_write(NULL, buffer, buflen);
+}
+
 void semihosting_putc(char c);
-void semihosting_init(void);
 
 #endif /* __ARM_SEMIHOSTING_H__ */
 

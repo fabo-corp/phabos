@@ -3,5 +3,11 @@
 #
 # Provided under the three clause BSD license found in the LICENSE file.
 
-config ARM_SEMIHOSTING
+menuconfig ARM_SEMIHOSTING
     bool "ARM Semihosting"
+    select SERIAL
+
+if ARM_SEMIHOSTING
+    config ARM_SEMIHOSTING_LOWIO
+        bool "Use ARM Semihosting for lowio"
+endif

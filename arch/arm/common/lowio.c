@@ -15,7 +15,7 @@ int machine_lowgetchar(bool wait);
 
 void low_putchar(char c)
 {
-#ifdef CONFIG_ARM_SEMIHOSTING
+#ifdef CONFIG_ARM_SEMIHOSTING_LOWIO
     semihosting_putc(c);
 #else
     machine_lowputchar(c);
@@ -24,8 +24,8 @@ void low_putchar(char c)
 
 ssize_t low_write(char *buffer, int count)
 {
-#ifdef CONFIG_ARM_SEMIHOSTING
-    return semihosting_write(buffer, count);
+#ifdef CONFIG_ARM_SEMIHOSTING_LOWIO
+    return semihosting_write_stdout(buffer, count);
 #else
     for (int i = 0; i < count; i++)
         low_putchar(buffer[i]);
