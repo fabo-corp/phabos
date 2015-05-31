@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 static struct spinlock malloc_spinlock = SPINLOCK_INIT(malloc_spinlock);
 
@@ -41,6 +42,11 @@ void __malloc_unlock(struct _reent *reent)
 int _write(int fd, char *buffer, int count)
 {
     return write(fd, buffer, count);
+}
+
+int _open(const char *pathname, int flags, mode_t mode)
+{
+    return open(pathname, flags, mode);
 }
 
 int _close(int fd)
