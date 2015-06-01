@@ -23,5 +23,15 @@ bool semaphore_trylock(struct semaphore *semaphore);
 void semaphore_unlock(struct semaphore *semaphore);
 void semaphore_destroy(struct semaphore *semaphore);
 
+static inline void semaphore_up(struct semaphore *semaphore)
+{
+    semaphore_unlock(semaphore);
+}
+
+static inline void semaphore_down(struct semaphore *semaphore)
+{
+    semaphore_lock(semaphore);
+}
+
 #endif /* __SEMAPHORE_H__ */
 
