@@ -10,6 +10,7 @@
 
 #include <asm/atomic.h>
 #include <phabos/list.h>
+#include <phabos/assert.h>
 
 struct semaphore {
     struct list_head wait_list;
@@ -31,6 +32,12 @@ static inline void semaphore_up(struct semaphore *semaphore)
 static inline void semaphore_down(struct semaphore *semaphore)
 {
     semaphore_lock(semaphore);
+}
+
+static inline unsigned semaphore_get_value(struct semaphore *semaphore)
+{
+    RET_IF_FAIL(semaphore, 0);
+    return atomic_get(&semaphore->count);;
 }
 
 #endif /* __SEMAPHORE_H__ */
