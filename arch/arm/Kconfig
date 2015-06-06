@@ -66,6 +66,10 @@ choice
         bool "boot from ram"
 endchoice
 
+if CPU_ARMV7M
+source "arch/$ARCH/arm-v7m/Kconfig"
+endif
+
 source "arch/$ARCH/common/Kconfig"
 
 endmenu

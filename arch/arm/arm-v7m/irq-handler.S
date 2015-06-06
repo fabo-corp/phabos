@@ -9,6 +9,7 @@
 .thumb
 
 .extern hardfault_handler
+.extern memfault_handler
 .extern pendsv_handler
 .extern systick_handler
 .extern _impure_ptr
@@ -16,6 +17,7 @@
 .global _pendsv_handler
 .global _systick_handler
 .global _hardfault_handler
+.global _memfault_handler
 
 .macro SAVE_CONTEXT
     push {lr}
@@ -65,4 +67,13 @@ _hardfault_handler:
     SAVE_CONTEXT
     mov r0, r13
     bl hardfault_handler
+    RESTORE_CONTEXT
+
+.section .text._memfault_handler
+.thumb_func
+_memfault_handler:
+    SAVE_CONTEXT
+    mov r0, r13
+    bl memfault_handler
+    mov r13, r0
     RESTORE_CONTEXT

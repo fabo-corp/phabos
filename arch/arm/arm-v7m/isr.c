@@ -10,7 +10,11 @@
 #include <asm/irq.h>
 #include <asm/semihosting.h>
 #include <asm/scheduler.h>
+#include <asm/mpu.h>
+
 #include <phabos/kprintf.h>
+#include <phabos/panic.h>
+#include <phabos/scheduler.h>
 
 #include <string.h>
 #include <stdint.h>
@@ -50,6 +54,7 @@ void main(void);
 void _pendsv_handler(void);
 void _systick_handler(void);
 void _hardfault_handler(void);
+void _memfault_handler(void);
 void _svcall_handler(void);
 void default_irq_handler(int irq, void *data);
 void analyze_status_registers(void);
@@ -66,7 +71,12 @@ __vector_align__ intr_handler_t intr_vector[LAST_HANDLER + 1] = {
     [RESET_HANDLER] = reset_handler,
     [NMI_HANDLER] = irq_common_isr,
     [HARD_FAULT_HANDLER] = _hardfault_handler,
-    [MEM_FAULT_HANDLER ... SVCALL_HANDLER - 1] = irq_common_isr,
+#ifdef CONFIG_MPU
+    [MEM_FAULT_HANDLER] = _memfault_handler,
+#else
+    [MEM_FAULT_HANDLER] = irq_common_isr,
+#endif
+    [BUS_FAULT_HANDLER ... SVCALL_HANDLER - 1] = irq_common_isr,
     [SVCALL_HANDLER] = _svcall_handler,
     [SVCALL_HANDLER + 1 ... PENDSV_HANDLER -1] = irq_common_isr,
     [PENDSV_HANDLER] = _pendsv_handler,
@@ -109,6 +119,10 @@ static void _start(void)
     copy_data_section();
     move_isr();
 
+#ifdef CONFIG_MPU
+    mpu_init();
+#endif
+
 #ifdef CONFIG_ARM_SEMIHOSTING
     semihosting_init();
 #endif
@@ -116,6 +130,10 @@ static void _start(void)
     irq_initialize();
 
     machine_init();
+
+#ifdef CONFIG_MPU
+    mpu_enable();
+#endif
 
     main();
 
@@ -133,10 +151,8 @@ __boot__ void reset_handler(void)
     _start();
 }
 
-void hardfault_handler(uint32_t *context)
+static void dump_context(uint32_t *context)
 {
-    kprintf("=== Hard Fault Handler ===\n");
-
     kprintf("R0  = %#.8X\tR1  = %#.8X\tR2  = %#.8X\tR3  = %#.8X\n"
             "R4  = %#.8X\tR5  = %#.8X\tR6  = %#.8X\tR7  = %#.8X\n"
             "R8  = %#.8X\tR9  = %#.8X\tR10 = %#.8X\tR11 = %#.8X\n"
@@ -152,9 +168,38 @@ void hardfault_handler(uint32_t *context)
     kprintf("\n");
 
     analyze_status_registers();
+}
+
+void hardfault_handler(uint32_t *context)
+{
+    kprintf("=== Hard Fault Handler ===\n");
+    dump_context(context);
 
     while (1)
         asm volatile("nop");
+}
+
+uint32_t memfault_handler(uint32_t *context)
+{
+#define PSR_ISR_NUM_MASK        0xff
+#define EXCEPTION_THREAD_MODE   0
+
+#define MMFSR 0xe000ed28
+
+    uint32_t exception = context[PSR_REG] & PSR_ISR_NUM_MASK;
+    int user_mode = context[CONTROL_REG] & 0x1;
+
+    kprintf(user_mode ? "segfault\n" : "Oops\n");
+    dump_context(context);
+
+    if (exception == EXCEPTION_THREAD_MODE) {
+        write32(MMFSR, ~0); // clear register
+        task_exit();
+    } else {
+        panic(NULL);
+    }
+
+    return context[SP_REG];
 }
 
 static void irq_common_isr(void)

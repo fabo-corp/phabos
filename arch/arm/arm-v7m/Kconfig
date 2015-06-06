@@ -1,0 +1,4 @@
+config MPU
+    bool "MPU Support"
+    depends on CPU_ARMV7M
+    default y
