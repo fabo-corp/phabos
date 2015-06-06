@@ -14,7 +14,9 @@ SECTIONS
         KEEP(*(.isr_vector))
     } BOOT_STORAGE
 
-    .boot : {
+    // Align on 32 bytes in order to give room for a small mpu region
+    // at address 0 that can be used to avoid NULL pointer deference
+    .boot ALIGN(32): {
         KEEP(*(.boot))
     } BOOT_STORAGE
 

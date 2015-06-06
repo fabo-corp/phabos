@@ -1,4 +1,11 @@
-config MPU
+menuconfig MPU
     bool "MPU Support"
     depends on CPU_ARMV7M
     default y
+
+if MPU
+config MPU_NULL_REGION
+    bool "Configure No-Access region at address 0x0"
+    depends on MPU
+    default y
+endif

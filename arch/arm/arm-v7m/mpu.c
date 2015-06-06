@@ -1,3 +1,5 @@
+#include <config.h>
+
 #include <asm/mpu.h>
 #include <asm/hwio.h>
 #include <asm/irq.h>
@@ -47,6 +49,22 @@ static void mpu_disable_all(void)
     }
 }
 
+static int mpu_setup_null_region(void)
+{
+    int retval;
+
+    retval = mpu_request_region(7);
+    RET_IF_FAIL(!retval, retval);
+
+    retval = mpu_setup_region(7, 0x00000000, 5, MPU_XN, 0, 0);
+    RET_IF_FAIL(!retval, retval);
+
+    retval = mpu_enable_region(7);
+    RET_IF_FAIL(!retval, retval);
+
+    return 0;
+}
+
 int mpu_init(void)
 {
     mpu_region_count = (read32(MPU_TYPE) >> MPU_TYPE_DREGION_OFFSET) & 0xff;
@@ -57,6 +75,10 @@ int mpu_init(void)
 
     read32(SHCSR) |= SHCSR_MEMFAULTENA;
     read32(MPU_CTRL) |= MPU_CTRL_PRIVDEFENA;
+
+#ifdef CONFIG_MPU_NULL_REGION
+    mpu_setup_null_region();
+#endif
 
     return 0;
 }
