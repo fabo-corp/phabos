@@ -12,5 +12,6 @@ obj-y += scheduler.o
 obj-y += task.o
 obj-y += panic.o
 obj-y += syscall.o
+obj-y += elf-loader.o
 
 ld-script-y += kernel.ld
