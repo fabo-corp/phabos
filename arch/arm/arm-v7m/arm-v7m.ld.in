@@ -15,7 +15,7 @@ SECTIONS
     } BOOT_STORAGE
 
     .boot : {
-        *(.boot)
+        KEEP(*(.boot))
     } BOOT_STORAGE
 
     .bss : {
@@ -26,6 +26,7 @@ SECTIONS
 
     .text : {
         *(.text)
+        *(.text.*)
         *(.rodata*)
     } CODE_STORAGE
 
@@ -43,6 +44,7 @@ SECTIONS
 
     .data : {
         *(.data)
+        *(.data.*)
     } DATA_STORAGE
 
     _data_lma = LOADADDR(.data);
