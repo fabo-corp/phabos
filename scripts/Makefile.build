@@ -29,13 +29,14 @@ ifeq (${MAKELEVEL}, 0)
 	endif
 
 	CFLAGS   += -std=gnu11 -Wall -fno-stack-protector -g -fshort-enums \
+	            -fdata-sections -ffunction-sections \
 	            $(CONFIG_OPTIMIZATION_LEVEL) -D_POSIX_MONOTONIC_CLOCK
 	CPPFLAGS += -ffreestanding\
 	            -I. \
 	            -Iarch/$(ARCH)/include/ \
 	            -Ilibc/include/ \
 	            -Iinclude/
-	LDFLAGS  += -nostartfiles -nostdlib
+	LDFLAGS  += -nostartfiles -nostdlib -gc-sections
 endif
 
 build = echo "    $1 $@"
