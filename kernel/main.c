@@ -41,6 +41,8 @@ void main(void)
     task_init();
     syscall_init();
     scheduler_init();
+    devfs_init();
+    fs_init();
     driver_init();
 
     task_run(init, NULL, 0);
