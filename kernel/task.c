@@ -195,6 +195,17 @@ void task_exit(void)
     task_yield();
 }
 
+void sys_exit(int status)
+{
+    // Trying to kill init process
+    if (current->id == 0)
+        panic("sys_exit: trying to exit from idle task.\n");
+
+    task_kill(current);
+    panic("sys_exit: reach unreachable...\n");
+}
+DEFINE_SYSCALL(SYS_EXIT, exit, 0);
+
 pid_t sys_getpid(void)
 {
     return current->id;
