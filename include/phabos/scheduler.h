@@ -14,6 +14,11 @@
 #include <phabos/list.h>
 #include <phabos/mutex.h>
 
+extern struct task *current;
+extern bool kill_task;
+
+#define TASK_RUNNING                    (1 << 1)
+
 struct task {
     int id;
     uint16_t state;
@@ -29,6 +34,8 @@ struct task_cond {
 
 typedef void (*task_entry_t)(void *data);
 
+struct task *task_create(void);
+
 /**
  * Initialize the scheduler
  *
@@ -36,6 +43,7 @@ typedef void (*task_entry_t)(void *data);
  * activating the Systick
  */
 void scheduler_init(void);
+void scheduler_add_to_runqueue(struct task *task);
 
 /**
  * Call the scheduler to let another task run

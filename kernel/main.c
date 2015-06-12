@@ -37,6 +37,7 @@ void main(void)
     clear_screen();
     kprintf("booting phabos...\n");
 
+    task_init();
     syscall_init();
     scheduler_init();
     task_run(init, NULL, 0);

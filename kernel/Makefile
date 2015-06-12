@@ -8,6 +8,7 @@ obj-y += mm.o
 obj-y += libc-support.o
 obj-y += shell.o
 obj-y += scheduler.o
+obj-y += task.o
 obj-y += panic.o
 obj-y += syscall.o
 
