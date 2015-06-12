@@ -10,9 +10,12 @@
 #include <phabos/scheduler.h>
 #include <phabos/utils.h>
 #include <phabos/panic.h>
+#include <phabos/syscall.h>
 
 #include <stdlib.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <signal.h>
 
 #define DEFAULT_STACK_SIZE              4096
 
@@ -191,3 +194,32 @@ void task_exit(void)
     kill_task = true;
     task_yield();
 }
+
+int sys_kill(pid_t pid, int sig)
+{
+    struct task *task;
+
+    if (pid <= 0) {
+        return -ENOSYS;
+    }
+
+    task = find_task_by_id(pid);
+
+    if (!task)
+        return -ESRCH;
+
+    switch (sig) {
+    case 0:
+        break;
+
+    case SIGKILL:
+        task_kill(task);
+        break;
+
+    default:
+        return -ENOSYS;
+    }
+
+    return 0;
+}
+DEFINE_SYSCALL(SYS_KILL, kill, 2);
