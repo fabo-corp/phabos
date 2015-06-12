@@ -195,6 +195,12 @@ void task_exit(void)
     task_yield();
 }
 
+pid_t sys_getpid(void)
+{
+    return current->id;
+}
+DEFINE_SYSCALL(SYS_GETPID, getpid, 0);
+
 int sys_kill(pid_t pid, int sig)
 {
     struct task *task;

@@ -18,6 +18,7 @@
 #define SYS_CREAT                       8
 #define SYS_MKNOD                       14
 #define SYS_LSEEK                       19
+#define SYS_GETPID                      20
 #define SYS_MOUNT                       21
 #define SYS_KILL                        37
 #define SYS_MKDIR                       39
