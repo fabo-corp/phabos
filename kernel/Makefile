@@ -5,6 +5,7 @@
 
 obj-y := main.o
 obj-y += mm.o
+obj-y += spawn.o
 obj-y += libc-support.o
 obj-y += shell.o
 obj-y += scheduler.o

@@ -27,6 +27,8 @@
 #define SYS_UMOUNT                      52
 #define SYS_GETDENTS                    141
 
+#define SYS_SPAWN                       0xfab0
+
 struct syscall {
     int id;
     size_t param_count;
