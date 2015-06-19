@@ -9,7 +9,8 @@
 #define __UTILS_H__
 
 #include <stdlib.h>
-#include <string.h>
+
+#include <phabos/mm.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #define containerof(x, s, f) ((void*) ((char*)(x) - offsetof(s, f)))
@@ -24,14 +25,6 @@
     typeof(x) __a = (x); \
     typeof(y) __b = (y); \
     __a < __b ? __a : __b; })
-
-static inline void *zalloc(size_t size)
-{
-    void *ptr = malloc(size);
-    if (ptr)
-        memset(ptr, 0, size);
-    return ptr;
-}
 
 #endif /* __UTILS_H__ */
 
