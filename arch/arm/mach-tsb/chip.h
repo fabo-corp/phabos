@@ -29,6 +29,21 @@
 #ifndef __ARCH_ARM_TSB_CHIP_H
 #define __ARCH_ARM_TSB_CHIP_H
 
+#include <config.h>
+
+#define BUFRAM_BASE     0x20000000
+
+#ifdef CONFIG_TSB_ES1
+#define BUFRAM_SIZE     0x8000
+#else
+#define BUFRAM_SIZE     0xC000
+#endif
+
+#define BUFRAM0_BASE    BUFRAM_BASE
+#define BUFRAM1_BASE    (BUFRAM0_BASE + BUFRAM_SIZE)
+#define BUFRAM2_BASE    (BUFRAM1_BASE + BUFRAM_SIZE)
+#define BUFRAM3_BASE    (BUFRAM2_BASE + BUFRAM_SIZE)
+
 /* AP/GP Bridge peripherals memory map */
 
 #define SYSCTL_BASE     0x40000000
