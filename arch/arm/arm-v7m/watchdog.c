@@ -14,6 +14,7 @@
 #include <asm/scheduler.h>
 #include <phabos/list.h>
 #include <phabos/watchdog.h>
+#include <phabos/mm.h>
 
 static struct list_head wdog_head = LIST_INIT(wdog_head);
 static struct spinlock wdog_lock = SPINLOCK_INIT(wdog_lock);
@@ -101,7 +102,7 @@ void watchdog_init(struct watchdog *wd)
 
     assert(wd);
     memset(wd, 0, sizeof(*wd));
-    wd->priv = wdog = malloc(sizeof(*wdog));
+    wd->priv = wdog = kmalloc(sizeof(*wdog), 0);
     list_init(&wdog->list);
     wdog->wd = wd;
 }
@@ -114,5 +115,5 @@ void watchdog_delete(struct watchdog *wd)
     assert(wd->priv);
 
     watchdog_cancel(wd);
-    free(wd->priv);
+    kfree(wd->priv);
 }
