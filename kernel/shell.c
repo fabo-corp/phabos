@@ -12,6 +12,7 @@
 
 #include <phabos/shell.h>
 #include <phabos/list.h>
+#include <phabos/mm.h>
 
 #define BOLD_TEXT_ESCAPE "\033[1m"
 #define NORMAL_TEXT_ESCAPE "\033[0m"
@@ -76,14 +77,14 @@ static void shell_history_add(char *command)
 
     if (history_cmd_count >= history_size) {
         cmd = list_last_entry(&history, struct shell_history_command, list);
-        free(cmd->command);
+        kfree(cmd->command);
         list_del(&cmd->list);
-        free(cmd);
+        kfree(cmd);
     }
 
-    cmd = malloc(sizeof(*cmd));
+    cmd = kmalloc(sizeof(*cmd), 0);
     list_init(&cmd->list);
-    cmd->command = malloc(strlen(command) + 1);
+    cmd->command = kmalloc(strlen(command) + 1, 0);
     strcpy(cmd->command, command);
     list_add(&history, &cmd->list);
 }

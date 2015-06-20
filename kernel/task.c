@@ -109,8 +109,8 @@ static void task_destroy(struct task *task)
 {
     // assert
     if (task->allocated_stack)
-        free(task->allocated_stack);
-    free(task);
+        kfree(task->allocated_stack);
+    kfree(task);
 }
 
 struct task *task_get_running(void)
@@ -150,7 +150,7 @@ struct task *task_run(task_entry_t entry, void *data, uint32_t stack_addr)
         return NULL;
 
     if (!stack_addr) {
-        task->allocated_stack = malloc(DEFAULT_STACK_SIZE);
+        task->allocated_stack = kmalloc(DEFAULT_STACK_SIZE, 0);
         if (!task->allocated_stack)
             goto error_stack;
 
@@ -164,7 +164,7 @@ struct task *task_run(task_entry_t entry, void *data, uint32_t stack_addr)
 
     return task;
 error_stack:
-    free(task);
+    kfree(task);
     return NULL;
 }
 
