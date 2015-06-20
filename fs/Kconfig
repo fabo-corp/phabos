@@ -15,4 +15,8 @@ menu "ramfs"
         default 256
 endmenu
 
+config BINFS
+    bool "bin FS"
+    default n
+
 endmenu

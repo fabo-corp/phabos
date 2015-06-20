@@ -10,3 +10,4 @@ obj-y += fs-user.o
 obj-y += fs-libc.o
 obj-y += ramfs.o
 obj-y += devfs.o
+obj-$(CONFIG_BINFS) += binfs.o
