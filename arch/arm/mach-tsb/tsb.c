@@ -30,6 +30,7 @@
 #include "chip.h"
 
 #include <asm/hwio.h>
+#include <phabos/mm.h>
 
 #define UART_RBR_THR_DLL            (UART_BASE + 0x0)
 #define UART_IER_DLH                (UART_BASE + 0x4)
@@ -69,5 +70,12 @@ void tsb_uart_init(void)
 
 void machine_init(void)
 {
+    int order = size_to_order(BUFRAM_SIZE);
+
+    mm_add_region(BUFRAM0_BASE, order, MM_DMA);
+    mm_add_region(BUFRAM1_BASE, order, MM_DMA);
+    mm_add_region(BUFRAM2_BASE, order, MM_DMA);
+    mm_add_region(BUFRAM3_BASE, order, MM_DMA);
+
     tsb_uart_init();
 }
