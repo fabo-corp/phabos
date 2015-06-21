@@ -12,13 +12,14 @@
 #include <phabos/list.h>
 #include <phabos/scheduler.h>
 #include <phabos/assert.h>
+#include <phabos/mm.h>
 #include <asm/irq.h>
 
 struct semaphore *semaphore_create(unsigned val)
 {
     struct semaphore *semaphore;
 
-    semaphore = malloc(sizeof(*semaphore));
+    semaphore = kmalloc(sizeof(*semaphore), 0);
     if (!semaphore)
         return NULL;
     semaphore_init(semaphore, val);
@@ -41,7 +42,7 @@ void semaphore_destroy(struct semaphore *semaphore)
         return;
 
     RET_IF_FAIL(list_is_empty(&semaphore->wait_list),);
-    free(semaphore);
+    kfree(semaphore);
 }
 
 void semaphore_lock(struct semaphore *semaphore)

@@ -36,7 +36,7 @@ void workqueue_thread(void *data)
                 work->entry_point(work->data);
 
             watchdog_delete(&work->watchdog);
-            free(work);
+            kfree(work);
             break;
         }
 
@@ -79,7 +79,7 @@ struct workqueue *workqueue_create(const char *name)
     return wq;
 
 task_run_error:
-    free(wq);
+    kfree(wq);
     return NULL;
 }
 
@@ -97,14 +97,14 @@ void workqueue_destroy(struct workqueue *wq)
     list_foreach_safe(&wq->list, iter) {
         work = list_entry(iter, struct work, list);
         list_del(&work->list);
-        free(work);
+        kfree(work);
     }
 
     // FIXME
     // destroy will try to free the smeaphore pointer.
     //semaphore_destroy(&wq->semaphore);
     //semaphore_destroy(&wq->empty_semaphore);
-    free(wq);
+    kfree(wq);
 }
 
 void workqueue_queue(struct workqueue *wq, work_entry_t entry, void *data)
