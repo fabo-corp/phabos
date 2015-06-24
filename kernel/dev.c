@@ -153,11 +153,14 @@ int dev_main(int argc, char **argv)
 
     extern struct fs ramfs_fs;
     extern struct fs devfs_fs;
-    extern struct fs binfs_fs;
 
     fs_register(&ramfs_fs);
     fs_register(&devfs_fs);
+
+#ifdef CONFIG_BINFS
+    extern struct fs binfs_fs;
     fs_register(&binfs_fs);
+#endif
 
     retval = mount(NULL, NULL, "ramfs", 0, NULL);
     if (retval < 0)
