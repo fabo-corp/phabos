@@ -27,3 +27,12 @@
 obj-y += lowio.o
 obj-y += scm.o
 obj-y += tsb.o
+
+ifeq ($(CONFIG_TSB_ES2),y)
+obj-$(CONFIG_TSB_UNIPRO) += es2-mphy-fixups.o
+obj-$(CONFIG_TSB_UNIPRO) += unipro-es2.o
+endif
+
+ifeq ($(CONFIG_TSB_ES1),y)
+obj-$(CONFIG_TSB_UNIPRO) += unipro-es1.o
+endif

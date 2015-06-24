@@ -68,3 +68,8 @@ config MACH_LINKER_SCRIPT
     string
     default "tsb-es1" if TSB_ES1
     default "tsb-es2" if TSB_ES2
+
+config TSB_UNIPRO
+    bool "TSB UniPro"
+    depends on UNIPRO
+    default y
