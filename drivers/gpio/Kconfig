@@ -2,3 +2,6 @@
 # Author: Fabien Parent <parent.f@gmail.com>
 #
 # Provided under the three clause BSD license found in the LICENSE file.
+
+config TCA6408
+    bool "TCA6408 support"
