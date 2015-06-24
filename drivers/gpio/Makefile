@@ -3,9 +3,4 @@
 #
 # Provided under the three clause BSD license found in the LICENSE file.
 
-subdirs-$(CONFIG_SERIAL) += serial
-subdirs-$(CONFIG_I2C) += i2c
-subdirs-$(CONFIG_USB) += usb
-subdirs-$(CONFIG_GPIO) += gpio
-
-obj-y += core.o
+obj-$(CONFIG_GPIO) += core.o

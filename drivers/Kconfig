@@ -42,4 +42,11 @@ if USB
 source drivers/usb/Kconfig
 endif
 
+menuconfig GPIO
+    bool "GPIO"
+
+if GPIO
+source drivers/gpio/Kconfig
+endif
+
 endmenu
