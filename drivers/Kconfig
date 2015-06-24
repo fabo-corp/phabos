@@ -21,4 +21,11 @@ if SERIAL
 source drivers/serial/Kconfig
 endif
 
+menuconfig UNIPRO
+    bool "UniPro"
+
+if UNIPRO
+source drivers/unipro/Kconfig
+endif
+
 endmenu
