@@ -5,6 +5,25 @@
 
 menu "Kernel configuration"
 
+menu "Scheduler"
+    config SCHED_RR
+        bool "SCHED_RR scheduling policy"
+
+    config SCHED_NUM_RR_PRIORITIES
+        int "Number of available SCHED_RR priorities"
+        default 32
+        depends on SCHED_RR
+
+    choice
+        prompt "Scheduler default policy"
+        default SCHED_DEFAULT_POLICY_RR if SCHED_RR
+
+        config SCHED_DEFAULT_POLICY_RR
+            bool "SCHED_RR"
+            depends on SCHED_RR
+    endchoice
+endmenu
+
 config INIT_TASK_NAME
     string "Init task name"
     default "shell_main"

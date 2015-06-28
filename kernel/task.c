@@ -137,7 +137,7 @@ void task_remove_from_wait_list(struct task *task)
     irq_disable();
 
     list_del(&task->list);
-    scheduler_add_to_runqueue(task);
+    sched_add_to_runqueue(task);
     task->state |= TASK_RUNNING;
 
     irq_enable();
@@ -160,7 +160,7 @@ struct task *task_run(task_entry_t entry, void *data, uint32_t stack_addr)
     task_init_registers(task, entry, data, stack_addr);
     task->state = TASK_RUNNING;
 
-    scheduler_add_to_runqueue(task);
+    sched_add_to_runqueue(task);
 
     return task;
 error_stack:

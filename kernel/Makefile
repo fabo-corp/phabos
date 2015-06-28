@@ -9,6 +9,7 @@ obj-y += spawn.o
 obj-y += libc-support.o
 obj-y += shell.o
 obj-y += scheduler.o
+obj-$(CONFIG_SCHED_RR) += scheduler-rr.o
 obj-y += task.o
 obj-y += panic.o
 obj-y += syscall.o

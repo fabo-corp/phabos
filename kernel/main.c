@@ -40,7 +40,7 @@ void main(void)
 
     task_init();
     syscall_init();
-    scheduler_init();
+    sched_init();
     devfs_init();
     fs_init();
     driver_init();

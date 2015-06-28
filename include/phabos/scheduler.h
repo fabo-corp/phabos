@@ -9,7 +9,9 @@
 #define __SCHEDULER_H__
 
 #include <stdint.h>
+#include <time.h>
 
+#include <asm/machine.h>
 #include <asm/scheduler.h>
 #include <phabos/list.h>
 #include <phabos/mutex.h>
@@ -22,17 +24,31 @@ extern bool kill_task;
 
 struct task {
     int id;
+    int priority;
     uint16_t state;
     hashtable_t fd;
 
     register_t registers[MAX_REG];
     void *allocated_stack;
 
+    struct sched_policy *policy;
     struct list_head list;
 };
 
 struct task_cond {
     struct list_head wait_list;
+};
+
+struct sched_policy {
+    int (*init)(void);
+
+    struct task *(*pick_task)(void);
+    int (*enqueue_task)(struct task *task);
+
+    int (*get_priority_min)(void);
+    int (*get_priority_max)(void);
+
+    int (*rr_get_interval)(struct task *task, struct timespec *interval);
 };
 
 typedef void (*task_entry_t)(void *data);
@@ -45,8 +61,8 @@ struct task *task_create(void);
  * Must be called before using any of the scheduler functions AND before
  * activating the Systick
  */
-void scheduler_init(void);
-void scheduler_add_to_runqueue(struct task *task);
+void sched_init(void);
+int sched_add_to_runqueue(struct task *task);
 
 /**
  * Call the scheduler to let another task run

@@ -6,19 +6,32 @@
  */
 
 #include <string.h>
+#include <errno.h>
 
+#include <config.h>
 #include <phabos/scheduler.h>
 #include <phabos/panic.h>
+#include <phabos/utils.h>
+#include <phabos/assert.h>
 #include <asm/scheduler.h>
 #include <asm/atomic.h>
 
-static struct list_head runqueue = LIST_INIT(runqueue);
 struct task *current;
 bool need_resched;
 bool kill_task;
 static atomic_t is_locked;
+static struct task *idle_task;
 
-void scheduler_init(void)
+extern struct sched_policy sched_rr_policy;
+extern struct sched_policy sched_fifo_policy;
+
+static struct sched_policy *policies[] = {
+#if defined(CONFIG_SCHED_RR)
+    &sched_rr_policy,
+#endif
+};
+
+void sched_init(void)
 {
     struct task *task;
 
@@ -27,39 +40,61 @@ void scheduler_init(void)
         panic("scheduler: cannot allocate memory.\n");
 
     task->state = TASK_RUNNING;
-
-    list_add(&runqueue, &task->list);
-
     atomic_init(&is_locked, 0);
-
-    current = task;
+    current = idle_task = task;
     need_resched = false;
+
+    for (int i = 0; i < ARRAY_SIZE(policies); i++) {
+        if (policies[i]->init)
+            policies[i]->init();
+    }
 
     scheduler_arch_init();
 }
 
-void scheduler_add_to_runqueue(struct task *task)
+int sched_add_to_runqueue(struct task *task)
 {
-    // FIXME add spinlock here
-    irq_disable();
-    list_add(&runqueue, &task->list);
-    irq_enable();
+    RET_IF_FAIL(task, -EINVAL);
+
+    if (!task->policy)
+        task->policy = &sched_rr_policy;
+
+    RET_IF_FAIL(task->policy, -EINVAL);
+    RET_IF_FAIL(task->policy->enqueue_task, -EINVAL);
+
+    task->state = TASK_RUNNING;
+    return task->policy->enqueue_task(task);
 }
 
 void schedule(uint32_t *stack_top)
 {
+    struct task *new_task;
     struct task *current_saved = current;
 
     if (atomic_get(&is_locked))
         return;
 
-    if (list_is_empty(&runqueue))
-        panic("scheduler: no idle task to run\n");
-
     memcpy(&current->registers, stack_top, sizeof(current->registers));
 
-    list_rotate_anticlockwise(&runqueue);
-    current = list_first_entry(&runqueue, struct task, list);
+    current = NULL;
+    for (int i = 0; i < ARRAY_SIZE(policies); i++) {
+        if (!policies[i])
+            continue;
+
+        new_task = policies[i]->pick_task();
+        if (!new_task)
+            continue;
+
+        if (!current || new_task->priority > current->priority)
+            current = new_task;
+    }
+
+    if (!current) {
+        if (idle_task->state != TASK_RUNNING)
+            panic("idle task is not runnable...\n");
+        current = idle_task;
+    }
+
     need_resched = false;
 
     memcpy((void*) (current->registers[SP_REG] - 4),
