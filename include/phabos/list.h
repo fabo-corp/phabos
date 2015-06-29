@@ -16,12 +16,16 @@ struct list_head {
     struct list_head *next;
 };
 
+typedef int (*list_node_compare_t)(struct list_head*, struct list_head*);
+
 void list_init(struct list_head *head);
 void list_add(struct list_head *head, struct list_head *node);
 void list_del(struct list_head *head);
 bool list_is_empty(struct list_head *head);
 void list_rotate_anticlockwise(struct list_head *head);
 void list_rotate_clockwise(struct list_head *head);
+void list_sorted_add(struct list_head *head, struct list_head *node,
+                     list_node_compare_t compare);
 
 #define list_entry(n, s, f) ((void*) (((uint8_t*) (n)) - offsetof(s, f)))
 

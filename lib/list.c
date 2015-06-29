@@ -26,6 +26,22 @@ void list_add(struct list_head *head, struct list_head *node)
     head->prev = node;
 }
 
+void list_sorted_add(struct list_head *head, struct list_head *node,
+                     list_node_compare_t compare)
+{
+    struct list_head *new_head = head;
+
+    list_foreach(head, iter) {
+        if (compare(node, iter) >= 0)
+            continue;
+
+        new_head = iter;
+        break;
+    }
+
+    list_add(new_head, node);
+}
+
 void list_del(struct list_head *head)
 {
     head->prev->next = head->next;
