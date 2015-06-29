@@ -26,10 +26,6 @@ extern struct sched_policy sched_rr_policy;
 extern struct sched_policy sched_fifo_policy;
 
 static struct sched_policy *policies[] = {
-#if defined(CONFIG_SCHED_FIFO)
-    &sched_fifo_policy,
-#endif
-
 #if defined(CONFIG_SCHED_RR)
     &sched_rr_policy,
 #endif
