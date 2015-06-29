@@ -45,6 +45,14 @@ bool watchdog_has_expired(struct watchdog *wd)
     return false;
 }
 
+static int watchdog_expiration_comparator(struct list_head *node1,
+                                          struct list_head *node2)
+{
+    struct watchdog_priv *wdog1 = list_entry(node1, struct watchdog_priv, list);
+    struct watchdog_priv *wdog2 = list_entry(node2, struct watchdog_priv, list);
+    return wdog1->end - wdog2->end;
+}
+
 /**
  * Executed from the SYSTICK interrupt
  */
@@ -56,7 +64,7 @@ void watchdog_check_expired(void)
         struct watchdog *wd = wdog->wd;
 
         if (!watchdog_has_expired(wd))
-            continue;
+            break;;
 
         watchdog_cancel(wd);
         wd->timeout(wd); // FIXME call from a thread
@@ -79,7 +87,7 @@ void watchdog_start(struct watchdog *wd, unsigned long usec)
         wdog->end = ticks + 1;
 
     spinlock_lock(&wdog_lock);
-    list_add(&wdog_head, &wdog->list);
+    list_sorted_add(&wdog_head, &wdog->list, watchdog_expiration_comparator);
     spinlock_unlock(&wdog_lock);
 }
 
