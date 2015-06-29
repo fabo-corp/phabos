@@ -44,6 +44,7 @@ struct sched_policy {
 
     struct task *(*pick_task)(void);
     int (*enqueue_task)(struct task *task);
+    int (*dequeue_task)(struct task *task);
 
     int (*get_priority_min)(void);
     int (*get_priority_max)(void);
@@ -63,6 +64,7 @@ struct task *task_create(void);
  */
 void sched_init(void);
 int sched_add_to_runqueue(struct task *task);
+int sched_rm_from_runqueue(struct task *task);
 
 /**
  * Call the scheduler to let another task run

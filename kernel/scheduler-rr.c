@@ -35,6 +35,8 @@ static int sched_rr_get_priority_max(void)
 
 static struct task *sched_rr_pick_task(void)
 {
+    struct task *task = NULL;
+
     spinlock_lock(&rr_runqueue_lock);
 
     for (int i = ARRAY_SIZE(rr_runqueue) - 1; i >= 0; i--) {
@@ -42,12 +44,13 @@ static struct task *sched_rr_pick_task(void)
             continue;
 
         list_rotate_anticlockwise(&rr_runqueue[i]);
-        return list_first_entry(&rr_runqueue[i], struct task, list);
+        task = list_first_entry(&rr_runqueue[i], struct task, list);
+        break;
     }
 
     spinlock_unlock(&rr_runqueue_lock);
 
-    return NULL;
+    return task;
 }
 
 static int sched_rr_enqueue_task(struct task *task)
@@ -58,6 +61,17 @@ static int sched_rr_enqueue_task(struct task *task)
 
     spinlock_lock(&rr_runqueue_lock);
     list_add(&rr_runqueue[task->priority], &task->list);
+    spinlock_unlock(&rr_runqueue_lock);
+
+    return 0;
+}
+
+static int sched_rr_dequeue_task(struct task *task)
+{
+    RET_IF_FAIL(task, -EINVAL);
+
+    spinlock_lock(&rr_runqueue_lock);
+    list_del(&task->list);
     spinlock_unlock(&rr_runqueue_lock);
 
     return 0;
@@ -83,6 +97,7 @@ struct sched_policy sched_rr_policy = {
     .init = sched_rr_init,
     .pick_task = sched_rr_pick_task,
     .enqueue_task = sched_rr_enqueue_task,
+    .dequeue_task = sched_rr_dequeue_task,
     .get_priority_min = sched_rr_get_priority_min,
     .get_priority_max = sched_rr_get_priority_max,
     .rr_get_interval = sched_rr_get_interval,

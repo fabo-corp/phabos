@@ -66,6 +66,16 @@ int sched_add_to_runqueue(struct task *task)
     return task->policy->enqueue_task(task);
 }
 
+int sched_rm_from_runqueue(struct task *task)
+{
+    RET_IF_FAIL(task, -EINVAL);
+    RET_IF_FAIL(task->policy, -EINVAL);
+    RET_IF_FAIL(task->policy->dequeue_task, -EINVAL);
+
+    task->state &= ~TASK_RUNNING;
+    return task->policy->dequeue_task(task);
+}
+
 void schedule(uint32_t *stack_top)
 {
     struct task *new_task;

@@ -120,27 +120,20 @@ struct task *task_get_running(void)
 
 void task_add_to_wait_list(struct task *task, struct list_head *wait_list)
 {
+    sched_rm_from_runqueue(task);
+
     irq_disable();
-
-    if (task->id == 0)
-        panic("PANIC: Trying to remove idle task from runqueue\n");
-
-    list_del(&task->list);
     list_add(wait_list, &task->list);
-    task->state &= ~TASK_RUNNING;
-
     irq_enable();
 }
 
 void task_remove_from_wait_list(struct task *task)
 {
     irq_disable();
-
     list_del(&task->list);
-    sched_add_to_runqueue(task);
-    task->state |= TASK_RUNNING;
-
     irq_enable();
+
+    sched_add_to_runqueue(task);
 }
 
 struct task *task_run(task_entry_t entry, void *data, uint32_t stack_addr)
