@@ -147,7 +147,12 @@ static void _start(void)
 #if defined(CONFIG_TICKLESS)
         sched_configure_next_tick();
 #endif
+
+#if defined(CONFIG_DEBUG)
         asm volatile("nop");
+#else
+        asm volatile("wfi");
+#endif
     }
 }
 
