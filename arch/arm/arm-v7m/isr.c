@@ -143,7 +143,7 @@ static void _start(void)
          * yet do a comparison between the current task pointer and the idle
          * task pointer and call sched_yield() in a atomic fashion.
          */
-        task_yield();
+        sched_yield();
 #if defined(CONFIG_TICKLESS)
         sched_configure_next_tick();
 #endif

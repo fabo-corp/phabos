@@ -136,7 +136,7 @@ void task_init_registers(struct task *task, void *task_entry, void *data,
     task->registers[SP_REG] -= sizeof(task->registers);
 }
 
-void task_yield(void)
+void sched_yield(void)
 {
     need_resched = true;
     write32(ICSR, read32(ICSR) | ICSR_PENDSVSET);

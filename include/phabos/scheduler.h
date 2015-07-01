@@ -69,7 +69,7 @@ int sched_rm_from_runqueue(struct task *task);
 /**
  * Call the scheduler to let another task run
  */
-void task_yield(void);
+void sched_yield(void);
 
 /**
  * Stop and destroy a task

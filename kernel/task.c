@@ -185,7 +185,7 @@ void task_kill(struct task *task)
 void task_exit(void)
 {
     kill_task = true;
-    task_yield();
+    sched_yield();
 }
 
 void sys_exit(int status)

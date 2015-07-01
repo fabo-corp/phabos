@@ -53,7 +53,7 @@ void semaphore_lock(struct semaphore *semaphore)
     while (atomic_get(&semaphore->count) <= 0) {
         task_add_to_wait_list(task_get_running(), &semaphore->wait_list);
         irq_enable();
-        task_yield();
+        sched_yield();
         irq_disable();
     }
 
