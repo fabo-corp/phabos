@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include <config.h>
 #include <asm/spinlock.h>
 #include <asm/machine.h>
 #include <asm/scheduler.h>
@@ -53,6 +54,21 @@ static int watchdog_expiration_comparator(struct list_head *node1,
     return wdog1->end - wdog2->end;
 }
 
+uint64_t watchdog_get_ticks_until_next_expiration(void)
+{
+    if (list_is_empty(&wdog_head))
+        return ~0ull;
+
+    uint64_t ticks = get_ticks();
+
+    spinlock_lock(&wdog_lock);
+    struct watchdog_priv *wdog =
+        list_first_entry(&wdog_head, struct watchdog_priv, list);
+    spinlock_unlock(&wdog_lock);
+
+    return wdog->end - ticks;
+}
+
 /**
  * Executed from the SYSTICK interrupt
  */
@@ -88,6 +104,14 @@ void watchdog_start(struct watchdog *wd, unsigned long usec)
 
     spinlock_lock(&wdog_lock);
     list_sorted_add(&wdog_head, &wdog->list, watchdog_expiration_comparator);
+
+#if defined(CONFIG_TICKLESS)
+    uint64_t ticks_until_first_expiration;
+    ticks_until_first_expiration = watchdog_get_ticks_until_next_expiration();
+    if (ticks_until_first_expiration < sched_get_tick_multiplier())
+        sched_set_tick_multiplier(ticks_until_first_expiration);
+#endif
+
     spinlock_unlock(&wdog_lock);
 }
 

@@ -11,6 +11,7 @@
 
 #include <config.h>
 #include <phabos/scheduler.h>
+#include <phabos/watchdog.h>
 #include <asm/scheduler.h>
 #include <asm/hwio.h>
 #include <asm/machine.h>
@@ -27,6 +28,15 @@
 
 #define PSR_ISR_NUM_MASK                0xFF
 #define EXCEPTION_THREAD_MODE           0
+
+#define SYST_RVR 0xE000E014
+#define SYST_CVR 0xE000E018
+#define SYST_RVR_MAX 0xffffff
+
+#define STCSR                0xE000E010
+#define STCSR_SYSTICK_ENABLE (1 << 0)
+#define STCSR_TICKINT        (1 << 1)
+#define STCSR_CLKSOURCE      (1 << 2)
 
 #if DEBUG_SCHEDULER
 static const char* const reg_names[] = {
@@ -56,8 +66,47 @@ static const char* const reg_names[] = {
 extern struct task *current;
 extern bool need_resched;
 
+static uint32_t ticks_increment;
 uint64_t scheduler_ticks;
 void watchdog_check_expired(void);
+
+static uint32_t sched_max_multiplier(void)
+{
+    return SYST_RVR_MAX / (CPU_FREQ / HZ);
+}
+
+void sched_set_tick_multiplier(uint64_t tick_multiplier)
+{
+    RET_IF_FAIL(tick_multiplier > 0,);
+
+    if (tick_multiplier == ~0ull) {
+        write32(STCSR, 0);
+        return;
+    }
+
+    if (tick_multiplier > sched_max_multiplier())
+        tick_multiplier = sched_max_multiplier();
+
+    if (ticks_increment == tick_multiplier)
+        return;
+
+    ticks_increment = tick_multiplier;
+
+    write32(STCSR, 0);
+    write32(SYST_RVR, (CPU_FREQ / HZ) * tick_multiplier);
+    write32(SYST_CVR, 0);
+    write32(STCSR, STCSR_SYSTICK_ENABLE | STCSR_TICKINT | STCSR_CLKSOURCE);
+}
+
+uint32_t sched_get_tick_multiplier(void)
+{
+    return ticks_increment;
+}
+
+void sched_configure_next_tick(void)
+{
+    sched_set_tick_multiplier(watchdog_get_ticks_until_next_expiration());
+}
 
 void scheduler_arch_init(void)
 {
@@ -66,14 +115,7 @@ void scheduler_arch_init(void)
     /* lower the priority of PendSV */
     write8(SHPR3 + SHPR3_PENDSV_PRIO_OFFSET, 255);
 
-#define STRVR 0xE000E014
-    write32(STRVR, CPU_FREQ / HZ);
-
-#define STCSR                0xE000E010
-#define STCSR_SYSTICK_ENABLE (1 << 0)
-#define STCSR_TICKINT        (1 << 1)
-#define STCSR_CLKSOURCE      (1 << 2)
-    write32(STCSR, STCSR_SYSTICK_ENABLE | STCSR_TICKINT | STCSR_CLKSOURCE);
+    sched_set_tick_multiplier(1);
 }
 
 void task_init_registers(struct task *task, void *task_entry, void *data,
@@ -102,7 +144,7 @@ void task_yield(void)
 
 uint32_t systick_handler(uint32_t *stack_top)
 {
-    scheduler_ticks++;
+    scheduler_ticks += ticks_increment;
 
 #ifdef CONFIG_SCHEDULER_WATCHDOG
     watchdog_check_expired();

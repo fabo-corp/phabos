@@ -132,8 +132,23 @@ static void _start(void)
 
     main();
 
-    while(1)
+    while(1) {
+        /* XXX:
+         * It might be a good idea do yield if it is the idle task in
+         * sched_add_to_runqueue because it will spare us cpu cycle spent in
+         * pendsv_handler when we could just go back to sleep asap if
+         * there is still nothing to do.
+         *
+         * The issue with doing it in sched_add_to_runqueue is that we cannot
+         * yet do a comparison between the current task pointer and the idle
+         * task pointer and call sched_yield() in a atomic fashion.
+         */
+        task_yield();
+#if defined(CONFIG_TICKLESS)
+        sched_configure_next_tick();
+#endif
         asm volatile("nop");
+    }
 }
 
 __boot__ void reset_handler(void)

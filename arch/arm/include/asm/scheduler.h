@@ -55,6 +55,9 @@ static inline uint64_t get_ticks(void)
 
 void schedule(uint32_t *stack_top);
 void scheduler_arch_init(void);
+void sched_set_tick_multiplier(uint64_t tick_multiplier);
+void sched_configure_next_tick(void);
+uint32_t sched_get_tick_multiplier(void);
 void task_init_registers(struct task *task, void *task_entry, void *data,
                          uint32_t stack_addr);
 
