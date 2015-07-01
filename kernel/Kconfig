@@ -5,6 +5,9 @@
 
 menu "Kernel configuration"
 
+config DEBUG
+    bool "Debug"
+
 config TICKLESS
     bool "Tickless"
 
