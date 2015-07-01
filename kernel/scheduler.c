@@ -54,6 +54,8 @@ void sched_init(void)
 
 int sched_add_to_runqueue(struct task *task)
 {
+    int retval;
+
     RET_IF_FAIL(task, -EINVAL);
 
     if (!task->policy)
@@ -63,7 +65,12 @@ int sched_add_to_runqueue(struct task *task)
     RET_IF_FAIL(task->policy->enqueue_task, -EINVAL);
 
     task->state = TASK_RUNNING;
-    return task->policy->enqueue_task(task);
+    retval = task->policy->enqueue_task(task);
+    if (retval)
+        return retval;
+
+    sched_set_tick_multiplier(1);
+    return 0;
 }
 
 int sched_rm_from_runqueue(struct task *task)
