@@ -20,5 +20,7 @@ void watchdog_init(struct watchdog *wd);
 void watchdog_delete(struct watchdog *wd);
 bool watchdog_has_expired(struct watchdog *wd);
 
+uint64_t watchdog_get_ticks_until_next_expiration(void);
+
 #endif /* __WATCHDOG_H__ */
 
