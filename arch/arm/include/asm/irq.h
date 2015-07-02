@@ -24,6 +24,7 @@ int irq_attach(int line, irq_handler_t handler, void *data);
 void irq_detach(int line);
 int irq_get_active_line(void);
 void irq_clear(int line);
+void irq_pend(int line);
 
 #endif /* __ARM_IRQ_H__ */
 

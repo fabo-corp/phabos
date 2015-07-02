@@ -13,9 +13,11 @@
 #include <asm/hwio.h>
 #include <asm/irq.h>
 #include <phabos/kprintf.h>
+#include <phabos/assert.h>
 
 #define SETENA0 0xE000E100
 #define CLRENA0 0xE000E180
+#define SETPEND0 0xe000e200
 #define CLRPEND0 0xE000E280
 
 #define ARM_CM_NUM_EXCEPTION 16
@@ -59,6 +61,14 @@ void irq_clear(int line)
     assert(line != 0xFF);
 
     write32(CLRPEND0 + 4 * (line / 32), 1 << (line % 32));
+}
+
+void irq_pend(int line)
+{
+    RET_IF_FAIL(line < CPU_NUM_IRQ,);
+    RET_IF_FAIL(line != 0xFF,);
+
+    write32(SETPEND0 + 4 * (line / 32), 1 << (line % 32));
 }
 
 void irq_enable_line(int line)
