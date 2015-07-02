@@ -6,7 +6,6 @@
  */
 
 #include <string.h>
-#include <assert.h>
 #include <stdlib.h>
 
 #include <config.h>
@@ -14,6 +13,7 @@
 #include <asm/machine.h>
 #include <asm/scheduler.h>
 #include <phabos/list.h>
+#include <phabos/assert.h>
 #include <phabos/watchdog.h>
 #include <phabos/mm.h>
 
@@ -31,8 +31,8 @@ struct watchdog_priv {
 
 bool watchdog_has_expired(struct watchdog *wd)
 {
-    assert(wd);
-    assert(wd->priv);
+    RET_IF_FAIL(wd, false);
+    RET_IF_FAIL(wd->priv, false);
 
     struct watchdog_priv *wdog = to_watchdog_priv(wd);
 
@@ -89,9 +89,9 @@ void watchdog_check_expired(void)
 
 void watchdog_start(struct watchdog *wd, unsigned long usec)
 {
-    assert(wd);
-    assert(wd->priv);
-    assert(usec > 0);
+    RET_IF_FAIL(wd,);
+    RET_IF_FAIL(wd->priv,);
+    RET_IF_FAIL(usec > 0,);
 
     uint64_t ticks = get_ticks();
     struct watchdog_priv *wdog = to_watchdog_priv(wd);
@@ -117,8 +117,8 @@ void watchdog_start(struct watchdog *wd, unsigned long usec)
 
 void watchdog_cancel(struct watchdog *wd)
 {
-    assert(wd);
-    assert(wd->priv);
+    RET_IF_FAIL(wd,);
+    RET_IF_FAIL(wd->priv,);
 
     struct watchdog_priv *wdog = to_watchdog_priv(wd);
 
@@ -132,7 +132,7 @@ void watchdog_init(struct watchdog *wd)
 {
     struct watchdog_priv *wdog;
 
-    assert(wd);
+    RET_IF_FAIL(wd,);
     memset(wd, 0, sizeof(*wd));
     wd->priv = wdog = kmalloc(sizeof(*wdog), 0);
     list_init(&wdog->list);
@@ -144,7 +144,7 @@ void watchdog_delete(struct watchdog *wd)
     if (!wd)
         return;
 
-    assert(wd->priv);
+    RET_IF_FAIL(wd->priv,);
 
     watchdog_cancel(wd);
     kfree(wd->priv);

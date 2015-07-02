@@ -6,7 +6,6 @@
  */
 
 #include <stdint.h>
-#include <assert.h>
 #include <errno.h>
 
 #include <asm/machine.h>
@@ -46,8 +45,8 @@ void irq_disable_line(int line)
 {
     irq_disable();
 
-    assert(line < CPU_NUM_IRQ);
-    assert(line != 0xFF);
+    RET_IF_FAIL(line < CPU_NUM_IRQ,);
+    RET_IF_FAIL(line != 0xFF,);
 
     irq_state[line]++;
     write32(CLRENA0 + 4 * (line / 32), 1 << (line % 32));
@@ -57,8 +56,8 @@ void irq_disable_line(int line)
 
 void irq_clear(int line)
 {
-    assert(line < CPU_NUM_IRQ);
-    assert(line != 0xFF);
+    RET_IF_FAIL(line < CPU_NUM_IRQ,);
+    RET_IF_FAIL(line != 0xFF,);
 
     write32(CLRPEND0 + 4 * (line / 32), 1 << (line % 32));
 }
@@ -75,8 +74,8 @@ void irq_enable_line(int line)
 {
     irq_disable();
 
-    assert(line < CPU_NUM_IRQ);
-    assert(irq_state[line] != 0);
+    RET_IF_FAIL(line < CPU_NUM_IRQ,);
+    RET_IF_FAIL(irq_state[line] != 0,);
 
     if (--irq_state[line] == 0)
         write32(SETENA0 + 4 * (line / 32), 1 << (line % 32));
@@ -98,7 +97,7 @@ void irq_enable(void)
 
 int irq_attach(int line, irq_handler_t handler, void *data)
 {
-    assert(line >= 0);
+    RET_IF_FAIL(line >= 0, -EINVAL);
 
     if (line >= CPU_NUM_IRQ)
         return -EINVAL;
@@ -110,7 +109,7 @@ int irq_attach(int line, irq_handler_t handler, void *data)
 
 void irq_detach(int line)
 {
-    assert(line >= 0);
+    RET_IF_FAIL(line >= 0,);
 
     if (line >= CPU_NUM_IRQ)
         return;
