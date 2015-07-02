@@ -75,19 +75,25 @@ static inline void uart16550_write8(struct uart16550_device *dev,
     write8((char*) dev->base + reg, value);
 }
 
+static unsigned uart16550_get_next_byte(unsigned offset, size_t size)
+{
+    return (offset + 1) % size;
+}
+
+static unsigned uart16550_get_next_tx_byte(unsigned offset)
+{
+    return uart16550_get_next_byte(offset, CONFIG_UART16550_TX_BUFFER_SIZE);
+}
+
 static void uart16550_interrupt(int irq, void *data)
 {
     struct uart16550_device *dev = data;
-    uint8_t iir;
 
     RET_IF_FAIL(data,);
 
     irq_clear(dev->irq);
 
-    iir = uart16550_read8(dev, UART_IIR);
-    if ((iir & UART_IIR_IID_MASK) == UART_IIR_IID_THRE) {
-        semaphore_up(&dev->tx_semaphore);
-    }
+    uart16550_read8(dev, UART_IIR);
 
     while (uart16550_read8(dev, UART_LSR) & UART_LSR_DR) {
         char data = (char) uart16550_read8(dev, UART_RBR);
@@ -100,6 +106,15 @@ static void uart16550_interrupt(int irq, void *data)
         dev->rx_end = (dev->rx_end + 1) % CONFIG_UART16550_RX_BUFFER_SIZE;
         semaphore_up(&dev->rx_semaphore);
     }
+
+    if (uart16550_read8(dev, UART_LSR) & UART_LSR_THRE) {
+        for (int i = 0; i < CONFIG_UART16550_FIFO_DEPTH &&
+                        dev->tx_start != dev->tx_end; i++) {
+            uart16550_write8(dev, UART_THR, dev->tx_buffer[dev->tx_start]);
+            dev->tx_start = uart16550_get_next_tx_byte(dev->tx_start);
+            semaphore_up(&dev->tx_semaphore);
+        }
+    }
 }
 
 static ssize_t uart16550_write(struct file *file, const void *buf, size_t count)
@@ -110,14 +125,21 @@ static ssize_t uart16550_write(struct file *file, const void *buf, size_t count)
     ssize_t nwrite = 0;
     const char *buffer = buf;
 
-
+    mutex_lock(&dev->tx_mutex);
 
     while (nwrite < count) {
-        while (!(uart16550_read8(dev, UART_LSR) & UART_LSR_THRE))
+        if (dev->tx_start == uart16550_get_next_tx_byte(dev->tx_end)) {
+            irq_pend(dev->irq);
             semaphore_down(&dev->tx_semaphore);
+        }
 
-        uart16550_write8(dev, UART_THR, buffer[nwrite++]);
+        dev->tx_buffer[dev->tx_end] = buffer[nwrite++];
+        dev->tx_end = uart16550_get_next_tx_byte(dev->tx_end);
     }
+
+    irq_pend(dev->irq);
+
+    mutex_unlock(&dev->tx_mutex);
 
     return nwrite;
 }
@@ -278,7 +300,9 @@ static int uart16550_probe(struct device *device)
     RET_IF_FAIL(!retval, retval);
 
     dev->rx_start = dev->rx_end = 0;
+    dev->tx_start = dev->tx_end = 0;
     mutex_init(&dev->rx_mutex);
+    mutex_init(&dev->tx_mutex);
     semaphore_init(&dev->rx_semaphore, 0);
     semaphore_init(&dev->tx_semaphore, 0);
 
