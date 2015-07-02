@@ -34,6 +34,7 @@
 
 #include <asm/hwio.h>
 #include <phabos/utils.h>
+#include <phabos/kprintf.h>
 
 #include "scm.h"
 #include "chip.h"
@@ -134,7 +135,7 @@ struct clk_info clk_names[] = {
 void tsb_clk_dump(void)
 {
     for (int i = 0; i < ARRAY_SIZE(clk_names); i++) {
-        printf("%12s: %s\n", clk_names[i].name,
-               tsb_clk_status(clk_names[i].clk) ? "ON" : "OFF");
+        kprintf("%12s: %s\n", clk_names[i].name,
+                tsb_clk_status(clk_names[i].clk) ? "ON" : "OFF");
     }
 }
