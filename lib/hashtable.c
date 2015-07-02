@@ -8,7 +8,6 @@
 #include <phabos/hashtable.h>
 #include <phabos/mm.h>
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -55,8 +54,8 @@ static void hashtable_resize(hashtable_t *ht, size_t size)
 void hashtable_init(hashtable_t *ht, hashtable_hash_fct_t hash,
                     hashtable_key_compare_fct_t compare)
 {
-    assert(ht);
-    assert(hash);
+    RET_IF_FAIL(ht,);
+    RET_IF_FAIL(hash,);
 
     memset(ht, 0, sizeof(*ht));
     ht->table = zalloc(HASHTABLE_MIN_SIZE * sizeof(struct hashtable_node));
