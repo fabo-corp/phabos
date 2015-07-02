@@ -43,6 +43,7 @@ void sched_init(void)
     atomic_init(&is_locked, 0);
     current = idle_task = task;
     need_resched = false;
+    kill_task = false;
 
     for (int i = 0; i < ARRAY_SIZE(policies); i++) {
         if (policies[i]->init)
