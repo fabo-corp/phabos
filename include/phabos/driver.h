@@ -22,11 +22,17 @@ struct device {
     const char *description;
     const char *driver;
 
+    uintptr_t reg_base;
+    int irq;
+
     struct file_operations ops;
 
     void *priv;
 
     struct list_head list;
+
+    int (*power_on)(struct device *device);
+    int (*power_off)(struct device *device);
 };
 
 struct driver {
