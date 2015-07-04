@@ -29,6 +29,7 @@
 #include "scm.h"
 #include "chip.h"
 
+#include <asm/delay.h>
 #include <asm/hwio.h>
 #include <asm/tsb-irq.h>
 #include <phabos/driver.h>
@@ -54,6 +55,49 @@
 
 extern struct driver uart16550_driver;
 
+#define HUB_LINE_N_RESET                    0
+#define HUB_RESET_ASSERTION_TIME_IN_USEC    5 /* us */
+#define HUB_RESET_DEASSERTION_TIME_IN_MSEC  1 /* ms */
+
+#define TSB_SYSCTL_USBOTG_HSIC_CONTROL  (SYSCTL_BASE + 0x500)
+#define TSB_HSIC_DPPULLDOWN             (1 << 0)
+#define TSB_HSIC_DMPULLDOWN             (1 << 1)
+
+static int tsb_hcd_power_on(struct device *device)
+{
+    gpio_activate(HUB_LINE_N_RESET);
+
+    gpio_direction_out(HUB_LINE_N_RESET, 0);
+    udelay(HUB_RESET_ASSERTION_TIME_IN_USEC);
+
+    write32(TSB_SYSCTL_USBOTG_HSIC_CONTROL,
+            TSB_HSIC_DPPULLDOWN | TSB_HSIC_DMPULLDOWN);
+
+    tsb_clk_enable(TSB_CLK_HSIC480);
+    tsb_clk_enable(TSB_CLK_HSICBUS);
+    tsb_clk_enable(TSB_CLK_HSICREF);
+
+    tsb_reset(TSB_RST_HSIC);
+    tsb_reset(TSB_RST_HSICPHY);
+    tsb_reset(TSB_RST_HSICPOR);
+
+    tsb_clr_pinshare(TSB_PIN_UART_CTSRTS);
+
+    return 0;
+}
+
+static int tsb_hcd_power_off(struct device *device)
+{
+    tsb_clk_disable(TSB_CLK_HSIC480);
+    tsb_clk_disable(TSB_CLK_HSICBUS);
+    tsb_clk_disable(TSB_CLK_HSICREF);
+
+    gpio_direction_out(HUB_LINE_N_RESET, 0);
+    gpio_deactivate(HUB_LINE_N_RESET);
+
+    return 0;
+}
+
 static struct uart16550_device uart16550_device = {
     .base = (void*) UART_BASE,
     .irq = TSB_IRQ_UART,
@@ -65,14 +109,19 @@ static struct uart16550_device uart16550_device = {
     },
 };
 
-static struct dwc2_hcd usb_hcd_device = {
-    .base = (void*) HSIC_BASE,
-    .irq = TSB_IRQ_HSIC,
+static struct usb_hcd usb_hcd_device = {
+    .has_hsic_phy = true,
 
     .device = {
         .name = "dw_usb2_hcd",
         .description = "Designware USB 2.0 Host Controller Driver",
         .driver = "dw-usb2-hcd",
+
+        .reg_base = HSIC_BASE,
+        .irq = TSB_IRQ_HSIC,
+
+        .power_on = tsb_hcd_power_on,
+        .power_off = tsb_hcd_power_off,
     },
 };
 

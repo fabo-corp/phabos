@@ -26,7 +26,7 @@
 
 obj-y += lowio.o
 obj-y += scm.o
-obj-y += tsb.o
+obj-$(CONFIG_TSB_BOARD_BDB) += board-bdb.o
 obj-$(CONFIG_TSB_GPIO) += gpio.o
 
 ifeq ($(CONFIG_TSB_ES2),y)
