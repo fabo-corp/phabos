@@ -3,9 +3,12 @@
 
 #include <stdint.h>
 
-struct usb_hcd {
-    struct usb_hc_driver *driver;
+#include <phabos/driver.h>
 
+struct usb_hcd {
+    struct device device;
+    struct usb_hc_driver *driver;
+    bool has_hsic_phy;
 };
 
 struct usb_hc_driver {
