@@ -70,6 +70,7 @@ static int tsb_hcd_power_on(struct device *device)
     gpio_direction_out(HUB_LINE_N_RESET, 0);
     udelay(HUB_RESET_ASSERTION_TIME_IN_USEC);
     gpio_direction_out(HUB_LINE_N_RESET, 1);
+    mdelay(HUB_RESET_DEASSERTION_TIME_IN_MSEC);
 
     write32(TSB_SYSCTL_USBOTG_HSIC_CONTROL,
             TSB_HSIC_DPPULLDOWN | TSB_HSIC_DMPULLDOWN);
