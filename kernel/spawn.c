@@ -18,9 +18,11 @@ static int load_executable(const char *path)
         goto exit;
     }
 
+#if 0
     retval = elf_exec(fd);
     if (!retval)
         goto exit;
+#endif
 
     retval = -ENOEXEC;
 
@@ -65,9 +67,11 @@ int sys_spawn(pid_t *restrict pid, const char *restrict path,
     return 0;
 
 error_load_executable:
+#if 0
     kfree(task->allocated_stack);
 error_stack:
     kfree(task);
+#endif
 
     return retval;
 }
