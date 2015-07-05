@@ -33,3 +33,6 @@ config GREYBUS_I2C
     bool "I2C PHY"
     default y
     select I2C
+
+config GREYBUS_BATTERY
+    bool "Battery Class"

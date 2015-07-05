@@ -28,3 +28,4 @@ obj-y += greybus-core.o
 obj-y += greybus-unipro.o
 obj-$(CONFIG_GREYBUS_GPIO) += gpio.o
 obj-$(CONFIG_GREYBUS_I2C) += i2c.o
+obj-$(CONFIG_GREYBUS_BATTERY) += battery.o
