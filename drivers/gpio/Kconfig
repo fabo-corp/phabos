@@ -5,3 +5,6 @@
 
 config TCA6408
     bool "TCA6408 support"
+
+config TCA64XX
+    bool "TCA64xx support"
