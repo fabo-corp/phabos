@@ -11,6 +11,7 @@
 #include <phabos/scheduler.h>
 #include <phabos/syscall.h>
 #include <phabos/driver.h>
+#include <phabos/task.h>
 
 int CONFIG_INIT_TASK_NAME(int argc, char **argv);
 
