@@ -15,7 +15,7 @@
 #include <phabos/shell.h>
 #include <phabos/mm.h>
 
-static void ls(const char *path)
+__attribute__((unused)) static void ls(const char *path)
 {
     int fd;
     int retval;
