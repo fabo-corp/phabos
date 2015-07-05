@@ -34,6 +34,7 @@
 #include <config.h>
 
 #include <stdlib.h>
+#include <stdint.h>
 
 #if defined(CONFIG_TSB_ES1)
 #define CPORT_MAX                   (32)
