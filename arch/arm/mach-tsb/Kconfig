@@ -78,3 +78,7 @@ config TSB_UNIPRO
     bool "TSB UniPro"
     depends on UNIPRO
     default y
+
+config TSB_CDSI
+    bool "TSB CDSI"
+    default y
