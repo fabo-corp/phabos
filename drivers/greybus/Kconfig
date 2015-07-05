@@ -39,3 +39,6 @@ config GREYBUS_BATTERY
 
 config GREYBUS_VIBRATOR
     bool "Vibrator Class"
+
+config GREYBUS_LOOPBACK
+    bool "Loopback"
