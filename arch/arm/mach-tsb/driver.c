@@ -28,8 +28,15 @@
  * @author Mark Greer
  */
 
+#include <config.h>
+
 #include <phabos/ara/device.h>
+
+extern struct device_driver tsb_pll_driver;
 
 void tsb_driver_register(void)
 {
+#ifdef CONFIG_TSB_PLL
+    device_register_driver(&tsb_pll_driver);
+#endif
 }

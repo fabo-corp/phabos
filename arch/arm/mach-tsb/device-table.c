@@ -28,14 +28,41 @@
  * @author Mark Greer
  */
 
+#include <config.h>
+
 #include <phabos/utils.h>
 #include <phabos/ara/device.h>
 #include <phabos/ara/device_resource.h>
 #include <phabos/ara/device_table.h>
+#include <phabos/ara/device_pll.h>
 
 #include "chip.h"
 
+#ifdef CONFIG_TSB_PLL
+#define TSB_PLLA_CG_BRIDGE_OFFSET    0x900
+#define TSB_PLLA_SIZE                0x20
+
+static struct device_resource tsb_plla_resources[] = {
+    {
+        .name   = "reg_base",
+        .type   = DEVICE_RESOURCE_TYPE_REGS,
+        .start  = SYSCTL_BASE + TSB_PLLA_CG_BRIDGE_OFFSET,
+        .count  = TSB_PLLA_SIZE,
+    },
+};
+#endif
+
 static struct device_ara tsb_device_table[] = {
+#ifdef CONFIG_TSB_PLL
+    {
+        .type           = DEVICE_TYPE_PLL_HW,
+        .name           = "tsb_pll",
+        .desc           = "TSB PLLA Controller",
+        .id             = 0,
+        .resources      = tsb_plla_resources,
+        .resource_count = ARRAY_SIZE(tsb_plla_resources),
+    },
+#endif
 };
 
 int tsb_device_table_register(void)

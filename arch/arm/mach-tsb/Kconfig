@@ -82,3 +82,8 @@ config TSB_UNIPRO
 config TSB_CDSI
     bool "TSB CDSI"
     default y
+
+config TSB_PLL
+    bool "TSB PLL"
+    default y
+    depends on ARA_BACKPORT
