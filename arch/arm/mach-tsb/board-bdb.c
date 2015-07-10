@@ -35,8 +35,10 @@
 #include <phabos/driver.h>
 #include <phabos/mm.h>
 #include <phabos/gpio.h>
+#include <phabos/i2c.h>
 #include <phabos/serial/uart16550.h>
 #include <phabos/usb/hcd-dwc2.h>
+#include <phabos/greybus.h>
 
 #define UART_RBR_THR_DLL            (UART_BASE + 0x0)
 #define UART_IER_DLH                (UART_BASE + 0x4)
@@ -101,6 +103,30 @@ static int tsb_hcd_power_off(struct device *device)
     return 0;
 }
 
+static int tsb_i2c_power_on(struct device *device)
+{
+    /* enable I2C pins */
+    tsb_clr_pinshare(TSB_PIN_SDIO);
+
+    /* enable I2C clocks */
+    tsb_clk_enable(TSB_CLK_I2CP);
+    tsb_clk_enable(TSB_CLK_I2CS);
+
+    /* reset I2C module */
+    tsb_reset(TSB_RST_I2CP);
+    tsb_reset(TSB_RST_I2CS);
+
+    return 0;
+}
+
+static int tsb_i2c_power_off(struct device *device)
+{
+    tsb_clk_disable(TSB_CLK_I2CP);
+    tsb_clk_disable(TSB_CLK_I2CS);
+
+    return 0;
+}
+
 static struct uart16550_device uart16550_device = {
     .base = (void*) UART_BASE,
     .irq = TSB_IRQ_UART,
@@ -125,6 +151,31 @@ static struct usb_hcd usb_hcd_device = {
 
         .power_on = tsb_hcd_power_on,
         .power_off = tsb_hcd_power_off,
+    },
+};
+
+static struct i2c_dev dw_i2c_device = {
+    .device = {
+        .name = "dw_i2c",
+        .description = "Designware I2C Controller Driver",
+        .driver = "dw-i2c",
+
+        .reg_base = I2C_BASE,
+        .irq = TSB_IRQ_I2C,
+
+        .power_on = tsb_i2c_power_on,
+        .power_off = tsb_i2c_power_off,
+    },
+};
+
+static struct gb_device gb_i2c_device = {
+    .cport = 3,
+    .real_device = &dw_i2c_device.device,
+
+    .device = {
+        .name = "gb-dw-i2c",
+        .description = "Greybus I2C PHY device",
+        .driver = "gb-i2c-phy",
     },
 };
 
@@ -177,4 +228,7 @@ void machine_init(void)
     device_register(&gpio_device.device);
     device_register(&uart16550_device.device);
     device_register(&usb_hcd_device.device);
+    device_register(&dw_i2c_device.device);
+
+    device_register(&gb_i2c_device.device);
 }
