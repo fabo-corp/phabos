@@ -36,6 +36,7 @@
 #include <pthread.h>
 
 #include <asm/atomic.h>
+#include <phabos/driver.h>
 #include <phabos/list.h>
 #include <phabos/utils.h>
 #include <phabos/semaphore.h>
@@ -89,6 +90,13 @@ struct gb_operation {
     struct gb_operation *response;
 };
 
+struct gb_device {
+    struct device device;
+
+    unsigned int cport;
+    struct device *real_device;
+};
+
 struct gb_driver {
     int (*init)(unsigned int cport);
     void (*exit)(unsigned int cport);
@@ -137,7 +145,6 @@ static inline struct gb_operation *gb_operation_get_response_op(struct gb_operat
 }
 
 int gb_init(struct gb_transport_backend *transport);
-int gb_unipro_init(void);
 int gb_register_driver(unsigned int cport, struct gb_driver *driver);
 
 int gb_listen(unsigned int cport);
