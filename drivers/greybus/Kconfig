@@ -42,3 +42,6 @@ config GREYBUS_VIBRATOR
 
 config GREYBUS_LOOPBACK
     bool "Loopback"
+
+config GREYBUS_CONTROL
+    bool "Control"

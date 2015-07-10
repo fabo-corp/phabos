@@ -31,3 +31,4 @@ obj-$(CONFIG_GREYBUS_I2C) += i2c.o
 obj-$(CONFIG_GREYBUS_BATTERY) += battery.o
 obj-$(CONFIG_GREYBUS_VIBRATOR) += vibrator.o
 obj-$(CONFIG_GREYBUS_LOOPBACK) += loopback.o
+obj-$(CONFIG_GREYBUS_CONTROL) += control-gpb.o
