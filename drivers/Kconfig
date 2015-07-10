@@ -56,4 +56,7 @@ if GREYBUS
 source drivers/greybus/Kconfig
 endif
 
+config ARA_BACKPORT
+    bool "ARA Device Drivers API"
+
 endmenu

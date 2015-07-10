@@ -8,5 +8,6 @@ subdirs-$(CONFIG_I2C) += i2c
 subdirs-$(CONFIG_USB) += usb
 subdirs-$(CONFIG_GPIO) += gpio
 subdirs-$(CONFIG_GREYBUS) += greybus
+subdirs-$(CONFIG_ARA_BACKPORT) += ara
 
 obj-y += core.o
