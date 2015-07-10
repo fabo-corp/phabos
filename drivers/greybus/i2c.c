@@ -42,8 +42,7 @@
 #define I2C_FUNC_SMBUS_WRITE_BYTE       0x00040000
 #define I2C_M_RD                        0x0001
 
-/* TODO move it inside a struct */
-struct i2c_dev *i2c_dev;
+static struct i2c_dev *i2c_dev;
 
 static uint8_t gb_i2c_protocol_version(struct gb_operation *operation)
 {
@@ -149,12 +148,6 @@ err_free_msg:
     return ret;
 }
 
-static int gb_i2c_init(unsigned int cport)
-{
-    i2c_dev = i2c_initialize(0);
-    return 0;
-}
-
 static struct gb_operation_handler gb_i2c_handlers[] = {
     GB_HANDLER(GB_I2C_PROTOCOL_VERSION, gb_i2c_protocol_version),
     GB_HANDLER(GB_I2C_PROTOCOL_FUNCTIONALITY, gb_i2c_protocol_functionality),
@@ -164,12 +157,28 @@ static struct gb_operation_handler gb_i2c_handlers[] = {
 };
 
 static struct gb_driver gb_i2c_driver = {
-    .init = gb_i2c_init,
     .op_handlers = gb_i2c_handlers,
     .op_handlers_count = ARRAY_SIZE(gb_i2c_handlers),
 };
 
-void gb_i2c_register(int cport)
+static int gb_i2c_probe(struct device *device)
 {
-    gb_register_driver(cport, &gb_i2c_driver);
+    int retval;
+    struct gb_device *dev = containerof(device, struct gb_device, device);
+
+    if (i2c_dev)
+        return -ENOTSUP;
+
+    i2c_dev = containerof(dev->real_device, struct gb_device, device);
+    retval = gb_register_driver(dev->cport, &gb_i2c_driver);
+
+    if (retval)
+        i2c_dev = NULL;
+
+    return retval;
 }
+
+__driver__ struct driver gb_driver = {
+    .name = "gb-i2c-phy",
+    .probe = gb_i2c_probe,
+};
