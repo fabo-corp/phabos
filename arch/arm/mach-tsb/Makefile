@@ -29,6 +29,8 @@ obj-y += scm.o
 obj-$(CONFIG_TSB_BOARD_BDB) += board-bdb.o
 obj-$(CONFIG_TSB_GPIO) += gpio.o
 obj-$(CONFIG_TSB_CDSI) += cdsi.o
+obj-$(CONFIG_ARA_BACKPORT) += driver.o
+obj-$(CONFIG_ARA_BACKPORT) += device-table.o
 
 ifeq ($(CONFIG_TSB_ES2),y)
 obj-$(CONFIG_TSB_UNIPRO) += es2-mphy-fixups.o
