@@ -87,3 +87,9 @@ config TSB_PLL
     bool "TSB PLL"
     default y
     depends on ARA_BACKPORT
+
+config TSB_I2S
+    bool "TSB I2S"
+    default y
+    depends on ARA_BACKPORT
+    depends on TSB_PLL

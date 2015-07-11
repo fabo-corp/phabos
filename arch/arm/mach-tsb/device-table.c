@@ -35,8 +35,10 @@
 #include <phabos/ara/device_resource.h>
 #include <phabos/ara/device_table.h>
 #include <phabos/ara/device_pll.h>
+#include <phabos/ara/device_i2s.h>
 
 #include "chip.h"
+#include <asm/tsb-irq.h>
 
 #ifdef CONFIG_TSB_PLL
 #define TSB_PLLA_CG_BRIDGE_OFFSET    0x900
@@ -52,6 +54,59 @@ static struct device_resource tsb_plla_resources[] = {
 };
 #endif
 
+#ifdef CONFIG_TSB_I2S
+static struct device_resource tsb_i2s_resources_0[] = {
+    {
+        .name   = "cg_bridge",
+        .type   = DEVICE_RESOURCE_TYPE_REGS,
+        .start  = SYSCTL_BASE,
+        .count  = SYSCTL_SIZE,
+    },
+    {
+        .name   = "i2slp_sc",
+        .type   = DEVICE_RESOURCE_TYPE_REGS,
+        .start  = I2SLP_SC_BASE,
+        .count  = I2SLP_SC_SIZE,
+    },
+    {
+        .name   = "i2slp_so",
+        .type   = DEVICE_RESOURCE_TYPE_REGS,
+        .start  = I2SLP_SO_BASE,
+        .count  = I2SLP_SO_SIZE,
+    },
+    {
+        .name   = "i2slp_si",
+        .type   = DEVICE_RESOURCE_TYPE_REGS,
+        .start  = I2SLP_SI_BASE,
+        .count  = I2SLP_SI_SIZE,
+    },
+    {
+        .name   = "i2soerr",
+        .type   = DEVICE_RESOURCE_TYPE_IRQ,
+        .start  = TSB_IRQ_I2SOERR,
+        .count  = 1,
+    },
+    {
+        .name   = "i2so",
+        .type   = DEVICE_RESOURCE_TYPE_IRQ,
+        .start  = TSB_IRQ_I2SO,
+        .count  = 1,
+    },
+    {
+        .name   = "i2sierr",
+        .type   = DEVICE_RESOURCE_TYPE_IRQ,
+        .start  = TSB_IRQ_I2SIERR,
+        .count  = 1,
+    },
+    {
+        .name   = "i2si",
+        .type   = DEVICE_RESOURCE_TYPE_IRQ,
+        .start  = TSB_IRQ_I2SI,
+        .count  = 1,
+    },
+};
+#endif
+
 static struct device_ara tsb_device_table[] = {
 #ifdef CONFIG_TSB_PLL
     {
@@ -61,6 +116,16 @@ static struct device_ara tsb_device_table[] = {
         .id             = 0,
         .resources      = tsb_plla_resources,
         .resource_count = ARRAY_SIZE(tsb_plla_resources),
+    },
+#endif
+#ifdef CONFIG_TSB_I2S
+    {
+        .type           = DEVICE_TYPE_I2S_HW,
+        .name           = "tsb_i2s",
+        .desc           = "TSB I2S Controller",
+        .id             = 0,
+        .resources      = tsb_i2s_resources_0,
+        .resource_count = ARRAY_SIZE(tsb_i2s_resources_0),
     },
 #endif
 };
