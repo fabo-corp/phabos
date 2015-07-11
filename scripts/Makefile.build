@@ -36,7 +36,10 @@ ifeq (${MAKELEVEL}, 0)
 	            -Iarch/$(ARCH)/include/ \
 	            -Ilibc/include/ \
 	            -Iinclude/
-	LDFLAGS  += -nostartfiles -nostdlib -gc-sections
+	LDFLAGS  += -nostartfiles -nostdlib
+	ifndef CONFIG_DEBUG
+		LDFLAGS += -gc-sections
+	endif
 endif
 
 build = echo "    $1 $@"
