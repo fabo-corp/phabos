@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include <phabos/usb.h>
 #include <phabos/driver.h>
 
 struct usb_hcd {
@@ -15,8 +16,10 @@ struct usb_hc_driver {
     int (*start)(struct usb_hcd *hcd);
     int (*stop)(struct usb_hcd *hcd);
 
-    int (*hub_control)(struct usb_hcd *hcd, uint16_t typeReq, uint16_t wIndex,
-                       uint16_t wValue, uint16_t wLength, char *buf);
+    int (*urb_enqueue)(struct usb_hcd *hcd, struct urb *urb);
+
+    int (*hub_control)(struct usb_hcd *hcd, uint16_t typeReq, uint16_t wValue,
+                       uint16_t wIndex, uint16_t wLength, char *buf);
 };
 
 int usb_hcd_register(struct usb_hcd *hcd);
