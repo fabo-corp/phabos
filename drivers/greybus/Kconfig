@@ -34,6 +34,10 @@ config GREYBUS_I2C
     default y
     select I2C
 
+config GREYBUS_I2S
+    bool "I2S PHY"
+    select ARA_BACKPORT
+
 config GREYBUS_BATTERY
     bool "Battery Class"
 
