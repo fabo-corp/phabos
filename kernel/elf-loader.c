@@ -225,9 +225,13 @@ static int elf_load_dynamic(void *addr, Elf32_Phdr *phdr);
 
 static void elf_load_needed(void)
 {
+#if 0
     extern unsigned char apps_libphabos_libphabos_elf[];
 
     void *addr = &apps_libphabos_libphabos_elf;
+#else
+    void *addr = NULL;
+#endif
 
     int retval;
     Elf32_Ehdr *hdr = (Elf32_Ehdr*) addr;
