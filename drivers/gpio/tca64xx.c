@@ -41,10 +41,10 @@
 #include <asm/spinlock.h>
 #include <phabos/i2c.h>
 #include <phabos/scheduler.h>
-#include <phabos/gpio.h>
 #include <phabos/workqueue.h>
-
-#include "tca64xx.h"
+#include <phabos/utils.h>
+#include <phabos/gpio.h>
+#include <phabos/gpio/tca64xx.h>
 
 #define TCA6408_INPUT_REG               0x00
 #define TCA6408_OUTPUT_REG              0x01
@@ -147,6 +147,14 @@ struct tca64xx_platform_data {
 
     struct spinlock lock;
 };
+
+static inline struct tca64xx_platform_data*
+get_platform_data(struct gpio_device *dev)
+{
+    struct tca64xx_device *tca64xx =
+        containerof(dev, struct tca64xx_device, device);
+    return dev ? tca64xx->pdata : NULL;
+}
 
 /*
  * Since the Nuttx IRQ handlers do not allow to pass private data,
@@ -388,9 +396,9 @@ int tca64xx_reset(void *driver_data, bool en)
     return 0;
 }
 
-void tca64xx_set(void *driver_data, uint8_t which, uint8_t value)
+int tca64xx_set(struct gpio_device *dev, unsigned int which, unsigned int value)
 {
-    struct tca64xx_platform_data *tca64xx = driver_data;
+    struct tca64xx_platform_data *tca64xx = get_platform_data(dev);
     uint8_t reg, val;
     int ret;
 
@@ -403,10 +411,10 @@ void tca64xx_set(void *driver_data, uint8_t which, uint8_t value)
      */
     reg = get_output_reg(tca64xx->part, which);
     if (reg < 0)
-        return;
+        return -EIO;
     ret = i2c_get(tca64xx, reg, &val);
     if (ret != 0)
-        return;
+        return ret;
     lldbg("%s: current val=0x%02hhX\n", __func__, val);
     if (value) {
         val |= (1 << (which % 8));
@@ -415,11 +423,13 @@ void tca64xx_set(void *driver_data, uint8_t which, uint8_t value)
     }
     lldbg("%s: new val=0x%02hhX\n", __func__, val);
     ret = i2c_set(tca64xx, reg, val);
+
+    return ret;
 }
 
-void tca64xx_set_direction_in(void *driver_data, uint8_t which)
+int tca64xx_set_direction_in(struct gpio_device *dev, unsigned int which)
 {
-    struct tca64xx_platform_data *tca64xx = driver_data;
+    struct tca64xx_platform_data *tca64xx = get_platform_data(dev);
     uint8_t reg, val;
     int ret;
 
@@ -435,20 +445,23 @@ void tca64xx_set_direction_in(void *driver_data, uint8_t which)
      */
     reg = get_config_reg(tca64xx->part, which);
     if (reg < 0)
-        return;
+        return -EIO;
     ret = i2c_get(tca64xx, reg, &val);
     if (ret != 0) {
         lldbg_error("%s: current cfg=0x%02X\n", __func__, val);
-        return;
+        return ret;
     }
     val |= (1 << (which % 8));
     lldbg("%s: new cfg=0x%02X\n", __func__, val);
     ret = i2c_set(tca64xx, reg, val);
+
+    return ret;
 }
 
-void tca64xx_set_direction_out(void *driver_data, uint8_t which, uint8_t value)
+int tca64xx_set_direction_out(struct gpio_device *dev, unsigned int which,
+                              unsigned int value)
 {
-    struct tca64xx_platform_data *tca64xx = driver_data;
+    struct tca64xx_platform_data *tca64xx = get_platform_data(dev);
     uint8_t reg, val;
     int ret;
 
@@ -463,26 +476,26 @@ void tca64xx_set_direction_out(void *driver_data, uint8_t which, uint8_t value)
      */
     reg = get_config_reg(tca64xx->part, which);
     if (reg < 0) {
-        return;
+        return -EIO;
     }
     ret = i2c_get(tca64xx, reg, &val);
     if (ret != 0) {
-        return;
+        return ret;
     }
     lldbg("%s: current cfg=0x%02X\n", __func__, val);
     val &= ~(1 << (which % 8));
     lldbg("%s: new cfg=0x%02X\n", __func__, val);
     ret = i2c_set(tca64xx, reg, val);
     if (ret != 0) {
-        return;
+        return ret;
     }
 
-    tca64xx_set(driver_data, which, value);
+    return tca64xx_set(dev, which, value);
 }
 
-int tca64xx_get_direction(void *driver_data, uint8_t which)
+int tca64xx_get_direction(struct gpio_device *dev, unsigned int which)
 {
-    struct tca64xx_platform_data *tca64xx = driver_data;
+    struct tca64xx_platform_data *tca64xx = get_platform_data(dev);
     uint8_t reg;
     uint8_t direction;
     int ret;
@@ -650,9 +663,9 @@ static void tca64xx_registers_update(void *driver_data)
     intstat_update(driver_data, in);
 }
 
-uint8_t tca64xx_get(void *driver_data, uint8_t which)
+int tca64xx_get(struct gpio_device *dev, unsigned int which)
 {
-    struct tca64xx_platform_data *tca64xx = driver_data;
+    struct tca64xx_platform_data *tca64xx = get_platform_data(dev);
     uint8_t in = 0, reg, val;
     int ret;
 
@@ -675,7 +688,7 @@ uint8_t tca64xx_get(void *driver_data, uint8_t which)
 
     in &= ~(0xFF << (which / 8));
     in |= val << (which / 8);
-    intstat_update(driver_data, in);
+    intstat_update(tca64xx, in);
 
     val &= (1 << (which % 8));
     val = !!val;
@@ -684,31 +697,31 @@ uint8_t tca64xx_get(void *driver_data, uint8_t which)
     return val;
 }
 
-uint8_t tca64xx_line_count(void *driver_data)
+uint8_t tca64xx_line_count(struct gpio_device *dev)
 {
-    struct tca64xx_platform_data *tca64xx = driver_data;
+    struct tca64xx_platform_data *tca64xx = get_platform_data(dev);
     return get_nr_gpios(tca64xx->part);
 }
 
-int tca64xx_gpio_mask_irq(void *driver_data, uint8_t which)
+int tca64xx_gpio_mask_irq(struct gpio_device *dev, unsigned int which)
 {
-    struct tca64xx_platform_data *tca64xx = driver_data;
+    struct tca64xx_platform_data *tca64xx = get_platform_data(dev);
     tca64xx->mask |= (1 << which);
 
     return 0;
 }
 
-int tca64xx_gpio_unmask_irq(void *driver_data, uint8_t which)
+int tca64xx_gpio_unmask_irq(struct gpio_device *dev, unsigned int which)
 {
-    struct tca64xx_platform_data *tca64xx = driver_data;
+    struct tca64xx_platform_data *tca64xx = get_platform_data(dev);
     tca64xx->mask &= ~(1 << which);
 
     return 0;
 }
 
-int tca64xx_gpio_clear_interrupt(void *driver_data, uint8_t which)
+int tca64xx_gpio_clear_interrupt(struct gpio_device *dev, unsigned int which)
 {
-    struct tca64xx_platform_data *tca64xx = driver_data;
+    struct tca64xx_platform_data *tca64xx = get_platform_data(dev);
     tca64xx->intstat &= ~(1 << which);
 
     return 0;
@@ -743,9 +756,11 @@ static void tca64xx_set_gpio_level(void *driver_data, uint8_t which, int level)
     tca64xx->level |= level << shift;
 }
 
-static int tca64xx_set_gpio_triggering(void *driver_data, uint8_t which,
-                                       int trigger)
+static int tca64xx_set_gpio_triggering(struct gpio_device *dev,
+                                       unsigned int which, int trigger)
 {
+    struct tca64xx_platform_data *driver_data = get_platform_data(dev);
+
     switch (trigger) {
     case IRQ_TYPE_NONE:
     case IRQ_TYPE_EDGE_BOTH:
@@ -823,16 +838,16 @@ static void tca64xx_gpio_irq_handler(int irq)
     workqueue_queue(&tca64xx->work, _tca64xx_gpio_irq_handler, tca64xx);
 }
 
-int tca64xx_gpio_irq_attach(void *driver_data, uint8_t which,
-                            gpio_irq_handler_t isr, uint8_t base)
+int tca64xx_gpio_irq_attach(struct gpio_device *dev, unsigned int which,
+                            gpio_irq_handler_t isr)
 {
-    struct tca64xx_platform_data *tca64xx = driver_data;
+    struct tca64xx_platform_data *tca64xx = get_platform_data(dev);
 
     spinlock_lock(&tca64xx->lock);
 
     /* Save the new ISR in the table. */
     tca64xx->irq_vector[which] = isr;
-    tca64xx->gpio_base[which] = base;
+    tca64xx->gpio_base[which] = dev->base;
 
     spinlock_unlock(&tca64xx->lock);
 
@@ -914,7 +929,10 @@ static struct gpio_ops tca64xx_gpio_ops = {
 
 static int tca64xx_probe(struct device *device)
 {
-    struct gpio_device *dev = containerof(device, struct gpio_device, device);
+    struct gpio_device *gpio_dev =
+        containerof(device, struct gpio_device, device);
+    struct tca64xx_device *dev =
+        containerof(gpio_dev, struct tca64xx_device, device);
     struct tca64xx_platform_data *tca64xx;
     struct task *task;
     const char* argv[2];
@@ -924,7 +942,7 @@ static int tca64xx_probe(struct device *device)
 
     RET_IF_FAIL(device, -EINVAL);
 
-    nr_gpios = get_nr_gpios(part);
+    nr_gpios = get_nr_gpios(dev->part);
     if (nr_gpios < 0) {
         lldbg_error("%s: invalid part=%d\n", __func__, part);
         return -EINVAL;
@@ -935,28 +953,28 @@ static int tca64xx_probe(struct device *device)
         return -ENOMEM;
     }
 
-    tca64xx->dev = dev;
-    tca64xx->addr = addr;
+    tca64xx->dev = dev->i2c_dev;
+    tca64xx->addr = dev->addr;
     tca64xx->irq = device->irq;
-    tca64xx->reset = reset;
-    tca64xx->part = part;
+    tca64xx->reset = dev->reset_gpio;
+    tca64xx->part = dev->part;
     tca64xx->mask = (1 << nr_gpios) - 1;
     tca64xx->in = 0;
     tca64xx->intstat = 0;
     spinlock_init(&tca64xx->lock);
 
-    if (reset != TCA64XX_IO_UNUSED)
+    if (dev->reset_gpio != TCA64XX_IO_UNUSED)
         tca64xx_reset(tca64xx, 0);
 
     tca64xx_registers_update(tca64xx);
 
-    dev->ops = &tca64xx_gpio_ops;
+    gpio_dev->ops = &tca64xx_gpio_ops;
 
-    ret = gpio_device_register(dev);
+    ret = gpio_device_register(gpio_dev);
     if (ret)
         goto error;
 
-    if (irq != TCA64XX_IO_UNUSED) {
+    if (device->irq != TCA64XX_IO_UNUSED) {
         list_add(&tca64xx_irq_pdata_list, &tca64xx->list);
         gpio_activate(tca64xx->irq);
         gpio_direction_in(tca64xx->irq);
@@ -983,9 +1001,10 @@ static int tca64xx_probe(struct device *device)
 
 error:
     free(tca64xx);
+    return ret;
 }
 
-__driver__ struct driver tsb_gpio_driver = {
+__driver__ struct driver tca64xx_driver = {
     .name = "tca64xx",
     .probe = tca64xx_probe,
 };

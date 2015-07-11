@@ -33,6 +33,9 @@
 
 #include <stdint.h>
 
+#include <phabos/driver.h>
+#include <phabos/i2c.h>
+
 typedef enum {
     TCA6408_PART,
     TCA6416_PART,
@@ -42,8 +45,17 @@ typedef enum {
 // Unused IO line for irq, reset.
 #define TCA64XX_IO_UNUSED   (1 << 31)
 
-int tca64xx_init(void **driver_data, tca64xx_part part, struct i2c_dev *dev,
-                 uint8_t addr, uint32_t reset, uint32_t irq, int gpio_base);
-void tca64xx_deinit(void *driver_data);
+struct tca64xx_platform_data;
+
+struct tca64xx_device {
+    struct gpio_device device;
+
+    struct i2c_dev *i2c_dev;
+    tca64xx_part part;
+    unsigned int reset_gpio;
+    uint8_t addr;
+
+    struct tca64xx_platform_data *pdata;
+};
 
 #endif
