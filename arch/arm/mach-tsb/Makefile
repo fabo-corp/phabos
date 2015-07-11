@@ -27,6 +27,7 @@
 obj-y += lowio.o
 obj-y += scm.o
 obj-y += tsb.o
+obj-$(CONFIG_TSB_GPIO) += gpio.o
 
 ifeq ($(CONFIG_TSB_ES2),y)
 obj-$(CONFIG_TSB_UNIPRO) += es2-mphy-fixups.o

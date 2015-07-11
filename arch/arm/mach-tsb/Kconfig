@@ -69,6 +69,11 @@ config MACH_LINKER_SCRIPT
     default "tsb-es1" if TSB_ES1
     default "tsb-es2" if TSB_ES2
 
+config TSB_GPIO
+    bool "TSB GPIO"
+    depends on GPIO
+    default y
+
 config TSB_UNIPRO
     bool "TSB UniPro"
     depends on UNIPRO
