@@ -33,6 +33,7 @@
 #include <asm/tsb-irq.h>
 #include <phabos/driver.h>
 #include <phabos/mm.h>
+#include <phabos/gpio.h>
 #include <phabos/serial/uart16550.h>
 #include <phabos/usb/hcd-dwc2.h>
 
@@ -75,6 +76,20 @@ static struct dwc2_hcd usb_hcd_device = {
     },
 };
 
+static struct gpio_device gpio_device = {
+#if defined(CONFIG_TSB_ES1)
+    .count = 16,
+#else
+    .count = 27,
+#endif
+
+    .device = {
+        .name = "tsb_gpio",
+        .description = "Toshiba Bridges GPIO controller",
+        .driver = "tsb-gpio",
+    },
+};
+
 void tsb_uart_init(void)
 {
     tsb_set_pinshare(TSB_PIN_UART_RXTX | TSB_PIN_UART_CTSRTS);
@@ -107,6 +122,7 @@ void machine_init(void)
 
     tsb_uart_init();
 
+    device_register(&gpio_device.device);
     device_register(&uart16550_device.device);
     device_register(&usb_hcd_device.device);
 }
