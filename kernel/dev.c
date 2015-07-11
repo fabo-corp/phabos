@@ -170,27 +170,17 @@ int dev_main(int argc, char **argv)
     if (retval)
         kprintf("mkdir: %s\n", strerror(errno));
 
-    ls("/dev");
-
     device_driver_probe_all();
-
-    ls("/dev");
 
     retval = mount(NULL, "/dev", "devfs", 0, NULL);
     if (retval < 0)
         kprintf("failed to mount devfs: %s\n", strerror(errno));
 
-    ls("/dev");
-
     open("/dev/ttyS0", 0);
     open("/dev/ttyS0", 0);
     open("/dev/ttyS0", 0);
-    write(1, "Hello Serial Driver\n", 20);
 
-    FILE *fd = fopen("/dev/ttyS0", "r+");
-    fprintf(fd, "Yop\n");
-    fclose(fd);
-
+#if 0
 //    dev();
 
 //    int exec(const void *addr);
@@ -220,6 +210,7 @@ int dev_main(int argc, char **argv)
         kprintf("spawn failed: %s\n", strerror(errno));
 
     kprintf("pid: %d\n", pid);
+#endif
 
     int shell_main(int argc, char **argv);
     shell_main(argc, argv);
