@@ -34,6 +34,7 @@
 #include <phabos/driver.h>
 #include <phabos/mm.h>
 #include <phabos/serial/uart16550.h>
+#include <phabos/usb/hcd-dwc2.h>
 
 #define UART_RBR_THR_DLL            (UART_BASE + 0x0)
 #define UART_IER_DLH                (UART_BASE + 0x4)
@@ -60,6 +61,17 @@ static struct uart16550_device uart16550_device = {
         .name = "dw_apb_uart",
         .description = "Designware UART16550 compatible UART",
         .driver = "uart16550",
+    },
+};
+
+static struct dwc2_hcd usb_hcd_device = {
+    .base = (void*) HSIC_BASE,
+    .irq = TSB_IRQ_HSIC,
+
+    .device = {
+        .name = "dw_usb2_hcd",
+        .description = "Designware USB 2.0 Host Controller Driver",
+        .driver = "dw-usb2-hcd",
     },
 };
 
@@ -96,4 +108,5 @@ void machine_init(void)
     tsb_uart_init();
 
     device_register(&uart16550_device.device);
+    device_register(&usb_hcd_device.device);
 }
