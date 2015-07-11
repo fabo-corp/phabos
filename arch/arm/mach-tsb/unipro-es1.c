@@ -373,10 +373,6 @@ static void dump_regs(void) {
     REG_DBG(UNIPRO_UNIPRO_INT_EN);
     REG_DBG(UNIPRO_UNIPRO_INT_BEF);
     REG_DBG(UNIPRO_UNIPRO_INT_AFT);
-
-    lldbg("NVIC:\n");
-    lldbg("========================================\n");
-    tsb_dumpnvic();
 }
 
 /*
