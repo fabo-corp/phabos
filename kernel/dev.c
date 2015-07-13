@@ -15,6 +15,8 @@
 #include <phabos/shell.h>
 #include <phabos/mm.h>
 
+#include <asm/delay.h>
+
 __attribute__((unused)) static void ls(const char *path)
 {
     int fd;
@@ -210,6 +212,18 @@ int dev_main(int argc, char **argv)
         kprintf("spawn failed: %s\n", strerror(errno));
 
     kprintf("pid: %d\n", pid);
+#endif
+
+#if 0
+    gpio_activate(0);
+    kprintf("test:\n");
+
+    while (1) {
+        gpio_direction_out(0, 1);
+        udelay(1);
+        gpio_direction_out(0, 0);
+        udelay(1);
+    }
 #endif
 
     int shell_main(int argc, char **argv);
