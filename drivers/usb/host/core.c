@@ -1,19 +1,25 @@
+#include <asm/spinlock.h>
 #include <asm/delay.h>
 #include <phabos/usb/hcd.h>
+#include <phabos/usb/std-requests.h>
+#include <phabos/usb/driver.h>
 #include <phabos/utils.h>
 #include <phabos/assert.h>
-#include <phabos/workqueue.h>
+#include <phabos/list.h>
+
+#include "hub.h"
+#include "device.h"
 
 #include <errno.h>
 #include <string.h>
 
 static atomic_t dev_id;
+static struct list_head class_driver = LIST_INIT(class_driver);
+static struct spinlock class_driver_lock = SPINLOCK_INIT(spinlock);
 
-static int hub_check_changes(struct usb_device *dev, struct urb *urb);
-static int enumerate_device(struct usb_device *dev);
-static struct usb_device *usb_device_create(struct usb_hcd *hcd,
-                                            struct usb_device *hub);
-static struct workqueue *hub_wq;
+static struct usb_class_driver *find_class_driver(unsigned int class,
+                                                  unsigned int subclass,
+                                                  unsigned int protocol);
 
 static void print_descriptor(void *raw_descriptor)
 {
@@ -50,7 +56,8 @@ static void print_descriptor(void *raw_descriptor)
 
         int size = config_desc->wTotalLength;
         while (size > 0) {
-            dev_desc = (char*) dev_desc + dev_desc->bLength;
+            dev_desc = (struct usb_device_descriptor*)
+                ((char*) dev_desc + dev_desc->bLength);
             size -= dev_desc->bLength;
             print_descriptor(dev_desc);
         }
@@ -87,9 +94,8 @@ static void usb_control_msg_callback(struct urb *urb)
     semaphore_up(&urb->semaphore);
 }
 
-static int usb_control_msg(struct usb_device *dev, uint16_t typeReq,
-                           uint16_t wValue, uint16_t wIndex, uint16_t wLength,
-                           void *buffer)
+int usb_control_msg(struct usb_device *dev, uint16_t typeReq, uint16_t wValue,
+                    uint16_t wIndex, uint16_t wLength, void *buffer)
 {
     int retval;
     struct urb *urb;
@@ -131,185 +137,7 @@ out:
     return retval;
 }
 
-static void hub_update_status(void *data)
-{
-    struct urb *urb = data;
-    uint8_t change_status = *(uint8_t*) urb->buffer;
-    uint32_t status;
-
-    if (!urb->status)
-        kprintf("hub changes: %X\n", change_status);
-
-    change_status >>= 1;
-
-    for (int i = 1; change_status; i++, change_status >>= 1) {
-        if (!(change_status & 1))
-            continue;
-
-        usb_control_msg(urb->device, USB_GET_PORT_STATUS, 0, i, sizeof(status),
-                        &status);
-
-        kprintf("port status: %X\n", status);
-
-        if (status & (1 << 16)) {
-            usb_control_msg(urb->device, USB_CLEAR_PORT_FEATURE, C_PORT_CONNECTION, i,
-                            0, NULL);
-            kprintf("Port connection changed\n");
-
-            if (status & (1 << PORT_CONNECTION)) {
-                struct usb_device *dev = usb_device_create(urb->device->hcd, urb->device);
-                if (!dev)
-                    continue;
-
-                dev->port = i;
-                dev->speed = USB_SPEED_FULL;
-                if (status & (1 << 9))
-                    dev->speed = USB_SPEED_LOW;
-                if (status & (1 << 10))
-                    dev->speed = USB_SPEED_HIGH;
-
-                usb_control_msg(urb->device, USB_SET_PORT_FEATURE, PORT_RESET, i, 0, NULL);
-
-                mdelay(1000);
-
-                usb_control_msg(urb->device, USB_GET_PORT_STATUS, 0, i, sizeof(status),
-                                &status);
-
-                enumerate_device(dev);
-            } else {
-                kprintf("Port disconnected\n");
-            }
-
-            usb_control_msg(urb->device, USB_GET_PORT_STATUS, 0, i, sizeof(status),
-                            &status);
-
-            kprintf("port status: %X\n", status);
-        }
-
-        if (status & (1 << 19)) {
-            usb_control_msg(urb->device, USB_CLEAR_PORT_FEATURE,
-                            C_PORT_OVER_CURRENT, i, 0, NULL);
-            kprintf("Port over current\n");
-        }
-
-        if (status & (1 << 20)) {
-            usb_control_msg(urb->device, USB_CLEAR_PORT_FEATURE, C_PORT_RESET, i, 0,
-                            NULL);
-            kprintf("Port reset\n");
-        }
-    }
-
-    hub_check_changes(urb->device, urb);
-}
-
-static void hub_state_changed(struct urb *urb)
-{
-    kprintf("%s() = %d\n", __func__, urb->status);
-    workqueue_queue(hub_wq, hub_update_status, urb);
-}
-
-static int hub_check_changes(struct usb_device *dev, struct urb *urb)
-{
-    RET_IF_FAIL(dev, -EINVAL);
-    RET_IF_FAIL(dev->hcd, -EINVAL);
-    RET_IF_FAIL(dev->hcd->driver, -EINVAL);
-    RET_IF_FAIL(dev->hcd->driver->urb_enqueue, -EINVAL);
-
-    if (!urb) {
-        urb = urb_create(dev);
-        RET_IF_FAIL(urb, -ENOMEM);
-
-        urb->length = 4;
-        urb->buffer = kmalloc(urb->length, MM_DMA);
-        if (!urb->buffer) {
-            urb_destroy(urb);
-            return -ENOMEM;
-        }
-    }
-
-    urb->status = 0;
-    urb->actual_length = 0;
-    urb->complete = hub_state_changed;
-    urb->pipe = (USB_HOST_PIPE_INTERRUPT << 30) | (1 << 15) |
-                (dev->address << 8) | USB_HOST_DIR_IN;
-    urb->maxpacket = 0x40;
-    urb->flags = 1;
-
-    return dev->hcd->driver->urb_enqueue(dev->hcd, urb);
-}
-
-static int enumerate_hub(struct usb_device *hub)
-{
-    int retval;
-    struct usb_hub_descriptor *desc;
-    struct usb_device *dev;
-    uint32_t status;
-
-    retval = usb_control_msg(hub, USB_DEVICE_SET_CONFIGURATION, 1,
-                             0, 0, NULL);
-    if (retval)
-        return retval; // FIXME: unpower device port
-
-    desc = kmalloc(sizeof(*desc), 0);
-    RET_IF_FAIL(desc, -ENOMEM);
-
-    retval = usb_control_msg(hub, USB_GET_HUB_DESCRIPTOR, 0, 0, sizeof(*desc),
-                             desc);
-    if (retval)
-        return retval;
-
-    kprintf("%s: found new hub with %u ports.\n", hub->hcd->device.name,
-                                                  desc->bNbrPorts);
-
-    for (int i = 1; i <= desc->bNbrPorts; i++) {
-        usb_control_msg(hub, USB_SET_PORT_FEATURE, PORT_POWER, i, 0, NULL);
-
-        mdelay(desc->bPwrOn2PwrGood * 2);
-        mdelay(1000);
-
-        usb_control_msg(hub, USB_GET_PORT_STATUS, 0, i, sizeof(status),
-                        &status);
-
-        if (!(status & (1 << PORT_CONNECTION)))
-            continue;
-
-        dev = usb_device_create(hub->hcd, hub);
-        if (!dev)
-            continue;
-
-        dev->port = i;
-        dev->speed = USB_SPEED_FULL;
-        if (status & (1 << 9))
-            dev->speed = USB_SPEED_LOW;
-        if (status & (1 << 10))
-            dev->speed = USB_SPEED_HIGH;
-
-        usb_control_msg(hub, USB_SET_PORT_FEATURE, PORT_RESET, i, 0, NULL);
-
-        mdelay(1000);
-
-        usb_control_msg(hub, USB_GET_PORT_STATUS, 0, i, sizeof(status),
-                        &status);
-
-        if (status & (1 << 16)) {
-            usb_control_msg(hub, USB_CLEAR_PORT_FEATURE, C_PORT_CONNECTION, i,
-                            0, NULL);
-        }
-
-        if (status & (1 << 20)) {
-            usb_control_msg(hub, USB_CLEAR_PORT_FEATURE, C_PORT_RESET, i, 0,
-                            NULL);
-        }
-
-        enumerate_device(dev);
-    }
-
-    hub_check_changes(hub, NULL);
-
-    return 0;
-}
-
-static int enumerate_device(struct usb_device *dev)
+int enumerate_device(struct usb_device *dev)
 {
     int retval;
     int address;
@@ -325,12 +153,12 @@ static int enumerate_device(struct usb_device *dev)
     if (retval)
         goto out; // FIXME: unpower device port
 
-#if 0
     klass = find_class_driver(desc->bDeviceClass, desc->bDeviceSubClass,
                               desc->bDeviceProtocol);
-    if (!klass)
-        return -ENODEV;
-#endif
+    if (!klass) {
+        retval = -ENODEV;
+        goto out;
+    }
 
     address = atomic_inc(&dev_id);
 
@@ -343,16 +171,15 @@ static int enumerate_device(struct usb_device *dev)
     kprintf("Device ID: %d\n", dev->address);
     print_descriptor(desc);
 
-    if (desc->bDeviceClass == 9)// FIXME to remove later
-        enumerate_hub(dev);
+    klass->init(dev);
 
 out:
     kfree(desc);
     return retval;
 }
 
-static struct usb_device *usb_device_create(struct usb_hcd *hcd,
-                                            struct usb_device *hub)
+struct usb_device *usb_device_create(struct usb_hcd *hcd,
+                                     struct usb_device *hub)
 {
     struct usb_device *dev = kzalloc(sizeof(*dev), 0);
     RET_IF_FAIL(dev, NULL);
@@ -393,7 +220,6 @@ static int enumerate_bus(struct usb_hcd *hcd)
                                  NULL);
 
         mdelay(desc.bPwrOn2PwrGood * 2);
-        mdelay(1000);
 
         retval = hcd->driver->hub_control(hcd, USB_GET_PORT_STATUS, 0, i, 4,
                                           (char*) &status);
@@ -434,7 +260,39 @@ void enumerate_everything(void *data)
 int usb_hcd_register(struct usb_hcd *hcd)
 {
     atomic_init(&dev_id, 1);
-    hub_wq = workqueue_create("usb-hubd");
     task_run(enumerate_everything, hcd, 0);
+    return 0;
+}
+
+static struct usb_class_driver *find_class_driver(unsigned int class,
+                                                  unsigned int subclass,
+                                                  unsigned int protocol)
+{
+    struct usb_class_driver *driver = NULL;
+
+    spinlock_lock(&class_driver_lock);
+
+    list_foreach(&class_driver, iter) {
+        struct usb_class_driver *drv =
+            containerof(iter, struct usb_class_driver, list);
+
+        if (drv->class != class)
+            continue;
+
+        driver = drv;
+        break;
+    }
+
+    spinlock_unlock(&class_driver_lock);
+
+    return driver;
+}
+
+int usb_register_class_driver(struct usb_class_driver *driver)
+{
+    spinlock_lock(&class_driver_lock);
+    list_add(&class_driver, &driver->list);
+    spinlock_unlock(&class_driver_lock);
+
     return 0;
 }

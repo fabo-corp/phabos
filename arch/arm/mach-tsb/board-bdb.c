@@ -71,7 +71,6 @@ static int tsb_hcd_power_on(struct device *device)
 
     gpio_direction_out(HUB_LINE_N_RESET, 0);
     udelay(HUB_RESET_ASSERTION_TIME_IN_USEC);
-    mdelay(1000);
     mdelay(HUB_RESET_DEASSERTION_TIME_IN_MSEC);
 //    gpio_direction_out(HUB_LINE_N_RESET, 1);
 
