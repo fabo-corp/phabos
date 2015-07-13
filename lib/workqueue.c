@@ -66,15 +66,16 @@ struct workqueue *workqueue_create(const char *name)
     RET_IF_FAIL(wq, NULL);
 
     wq->name = name;
-    wq->task = task_run(workqueue_thread, wq, 0);
-    if (!wq->task)
-        goto task_run_error;
 
     semaphore_init(&wq->semaphore, 0);
     semaphore_init(&wq->empty_semaphore, 1);
     list_init(&wq->list);
     atomic_init(&wq->work_count, 0);
     spinlock_init(&wq->lock);
+
+    wq->task = task_run(workqueue_thread, wq, 0);
+    if (!wq->task)
+        goto task_run_error;
 
     return wq;
 
