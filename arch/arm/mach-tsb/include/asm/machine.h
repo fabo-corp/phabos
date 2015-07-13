@@ -29,7 +29,7 @@
 #ifndef __MACHINE_H__
 #define __MACHINE_H__
 
-#define CPU_NUM_IRQ    44
+#define CPU_NUM_IRQ    138
 #define VTOR_ALIGNMENT 256
 
 #define CPU_FREQ (96 * 1000 * 1000) // 96 MHz
