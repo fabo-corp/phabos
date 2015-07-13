@@ -1,20 +1,19 @@
 #include <asm/spinlock.h>
 #include <asm/delay.h>
 #include <phabos/usb/hcd.h>
+#include <phabos/usb/std-requests.h>
 #include <phabos/usb/driver.h>
 #include <phabos/utils.h>
 #include <phabos/assert.h>
 #include <phabos/list.h>
 
+#include "hub.h"
+#include "device.h"
+
 #include <errno.h>
 #include <string.h>
 
 static atomic_t dev_id;
-
-static int enumerate_device(struct usb_device *dev);
-static struct usb_device *usb_device_create(struct usb_hcd *hcd,
-                                            struct usb_device *hub);
-
 static struct list_head class_driver = LIST_INIT(class_driver);
 static struct spinlock class_driver_lock = SPINLOCK_INIT(spinlock);
 
@@ -57,7 +56,8 @@ static void print_descriptor(void *raw_descriptor)
 
         int size = config_desc->wTotalLength;
         while (size > 0) {
-            dev_desc = (char*) dev_desc + dev_desc->bLength;
+            dev_desc = (struct usb_device_descriptor*)
+                ((char*) dev_desc + dev_desc->bLength);
             size -= dev_desc->bLength;
             print_descriptor(dev_desc);
         }
@@ -205,7 +205,7 @@ static int enumerate_hub(struct usb_device *hub)
     return 0;
 }
 
-static int enumerate_device(struct usb_device *dev)
+int enumerate_device(struct usb_device *dev)
 {
     int retval;
     int address;
@@ -247,8 +247,8 @@ out:
     return retval;
 }
 
-static struct usb_device *usb_device_create(struct usb_hcd *hcd,
-                                            struct usb_device *hub)
+struct usb_device *usb_device_create(struct usb_hcd *hcd,
+                                     struct usb_device *hub)
 {
     struct usb_device *dev = kzalloc(sizeof(*dev), 0);
     RET_IF_FAIL(dev, NULL);

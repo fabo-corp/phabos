@@ -95,6 +95,5 @@ struct usb_endpoint_descriptor {
     uint8_t bmAttributes;
 };
 
-
 #endif /* __USB_STD_REQUESTS_H__ */
 
