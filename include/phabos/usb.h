@@ -77,6 +77,11 @@
 #define USB_HOST_ENDPOINT_XFER_BULK     2
 #define USB_HOST_ENDPOINT_XFER_INT      3
 
+#define URB_DIRECTION_SHIFT 0
+#define URB_DEVICE_SHIFT    8
+#define URB_ENDPOINT_SHIFT  15
+#define URB_XFER_TYPE_SHIFT 30
+
 struct urb;
 typedef void (*urb_complete_t)(struct urb *urb);
 
