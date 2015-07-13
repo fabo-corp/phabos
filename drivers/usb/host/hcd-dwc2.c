@@ -289,7 +289,7 @@ static int urb_enqueue(struct usb_hcd *hcd, struct urb *urb)
     int number_of_packets = 0;
     dwc_otg_hcd_urb_t *dwc_urb;
 
-    switch (urb_get_xfer_type(urb)) {
+    switch (usb_host_pipetype(urb->pipe)) {
     case USB_HOST_PIPE_CONTROL:
         ep_type = USB_HOST_ENDPOINT_XFER_CONTROL;
         break;
@@ -318,9 +318,9 @@ static int urb_enqueue(struct usb_hcd *hcd, struct urb *urb)
     urb->hcpriv = dwc_urb;
 
     dwc_otg_hcd_urb_set_pipeinfo(dwc_urb,
-                                 urb_get_device(urb),
-                                 urb_get_endpoint(urb), ep_type,
-                                 urb_get_direction(urb),
+                                 usb_host_pipedevice(urb->pipe),
+                                 usb_host_pipeendpoint(urb->pipe), ep_type,
+                                 usb_host_pipein(urb->pipe),
                                  urb->maxpacket);
 
     dwc_otg_hcd_urb_set_params(dwc_urb, urb, urb->buffer,
