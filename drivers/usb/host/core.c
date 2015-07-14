@@ -21,7 +21,7 @@ static struct usb_class_driver *find_class_driver(unsigned int class,
                                                   unsigned int subclass,
                                                   unsigned int protocol);
 
-static void print_descriptor(void *raw_descriptor)
+void print_descriptor(void *raw_descriptor)
 {
     char *header = raw_descriptor;
     struct usb_device_descriptor *dev_desc = raw_descriptor;
@@ -221,12 +221,12 @@ int enumerate_device(struct usb_device *dev)
     if (retval)
         goto out; // FIXME: unpower device port
 
-#if 0
     klass = find_class_driver(desc->bDeviceClass, desc->bDeviceSubClass,
                               desc->bDeviceProtocol);
-    if (!klass)
-        return -ENODEV;
-#endif
+    if (!klass) {
+        retval = -ENODEV;
+//        return -ENODEV;
+    }
 
     address = atomic_inc(&dev_id);
 
@@ -239,8 +239,8 @@ int enumerate_device(struct usb_device *dev)
     kprintf("Device ID: %d\n", dev->address);
     print_descriptor(desc);
 
-    if (desc->bDeviceClass == 9)// FIXME to remove later
-        enumerate_hub(dev);
+    if (klass)
+        klass->init(dev);
 
 out:
     kfree(desc);

@@ -156,7 +156,6 @@ static int enumerate_hub(struct usb_device *hub)
         usb_control_msg(hub, USB_SET_PORT_FEATURE, PORT_POWER, i, 0, NULL);
 
         mdelay(desc->bPwrOn2PwrGood * 2);
-        mdelay(1000);
 
         usb_control_msg(hub, USB_GET_PORT_STATUS, 0, i, sizeof(status),
                         &status);
@@ -195,7 +194,7 @@ static int enumerate_hub(struct usb_device *hub)
         enumerate_device(dev);
     }
 
-    hub_check_changes(hub, NULL);
+    //hub_check_changes(hub, NULL);
 
     return 0;
 }
