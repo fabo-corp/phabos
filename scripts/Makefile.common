@@ -14,13 +14,16 @@ prepend-dir = $(foreach d,$($1),$(call prepend-dir-to,$(d)))
 $(call prepend-dir,subdirs-y):
 	$(MAKE) -f scripts/Makefile.common dir=$@ $(MAKECMDGOALS)
 
-all: $(call prepend-dir,subdirs-y) $(call prepend-dir,obj-y) $(call prepend-dir,ld-script-y)
+$(call prepend-dir,apps-y):
+	$(MAKE) -f scripts/Makefile.apps dir=$@ $(MAKECMDGOALS)
+
+all: $(call prepend-dir,apps-y) $(call prepend-dir,subdirs-y) $(call prepend-dir,obj-y) $(call prepend-dir,ld-script-y)
 	echo $(call prepend-dir,obj-y) >> objects.lst
 
-clean: $(call prepend-dir,subdirs-y)
+clean: $(call prepend-dir,subdirs-y) $(call prepend-dir,apps-y)
 	rm -f $(call prepend-dir,obj-y) $(call prepend-dir,dep) \
 	      $(call prepend-dir,clean-y) $(call prepend-dir,ld-script-y)
 
 -include $(call prepend-dir,dep)
 
-.PHONY: all clean $(call prepend-dir,subdirs-y)
+.PHONY: all clean $(call prepend-dir,subdirs-y) $(call prepend-dir,apps-y)

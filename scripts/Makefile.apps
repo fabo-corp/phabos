@@ -1,0 +1,49 @@
+# Copyright (C) 2015 Fabien Parent. All rights reserved.
+# Author: Fabien Parent <parent.f@gmail.com>
+#
+# Provided under the three clause BSD license found in the LICENSE file.
+
+CFLAGS += -fPIC
+LDFLAGS := -nostartfiles -nostdlib -shared -fPIC --entry=main
+
+bin =  $(dir)/$(shell basename $(dir).elf)
+dep = $(obj-y:.o=.d) $(ld-script-y:.ld=.d)
+linker_files = $(foreach linker-file,$(linker-y), -T $(linker-file))
+
+include $(dir)/Makefile
+
+prepend-dir-to = $(addprefix $(dir)/,$1)
+prepend-dir = $(foreach d,$($1),$(call prepend-dir-to,$(d)))
+
+all: $(call prepend-dir,obj-y) $(call prepend-dir,ld-script-y) $(bin).o
+	echo $(bin).o >> objects.lst
+
+$(bin).c: $(bin)
+	$(call build,XXD)
+	xxd -i $^ > $@
+	sed --in-place=.bak 's,unsigned,__attribute__((section(".apps"))) unsigned,g' $@
+	rm -f $@.bak
+	echo "#include <phabos/fs/binfs.h>" >> $@
+	echo "__attribute__((section(\".apps.table\"))) struct bin_entry " >> $@
+	apps_name=`grep -o -e "apps_.*_elf" $@ | head -n1`; \
+	echo "$${apps_name}_table = {";  >> $@ \
+	echo "$${apps_name}_table = {";  >> $@ \
+	echo "    .bin = &$$apps_name,";  >> $@ \
+	echo "    .size = (unsigned int*) &$${apps_name}_len,";  >> $@
+	echo "    .name = \"$(shell basename $(dir))\"," >> $@
+	echo "};" >> $@
+
+$(bin): apps/apps.ld
+	$(call build,LD)
+	arm-none-eabi-gcc $(LDFLAGS) $(linker_files) -o $@ \
+	    $(call prepend-dir,obj-y)
+	arm-none-eabi-strip $@
+
+clean:
+	rm -f $(call prepend-dir,obj-y) $(call prepend-dir,dep) \
+	      $(call prepend-dir,clean-y) $(call prepend-dir,ld-script-y) \
+	      $(bin).c $(bin).o $(bin).d $(bin)
+
+-include $(call prepend-dir,dep)
+
+.PHONY: all clean
