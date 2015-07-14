@@ -381,6 +381,28 @@ ssize_t sys_read(int fdnum, void *buf, size_t count)
 }
 DEFINE_SYSCALL(SYS_READ, read, 3);
 
+void *sys_mmap(void *addr, size_t length, int prot, int flags, int fdnum,
+               off_t offset)
+{
+    struct fd *fd;
+
+    if (!length)
+        return (void*) ~0;
+
+    fd = to_fd(fdnum);
+    if (!fd)
+        return (void*) ~0;
+
+    RET_IF_FAIL(fd->file, (void*) ~0);
+    RET_IF_FAIL(fd->file->inode, (void*) ~0);
+
+    RET_IF_FAIL(fd->file->inode->fs, (void*) ~0);
+    RET_IF_FAIL(fd->file->inode->fs->file_ops.mmap, (void*) ~0);
+    return fd->file->inode->fs->file_ops.mmap(fd->file, addr, length, prot,
+                                              flags, offset);
+}
+DEFINE_SYSCALL(SYS_MMAP, mmap, 6);
+
 off_t sys_lseek(int fdnum, off_t offset, int whence)
 {
     struct fd *fd;

@@ -15,6 +15,11 @@
 #define DT_REG      6
 #define DT_SOCK     7
 
+#define PROT_EXEC   (1 << 0)
+#define PROT_READ   (1 << 1)
+
+#define MAP_SHARED  (1 << 0)
+
 struct inode;
 struct file;
 struct phabos_dirent;
@@ -25,6 +30,8 @@ struct file_operations {
                     size_t count);
     ssize_t (*write)(struct file *file, const void *buf, size_t count);
     ssize_t (*read)(struct file *file, void *buf, size_t count);
+    void *(*mmap)(struct file *file, void *addr, size_t length, int prot,
+                  int flags, off_t offset);
 };
 
 struct inode_operations {
@@ -113,6 +120,8 @@ int sys_open(const char *pathname, int flags, mode_t mode);
 int sys_close(int fd);
 ssize_t sys_read(int fdnum, void *buf, size_t count);
 off_t sys_lseek(int fdnum, off_t offset, int whence);
+void *sys_mmap(void *addr, size_t length, int prot, int flags, int fd,
+               off_t offset);
 
 #endif /* __FS_H__ */
 
