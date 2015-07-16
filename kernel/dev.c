@@ -6,8 +6,6 @@
 #include <unistd.h>
 #include <spawn.h>
 
-#include <config.h>
-
 #include <phabos/kprintf.h>
 #include <phabos/scheduler.h>
 #include <phabos/syscall.h>
@@ -184,7 +182,7 @@ int dev_main(int argc, char **argv)
     open("/dev/ttyS0", 0);
     open("/dev/ttyS0", 0);
 
-#if 1
+#if 0
 //    dev();
 
 //    int exec(const void *addr);

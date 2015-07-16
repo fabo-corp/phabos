@@ -182,8 +182,6 @@ static int enumerate_hub(struct usb_device *hub)
         if (status & (1 << 10))
             dev->speed = USB_SPEED_HIGH;
 
-        dev->speed = USB_SPEED_HIGH;
-
         usb_control_msg(hub, USB_SET_PORT_FEATURE, PORT_RESET, i, 0, NULL);
 
         mdelay(1000);
@@ -312,8 +310,6 @@ static int enumerate_bus(struct usb_hcd *hcd)
             dev->speed = USB_SPEED_LOW;
         if (status & (1 << 10))
             dev->speed = USB_SPEED_HIGH;
-
-        dev->speed = USB_SPEED_HIGH;
 
         hcd->driver->hub_control(hcd, USB_SET_PORT_FEATURE, PORT_RESET, i, 0,
                                  NULL);
