@@ -59,6 +59,8 @@ static void hub_update_status(void *data)
                 if (status & (1 << 10))
                     dev->speed = USB_SPEED_HIGH;
 
+        dev->speed = USB_SPEED_HIGH;
+
                 usb_control_msg(urb->device, USB_SET_PORT_FEATURE, PORT_RESET, i, 0, NULL);
 
                 mdelay(1000);
@@ -173,6 +175,8 @@ static int enumerate_hub(struct usb_device *hub)
             dev->speed = USB_SPEED_LOW;
         if (status & (1 << 10))
             dev->speed = USB_SPEED_HIGH;
+
+        dev->speed = USB_SPEED_HIGH;
 
         usb_control_msg(hub, USB_SET_PORT_FEATURE, PORT_RESET, i, 0, NULL);
 

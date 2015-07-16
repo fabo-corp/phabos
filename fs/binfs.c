@@ -124,10 +124,24 @@ static void *binfs_mmap(struct file *file, void *addr, size_t length, int prot,
 
     bin = file->inode->inode;
 
-    if (length + offset >= *bin->size || offset >= *bin->size)
+    if (length + offset > *bin->size || offset >= *bin->size)
         return (void*) ~0;
 
     return (char*) bin->bin + offset;
+}
+
+static int binfs_fstat(struct file *file, struct stat *buf)
+{
+    struct bin_entry *bin;
+
+    RET_IF_FAIL(file, -EINVAL);
+    RET_IF_FAIL(file->inode, -EINVAL);
+    RET_IF_FAIL(file->inode->inode, -EINVAL);
+
+    bin = file->inode->inode;
+
+    buf->st_size = *bin->size;
+    return 0;
 }
 
 struct fs binfs_fs = {
@@ -137,6 +151,7 @@ struct fs binfs_fs = {
         .getdents = binfs_getdents,
         .read = binfs_read,
         .mmap = binfs_mmap,
+        .fstat = binfs_fstat,
     },
 
     .inode_ops = {

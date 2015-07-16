@@ -32,6 +32,7 @@ struct file_operations {
     ssize_t (*read)(struct file *file, void *buf, size_t count);
     void *(*mmap)(struct file *file, void *addr, size_t length, int prot,
                   int flags, off_t offset);
+    int (*fstat)(struct file *file, struct stat *buf);
 };
 
 struct inode_operations {

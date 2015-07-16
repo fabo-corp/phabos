@@ -21,6 +21,7 @@
 #define SYS_LSEEK                       19
 #define SYS_GETPID                      20
 #define SYS_MOUNT                       21
+#define SYS_FSTAT                       28
 #define SYS_KILL                        37
 #define SYS_MKDIR                       39
 #define SYS_RMDIR                       40

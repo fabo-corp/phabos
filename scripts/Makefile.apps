@@ -4,7 +4,7 @@
 # Provided under the three clause BSD license found in the LICENSE file.
 
 CFLAGS += -fPIC
-LDFLAGS := -nostartfiles -nostdlib -shared -fPIC --entry=main
+LDFLAGS := -nostartfiles -nostdlib -shared -fPIC --entry=main -Tapps/apps.ld
 
 bin =  $(dir)/$(shell basename $(dir).elf)
 dep = $(obj-y:.o=.d) $(ld-script-y:.ld=.d)
@@ -37,7 +37,7 @@ $(bin): apps/apps.ld
 	$(call build,LD)
 	arm-none-eabi-gcc $(LDFLAGS) $(linker_files) -o $@ \
 	    $(call prepend-dir,obj-y)
-	arm-none-eabi-strip $@
+#	arm-none-eabi-strip $@
 
 clean:
 	rm -f $(call prepend-dir,obj-y) $(call prepend-dir,dep) \

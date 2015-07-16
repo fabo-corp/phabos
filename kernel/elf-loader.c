@@ -442,140 +442,86 @@ int exec(char *addr)
     return 0;
 }
 
-static int elf_read(int fd, void *buffer, size_t size)
+static int elf_load_segment(Elf32_Phdr *phdr, uintptr_t start_addr)
 {
-    ssize_t nread = 0;
-    ssize_t retval;
-
-    do {
-        retval = sys_read(fd, (char*) buffer + nread, size - nread);
-        if (retval == 0)
-            retval = -EINVAL;
-
-        if (retval < 0)
-            return retval;
-
-        nread += retval;
-    } while (nread != size);
-
-    return 0;
-}
-
-static int elf_load_segment(Elf32_Phdr *phdr, int fd)
-{
-    int retval;
     char *segment;
-    off_t pos;
 
     RET_IF_FAIL(phdr, -EINVAL);
-    RET_IF_FAIL(fd >= 0, -EINVAL);
+    RET_IF_FAIL(start_addr, -EINVAL);
 
     segment = zalloc(phdr->p_memsz);
     if (!segment)
         return -ENOMEM;
 
-    pos = sys_lseek(fd, 0, SEEK_CUR);
-    if (pos < 0) {
-        retval = (int) pos;
-        goto error_lseek;
-    }
+    memcpy(segment, (char*) (start_addr + phdr->p_offset), phdr->p_filesz);
 
-    retval = sys_lseek(fd, phdr->p_offset, SEEK_SET);
-    if (retval < 0)
-        goto error_segment_lseek;
+    kprintf("segment: %X\n", segment);
+    segment += 1;
 
-    retval = elf_read(fd, segment, phdr->p_filesz);
-    if (retval)
-        goto error_segment_lseek;
+    int (*func)(int argc, char **argv);
+    func = (int (*)(int, char**)) segment;
+
+    func(2, NULL);
 
     // TODO attach segment to process
 
     return 0;
-
-error_segment_lseek:
-    sys_lseek(fd, pos, SEEK_SET);
-error_lseek:
-    kfree(segment);
-    return retval;
 }
 
-static int elf_load_segments(Elf32_Ehdr *hdr, int fd)
+static int elf_load_segments(Elf32_Ehdr *hdr, uintptr_t start_addr)
 {
-    int retval;
+    int retval = 0;
     Elf32_Phdr *phdr;
 
     RET_IF_FAIL(hdr, -EINVAL);
-    RET_IF_FAIL(fd >= 0, -EINVAL);
+    RET_IF_FAIL(start_addr, -EINVAL);
 
     if (!hdr->e_phnum)
         return -EINVAL;
 
-    phdr = kmalloc(sizeof(*phdr), 0);
-    if (!phdr)
-        return -ENOMEM;
-
-    retval = sys_lseek(fd, hdr->e_phoff, SEEK_SET);
-    if (retval < 0)
-        goto exit;
+    phdr = (Elf32_Phdr *) (start_addr + hdr->e_phoff);
 
     for (int i = 0; i < hdr->e_phnum; i++) {
-        retval = elf_read(fd, phdr, hdr->e_phentsize);
-        if (retval)
-            goto exit;
-
+        phdr = (Elf32_Phdr*) (start_addr + hdr->e_phoff + i * hdr->e_phentsize);
         if (phdr->p_type == PT_INTERP) {
-            kprintf("requires an interpreter\n");
-            //retval = elf_exec(); // FIXME
+            kprintf("requires an interpreter: %s\n", (char*) (start_addr + phdr->p_offset));
+            int load_executable(const char *path);
+            load_executable((char*) (start_addr + phdr->p_offset));
             goto exit;
         }
     }
 
-    retval = sys_lseek(fd, hdr->e_phoff, SEEK_SET);
-    if (retval < 0)
-        goto exit;
+    phdr = (Elf32_Phdr *) (start_addr + hdr->e_phoff);
 
     for (int i = 0; i < hdr->e_phnum; i++) {
-        retval = elf_read(fd, phdr, hdr->e_phentsize);
-        if (retval)
-            goto exit; // TODO free every segment allocated so far
+        phdr = (Elf32_Phdr*) (start_addr + hdr->e_phoff + i * hdr->e_phentsize);
 
         if (phdr->p_type != PT_LOAD)
             continue;
 
-        retval = elf_load_segment(phdr, fd);
+        retval = elf_load_segment(phdr, start_addr);
         if (retval)
             goto exit; // TODO free every allocated so far
     }
 
 exit:
-    kfree(phdr);
     return retval;
 }
 
-int elf_exec(int fd)
+int elf_exec(uintptr_t start_addr)
 {
     int retval;
-    Elf32_Ehdr *hdr;
+    Elf32_Ehdr *hdr = (Elf32_Ehdr*) start_addr;
 
-    RET_IF_FAIL(fd >= 0, -EINVAL);
-
-    hdr = kmalloc(sizeof(*hdr), 0);
-    if (!hdr)
-        return -ENOMEM;
-
-    retval = elf_read(fd, hdr, sizeof(*hdr));
-    if (retval)
-        goto exit;
+    RET_IF_FAIL(hdr, -EINVAL);
 
     retval = verify_file(hdr);
     if (retval)
-        goto exit;
+        return retval;
 
-    retval = elf_load_segments(hdr, fd);
+    retval = elf_load_segments(hdr, start_addr);
     if (retval)
-        goto exit;
+        return retval;
 
-exit:
-    kfree(hdr);
-    return retval;
+    return 0;
 }

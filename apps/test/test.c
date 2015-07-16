@@ -16,9 +16,13 @@ static int write2(int fd, const char *str, unsigned size)
 
 int main(int argc, char **argv)
 {
+#if 1
     write(1, "Hello From Apps\n", 16);
     write3(2);
     write4(2);
+#endif
+
+    write2(2, "Hello From Apps\n", 16);
 
     return 0;
 }

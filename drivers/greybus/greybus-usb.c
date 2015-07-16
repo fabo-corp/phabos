@@ -70,11 +70,16 @@ static void toggle_gpio(void)
     gb_operation_destroy(operation);
 }
 
+#include <asm/delay.h>
+
 void gb_usb_dev(void)
 {
     kprintf("%s()\n", __func__);
 
+    mdelay(2000);
     connect_gpio_cport();
+    connect_gpio_cport();
+    mdelay(1000);
     toggle_gpio();
 }
 

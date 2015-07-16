@@ -430,3 +430,19 @@ off_t sys_lseek(int fdnum, off_t offset, int whence)
     return fd->file->offset;
 }
 DEFINE_SYSCALL(SYS_LSEEK, lseek, 3);
+
+int sys_fstat(int fdnum, struct stat *buf)
+{
+    struct fd *fd;
+
+    fd = to_fd(fdnum);
+    if (!fd)
+        return -EBADF;
+
+    RET_IF_FAIL(fd->file, -EINVAL);
+    RET_IF_FAIL(fd->file->inode, -EINVAL);
+    RET_IF_FAIL(fd->file->inode->fs, -EINVAL);
+    RET_IF_FAIL(fd->file->inode->fs->file_ops.read, -ENOSYS);
+    return fd->file->inode->fs->file_ops.fstat(fd->file, buf);
+}
+DEFINE_SYSCALL(SYS_FSTAT, fstat, 2);

@@ -5,3 +5,4 @@
 
 apps-y += libphabos
 apps-y += test
+apps-y += ld-phabos

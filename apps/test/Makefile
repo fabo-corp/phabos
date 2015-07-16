@@ -3,7 +3,7 @@
 #
 # Provided under the three clause BSD license found in the LICENSE file.
 
-LDFLAGS += -Lapps/libphabos -lphabos
+LDFLAGS += -Lapps/libphabos -l:libphabos.elf 
 
 obj-y += test.o
 obj-y += interp.o
