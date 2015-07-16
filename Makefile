@@ -25,7 +25,7 @@ endif
 include scripts/Makefile.build
 include arch/$(ARCH)/Makefile.build
 
-subdirs-y := apps arch drivers fs kernel lib
+subdirs-y := arch drivers fs kernel lib
 clean-y := config.h $(KERNEL_NAME).elf objects.lst
 
 linker-y += kernel/kernel.ld

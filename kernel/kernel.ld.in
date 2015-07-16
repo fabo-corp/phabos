@@ -25,13 +25,6 @@ SECTIONS
         _edriver = .;
     } DATA_STORAGE
 
-    .apps : {
-        KEEP(*(.apps))
-        _apps = .;
-        KEEP(*(.apps.table))
-        _eapps = .;
-    } DATA_STORAGE
-
     .heap : {
         _sheap = .;
     } > SRAM
