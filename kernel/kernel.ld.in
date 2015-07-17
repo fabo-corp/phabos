@@ -13,9 +13,7 @@ SECTIONS
         _shell_command = .;
         KEEP(*(.shell_cmd))
         _eshell_command = .;
-    } DATA_STORAGE
 
-    .syscall : {
         _syscall = .;
         KEEP(*(.syscall))
         _esyscall = .;
