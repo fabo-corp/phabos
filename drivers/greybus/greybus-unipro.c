@@ -29,6 +29,7 @@
  */
 
 #include <errno.h>
+#include <asm/delay.h>
 #include <asm/unipro.h>
 #include <phabos/greybus.h>
 
@@ -39,7 +40,7 @@ static struct unipro_driver greybus_driver = {
 
 static int gb_unipro_listen(unsigned int cport)
 {
-#if 0
+#if 1
     int ret;
 
     do {
@@ -47,7 +48,8 @@ static int gb_unipro_listen(unsigned int cport)
         if (!ret)
             ret = unipro_driver_register(&greybus_driver, cport);
         else
-            usleep(200000);
+            mdelay(200);
+        kprintf("loop\n");
     } while (ret == -ENOTCONN);
     return ret;
 #else
