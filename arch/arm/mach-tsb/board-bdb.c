@@ -217,6 +217,8 @@ void machine_init(void)
 {
     int order = size_to_order(BUFRAM_SIZE);
 
+    tsb_clk_init();
+
     mm_add_region(BUFRAM0_BASE, order, MM_DMA);
     mm_add_region(BUFRAM1_BASE, order, MM_DMA);
     mm_add_region(BUFRAM2_BASE, order, MM_DMA);
