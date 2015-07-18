@@ -182,7 +182,7 @@ int dev_main(int argc, char **argv)
     open("/dev/ttyS0", 0);
     open("/dev/ttyS0", 0);
 
-    gb_gpio_register(3);
+//    gb_gpio_register(3);
 
 #if 0
 //    dev();

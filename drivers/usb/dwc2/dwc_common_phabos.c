@@ -142,7 +142,7 @@ dwc_bool_t DWC_IN_BH(void)
 
 void DWC_VPRINTF(char *format, va_list args)
 {
-    vprintf(format, args);
+    kvprintf(format, args);
 }
 
 int DWC_VSNPRINTF(char *str, int size, char *format, va_list args)
@@ -440,7 +440,7 @@ void DWC_TIMER_FREE(dwc_timer_t *timer)
 
 void _DWC_TIMER_SCHEDULE(dwc_timer_t *timer, uint32_t time)
 {
-    watchdog_start(&timer->watchdog, time);
+    watchdog_start(&timer->watchdog, time * 1000);
 }
 
 void DWC_TIMER_SCHEDULE(dwc_timer_t *timer, uint32_t time)

@@ -261,3 +261,26 @@ int kprintf(const char* format, ...)
 
     return num_byte_printed;
 }
+
+int kvprintf(const char *format, va_list ap)
+{
+    int num_byte_printed = 0;
+    int result = 0;
+
+    if (!format)
+        return -EINVAL;
+
+    for (; *format != '\0'; format++) {
+        if (*format == '%') {
+            result = print_from_specifier(&format, &ap);
+            if (result < 0)
+                return result;
+            num_byte_printed += result;
+        } else {
+            kputc(*format);
+            num_byte_printed++;
+        }
+    }
+
+    return num_byte_printed;
+}

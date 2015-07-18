@@ -215,6 +215,8 @@ int enumerate_device(struct usb_device *dev)
     desc = kmalloc(sizeof(*desc), 0);
     RET_IF_FAIL(desc, -ENOMEM);
 
+    kprintf("device %u, speed: %d\n", dev->address, dev->speed);
+
     retval = usb_control_msg(dev, USB_DEVICE_GET_DESCRIPTOR,
                              USB_DESCRIPTOR_DEVICE << 8, 0, sizeof(*desc),
                              desc);

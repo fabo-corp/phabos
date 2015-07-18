@@ -91,13 +91,12 @@ static int _complete(dwc_otg_hcd_t *hcd, void *urb_handle,
     urb->status = status;
 
     free(dwc_urb);
+    urb->hcpriv = NULL;
 
     DWC_SPINUNLOCK(hcd->lock);
 
     if (urb->complete) {
         urb->complete(urb);
-    } else {
-        free(urb); // FIXME unref
     }
 
     DWC_SPINLOCK(hcd->lock);
@@ -342,6 +341,11 @@ error_enqueue:
     return retval;
 }
 
+int urb_dequeue(struct usb_hcd *hcd, struct urb *urb)
+{
+    dwc_otg_hcd_urb_dequeue(g_dev->hcd, urb->hcpriv);
+}
+
 /**
  * Send request to the root hub
  *
@@ -377,6 +381,8 @@ static int dwc2_probe(struct device *device)
         device->power_on(device);
 
     hcd->driver = &dwc2_hcd_driver;
+
+SET_DEBUG_LEVEL(DBG_ANY);
 
     return usb_hcd_register(hcd);
 }

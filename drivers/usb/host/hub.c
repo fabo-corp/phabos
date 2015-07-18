@@ -167,13 +167,6 @@ static int enumerate_hub(struct usb_device *hub)
         if (!dev)
             continue;
 
-        dev->port = i;
-        dev->speed = USB_SPEED_FULL;
-        if (status & (1 << 9))
-            dev->speed = USB_SPEED_LOW;
-        if (status & (1 << 10))
-            dev->speed = USB_SPEED_HIGH;
-
         usb_control_msg(hub, USB_SET_PORT_FEATURE, PORT_RESET, i, 0, NULL);
 
         mdelay(1000);
@@ -190,6 +183,13 @@ static int enumerate_hub(struct usb_device *hub)
             usb_control_msg(hub, USB_CLEAR_PORT_FEATURE, C_PORT_RESET, i, 0,
                             NULL);
         }
+
+        dev->port = i;
+        dev->speed = USB_SPEED_FULL;
+        if (status & (1 << 9))
+            dev->speed = USB_SPEED_LOW;
+        if (status & (1 << 10))
+            dev->speed = USB_SPEED_HIGH;
 
         enumerate_device(dev);
     }
