@@ -71,12 +71,12 @@ config MACH_LINKER_SCRIPT
 
 config TSB_GPIO
     bool "TSB GPIO"
-    depends on GPIO
+    select GPIO
     default y
 
 config TSB_UNIPRO
     bool "TSB UniPro"
-    depends on UNIPRO
+    select UNIPRO
     default y
 
 config TSB_CDSI
@@ -86,10 +86,10 @@ config TSB_CDSI
 config TSB_PLL
     bool "TSB PLL"
     default y
-    depends on ARA_BACKPORT
+    select ARA_BACKPORT
 
 config TSB_I2S
     bool "TSB I2S"
     default y
-    depends on ARA_BACKPORT
-    depends on TSB_PLL
+    select ARA_BACKPORT
+    select TSB_PLL
