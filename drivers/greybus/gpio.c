@@ -284,8 +284,15 @@ struct gb_driver gpio_driver = {
     .op_handlers_count = ARRAY_SIZE(gb_gpio_handlers),
 };
 
-void gb_gpio_register(int cport)
+static int gb_gpio_probe(struct device *device)
 {
-    gpio_cport = cport;
-    gb_register_driver(cport, &gpio_driver);
+    struct gb_device *dev = containerof(device, struct gb_device, device);
+
+    gpio_cport = dev->cport;
+    return gb_register_driver(dev->cport, &gpio_driver);
 }
+
+__driver__ struct driver gb_gpio_driver = {
+    .name = "gb-gpio-phy",
+    .probe = gb_gpio_probe,
+};
