@@ -11,6 +11,8 @@
 #include <phabos/watchdog.h>
 #include <phabos/assert.h>
 
+#include <errno.h>
+
 extern struct task *current;
 
 static void usleep_timeout(struct watchdog *watchdog)
@@ -36,5 +38,34 @@ int usleep(useconds_t usec)
     semaphore_lock(&semaphore);
     watchdog_delete(&watchdog);
 
+    return 0;
+}
+
+int nanosleep(const struct timespec *req, struct timespec *rem)
+{
+    RET_IF_FAIL(req, -EINVAL);
+
+    useconds_t usec = req->tv_sec * 1000000 + req->tv_nsec / 1000;
+    if (req->tv_nsec % 1000)
+        usec++;
+
+    return usleep(usec);
+}
+
+unsigned int sleep(unsigned int seconds)
+{
+    int retval;
+    struct timespec rem_timespec = {0};
+    struct timespec sleep_timespec = {
+        .tv_sec = seconds,
+    };
+
+    retval = nanosleep(&sleep_timespec, &rem_timespec);
+    if (retval == -EINTR) {
+        return rem_timespec.tv_sec + (rem_timespec.tv_nsec ? 1 : 0);
+    }
+
+    if (retval < 0)
+        return seconds;
     return 0;
 }
