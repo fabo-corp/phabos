@@ -305,6 +305,19 @@ struct usb_cfgdesc_s
 };
 #define USB_SIZEOF_CFGDESC 9
 
+struct usb_otherspeedconfigdesc_s
+{
+  uint8_t  len;               /* Descriptor length */
+  uint8_t  type;              /* Descriptor type */
+  uint8_t  totallen[2];       /* Total length */
+  uint8_t  ninterfaces;       /* Number of interfaces */
+  uint8_t  cfgvalue;          /* Configuration value */
+  uint8_t  icfg;              /* Configuration */
+  uint8_t  attr;              /* Attributes */
+  uint8_t  mxpower;           /* Max power (mA/2) */
+};
+#define USB_SIZEOF_OTHERSPEEDCONFIGDESC 9
+
 /* String descriptor */
 
 struct usb_strdesc_s
@@ -342,5 +355,60 @@ struct usb_epdesc_s
   uint8_t  interval;          /* Interval */
 };
 #define USB_SIZEOF_EPDESC 7
+
+struct usb_audioepdesc_s
+{
+  struct usb_epdesc_s ep;
+  uint8_t  refresh;
+  uint8_t  synchaddr;
+};
+#define USB_SIZEOF_AUDIOEPDESC 9
+
+/* Device qualifier descriptor */
+
+struct usb_qualdesc_s
+{
+  uint8_t  len;               /* Descriptor length */
+  uint8_t  type;              /* Descriptor type */
+  uint8_t  usb[2];            /* USB version */
+  uint8_t  classid;           /* Qualifier class */
+  uint8_t  subclass;          /* Qualifier sub-class */
+  uint8_t  protocol;          /* Qualifier protocol */
+  uint8_t  mxpacketsize;      /* Max packet size (ep0) */
+  uint8_t  nconfigs;          /* Number of configurations */
+  uint8_t  reserved;
+};
+#define USB_SIZEOF_QUALDESC 10
+
+/* Interface association descriptor
+ *
+ * The Universal Serial Bus Specification, revision 2.0, does not support grouping
+ * more than one interface of a composite device within a single function. However,
+ * the USB Device Working Group (DWG) created USB device classes that allow for
+ * functions with multiple interfaces, and the USB Implementor's Forum issued an
+ * Engineering Change Notification (ECN) that defines a mechanism for grouping
+ * interfaces.
+ */
+
+struct usb_iaddesc_s
+{
+  uint8_t  len;               /* Descriptor length */
+  uint8_t  type;              /* Descriptor type */
+  uint8_t  firstif;           /* Number of first interface of the function */
+  uint8_t  nifs;              /* Number of interfaces associated with the function */
+  uint8_t  classid;           /* Class code */
+  uint8_t  subclass;          /* Sub-class code */
+  uint8_t  protocol;          /* Protocol code */
+  uint8_t  ifunction;         /* Index to string identifying the function */
+};
+#define USB_SIZEOF_IADDESC 8
+
+/************************************************************************************
+ * Public Data
+ ************************************************************************************/
+
+/************************************************************************************
+ * Public Functions
+ ************************************************************************************/
 
 #endif // __INCLUDE_NUTTX_USB_USB_H
