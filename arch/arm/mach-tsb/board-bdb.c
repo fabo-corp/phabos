@@ -178,6 +178,16 @@ static struct gb_device gb_i2c_device = {
     },
 };
 
+static struct gb_device gb_control_device = {
+    .real_device = NULL,
+
+    .device = {
+        .name = "gb-control-all-protocols",
+        .description = "Greybus Control Protocol",
+        .driver = "gb-control",
+    },
+};
+
 static struct gpio_device gpio_device = {
 #if defined(CONFIG_TSB_ES1)
     .count = 16,

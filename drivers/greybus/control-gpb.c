@@ -164,24 +164,23 @@ static struct gb_operation_handler gb_control_handlers[] = {
     GB_HANDLER(GB_CONTROL_TYPE_DISCONNECTED, gb_control_disconnected),
 };
 
-struct gb_driver control_driver = {
+static struct gb_driver control_driver = {
     .op_handlers = (struct gb_operation_handler*) gb_control_handlers,
     .op_handlers_count = ARRAY_SIZE(gb_control_handlers),
 };
 
-void gb_control_register(int cport)
-{
-    gb_register_driver(cport, &control_driver);
-    gb_listen(cport);
-}
-
 static int gb_control_init(struct driver *driver)
 {
-    gb_control_register(2);
-    return 0;
+    int retval;
+
+    retval = gb_register_driver(2, &control_driver);
+    if (retval)
+        return retval;
+
+    return gb_listen(cport);
 }
 
-__driver__ struct driver gb_driver = {
+__driver__ struct driver gb_control_driver = {
     .name = "gb-control-gpb",
     .init = gb_control_init,
 };
