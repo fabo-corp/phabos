@@ -24,6 +24,12 @@ void init(void *data)
         xstr(CONFIG_INIT_TASK_NAME),
         NULL
     };
+
+    syscall_init();
+    devfs_init();
+    fs_init();
+    driver_init();
+
     CONFIG_INIT_TASK_NAME(1, argv);
 
     while (1);
@@ -40,11 +46,7 @@ void main(void)
     kprintf("booting phabos...\n");
 
     task_init();
-    syscall_init();
     sched_init();
-    devfs_init();
-    fs_init();
-    driver_init();
 
     task_run(init, NULL, 0);
 }
