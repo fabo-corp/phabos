@@ -59,6 +59,11 @@ typedef void (*gb_operation_fast_handler_t)(unsigned int cport, void *data);
         .fast_handler = h, \
     }
 
+struct gb_manifest {
+    void *data;
+    size_t size;
+};
+
 struct gb_operation_handler {
     uint8_t type;
     gb_operation_handler_t handler;
