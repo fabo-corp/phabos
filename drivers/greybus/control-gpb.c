@@ -29,47 +29,17 @@
  */
 
 #include <string.h>
+#include <errno.h>
 
 #include <asm/byteordering.h>
 #include <phabos/greybus.h>
+#include <phabos/assert.h>
 
 #include "control-gb.h"
 
-unsigned char manifests_all_modules_mnfb[] = {
-  0xb4, 0x00, 0x00, 0x01, 0x08, 0x00, 0x01, 0x00, 0x01, 0x02, 0x00, 0x00,
-  0x14, 0x00, 0x02, 0x00, 0x0b, 0x01, 0x50, 0x72, 0x6f, 0x6a, 0x65, 0x63,
-  0x74, 0x20, 0x41, 0x72, 0x61, 0x00, 0x00, 0x00, 0x14, 0x00, 0x02, 0x00,
-  0x0b, 0x02, 0x41, 0x6c, 0x6c, 0x20, 0x4d, 0x6f, 0x64, 0x75, 0x6c, 0x65,
-  0x73, 0x00, 0x00, 0x00, 0x08, 0x00, 0x04, 0x00, 0x02, 0x00, 0x00, 0x00,
-  0x08, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x04, 0x00,
-  0x03, 0x00, 0x01, 0x02, 0x08, 0x00, 0x04, 0x00, 0x04, 0x00, 0x01, 0x03,
-  0x08, 0x00, 0x04, 0x00, 0x05, 0x00, 0x01, 0x04, 0x08, 0x00, 0x04, 0x00,
-  0x06, 0x00, 0x01, 0x06, 0x08, 0x00, 0x04, 0x00, 0x07, 0x00, 0x01, 0x07,
-  0x08, 0x00, 0x04, 0x00, 0x08, 0x00, 0x01, 0x08, 0x08, 0x00, 0x04, 0x00,
-  0x09, 0x00, 0x01, 0x09, 0x08, 0x00, 0x04, 0x00, 0x0a, 0x00, 0x01, 0x0a,
-  0x08, 0x00, 0x04, 0x00, 0x0b, 0x00, 0x01, 0x0b, 0x08, 0x00, 0x04, 0x00,
-  0x0c, 0x00, 0x01, 0x10, 0x08, 0x00, 0x04, 0x00, 0x0d, 0x00, 0x01, 0x11,
-  0x08, 0x00, 0x04, 0x00, 0x0e, 0x00, 0x01, 0x12, 0x08, 0x00, 0x04, 0x00,
-  0x0f, 0x00, 0x01, 0x13, 0x08, 0x00, 0x03, 0x00, 0x01, 0x01, 0x00, 0x00
-};
+#define CONTROL_CPORT 2
 
-static inline size_t manifest_get_size(void)
-{
-#if 0
-    extern uint32_t _manifest_size;
-    return (size_t) &_manifest_size;
-#endif
-    return ARRAY_SIZE(manifests_all_modules_mnfb);
-}
-
-static inline void *manifest_get_data(void)
-{
-#if 0
-    extern uint32_t _manifest;
-    return &_manifest;
-#endif
-    return manifests_all_modules_mnfb;
-}
+static struct gb_manifest *manifest;
 
 static uint8_t gb_control_protocol_version(struct gb_operation *operation)
 {
@@ -102,7 +72,7 @@ static uint8_t gb_control_get_manifest_size(struct gb_operation *operation)
     if (!response)
         return GB_OP_NO_MEMORY;
 
-    response->size = cpu_to_le16(manifest_get_size());
+    response->size = cpu_to_le16(manifest->size);
 
     return GB_OP_SUCCESS;
 }
@@ -110,15 +80,14 @@ static uint8_t gb_control_get_manifest_size(struct gb_operation *operation)
 static uint8_t gb_control_get_manifest(struct gb_operation *operation)
 {
     struct gb_control_get_manifest_response *response;
-    int size = manifest_get_size();
 
     kprintf("%s()\n", __func__);
 
-    response = gb_operation_alloc_response(operation, size);
+    response = gb_operation_alloc_response(operation, manifest->size);
     if (!response)
         return GB_OP_NO_MEMORY;
 
-    memcpy(response->data, manifest_get_data(), size);
+    memcpy(response->data, manifest->data, manifest->size);
 
     return GB_OP_SUCCESS;
 }
@@ -131,7 +100,7 @@ static uint8_t gb_control_connected(struct gb_operation *operation)
 
     kprintf("%s()\n", __func__);
 
-    retval = gb_listen(request->cport_id);
+    retval = gb_listen(le16_to_cpu(request->cport_id));
     if (retval) {
         return GB_OP_INVALID;
     }
@@ -147,7 +116,7 @@ static uint8_t gb_control_disconnected(struct gb_operation *operation)
 
     kprintf("%s()\n", __func__);
 
-    retval = gb_stop_listening(request->cport_id);
+    retval = gb_stop_listening(le16_to_cpu(request->cport_id));
     if (retval) {
         return GB_OP_INVALID;
     }
@@ -169,18 +138,23 @@ static struct gb_driver control_driver = {
     .op_handlers_count = ARRAY_SIZE(gb_control_handlers),
 };
 
-static int gb_control_init(struct driver *driver)
+static int gb_control_probe(struct device *device)
 {
     int retval;
 
-    retval = gb_register_driver(2, &control_driver);
+    RET_IF_FAIL(device, -EINVAL);
+    RET_IF_FAIL(device->priv, -EINVAL);
+
+    manifest = device->priv;
+
+    retval = gb_register_driver(CONTROL_CPORT, &control_driver);
     if (retval)
         return retval;
 
-    return gb_listen(cport);
+    return gb_listen(CONTROL_CPORT);
 }
 
 __driver__ struct driver gb_control_driver = {
     .name = "gb-control-gpb",
-    .init = gb_control_init,
+    .probe = gb_control_probe,
 };
