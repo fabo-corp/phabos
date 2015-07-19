@@ -204,7 +204,7 @@ static struct gpio_device gpio_device = {
 
 void tsb_uart_init(void)
 {
-    tsb_set_pinshare(TSB_PIN_UART_RXTX | TSB_PIN_UART_CTSRTS);
+    tsb_set_pinshare(TSB_PIN_UART_RXTX);
 
     tsb_clk_enable(TSB_CLK_UARTP);
     tsb_clk_enable(TSB_CLK_UARTS);
