@@ -25,6 +25,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 subdirs-$(CONFIG_GREYBUS_MODULE) += module
+subdirs-$(CONFIG_GREYBUS_AP) += ap
 
 obj-y += greybus-core.o
 obj-y += greybus-unipro.o

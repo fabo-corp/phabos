@@ -29,8 +29,15 @@ choice
 
     config GREYBUS_MODULE
         bool "Module"
+
+    config GREYBUS_AP
+        bool "AP"
 endchoice
 
 if GREYBUS_MODULE
 source drivers/greybus/module/Kconfig
+endif
+
+if GREYBUS_AP
+source drivers/greybus/ap/Kconfig
 endif
