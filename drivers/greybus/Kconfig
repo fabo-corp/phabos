@@ -40,6 +40,9 @@ choice
 
     config GREYBUS_UNIPRO
         bool "UniPro"
+
+    config GREYBUS_USB
+        bool "USB"
 endchoice
 
 if GREYBUS_MODULE
