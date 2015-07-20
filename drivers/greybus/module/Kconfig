@@ -24,7 +24,32 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-subdirs-$(CONFIG_GREYBUS_MODULE) += module
+menu "Module"
 
-obj-y += greybus-core.o
-obj-y += greybus-unipro.o
+config GREYBUS_GPIO
+    bool "GPIO PHY"
+    default y
+    select GPIO
+
+config GREYBUS_I2C
+    bool "I2C PHY"
+    default y
+    select I2C
+
+config GREYBUS_I2S
+    bool "I2S PHY"
+    select ARA_BACKPORT
+
+config GREYBUS_BATTERY
+    bool "Battery Class"
+
+config GREYBUS_VIBRATOR
+    bool "Vibrator Class"
+
+config GREYBUS_LOOPBACK
+    bool "Loopback"
+
+config GREYBUS_CONTROL
+    bool "Control"
+
+endmenu

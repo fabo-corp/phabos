@@ -24,28 +24,13 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-config GREYBUS_GPIO
-    bool "GPIO PHY"
-    default y
-    select GPIO
+choice
+    prompt "Target"
 
-config GREYBUS_I2C
-    bool "I2C PHY"
-    default y
-    select I2C
+    config GREYBUS_MODULE
+        bool "Module"
+endchoice
 
-config GREYBUS_I2S
-    bool "I2S PHY"
-    select ARA_BACKPORT
-
-config GREYBUS_BATTERY
-    bool "Battery Class"
-
-config GREYBUS_VIBRATOR
-    bool "Vibrator Class"
-
-config GREYBUS_LOOPBACK
-    bool "Loopback"
-
-config GREYBUS_CONTROL
-    bool "Control"
+if GREYBUS_MODULE
+source drivers/greybus/module/Kconfig
+endif

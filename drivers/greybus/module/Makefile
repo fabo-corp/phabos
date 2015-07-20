@@ -24,7 +24,12 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-subdirs-$(CONFIG_GREYBUS_MODULE) += module
+CFLAGS += -Idrivers/greybus/
 
-obj-y += greybus-core.o
-obj-y += greybus-unipro.o
+obj-$(CONFIG_GREYBUS_GPIO) += gpio.o
+obj-$(CONFIG_GREYBUS_I2C) += i2c.o
+obj-$(CONFIG_GREYBUS_I2S) += i2s.o
+obj-$(CONFIG_GREYBUS_BATTERY) += battery.o
+obj-$(CONFIG_GREYBUS_VIBRATOR) += vibrator.o
+obj-$(CONFIG_GREYBUS_LOOPBACK) += loopback.o
+obj-$(CONFIG_GREYBUS_CONTROL) += control-gpb.o
