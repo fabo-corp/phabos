@@ -28,4 +28,4 @@ subdirs-$(CONFIG_GREYBUS_MODULE) += module
 subdirs-$(CONFIG_GREYBUS_AP) += ap
 
 obj-y += greybus-core.o
-obj-y += greybus-unipro.o
+obj-$(CONFIG_GREYBUS_UNIPRO) += greybus-unipro.o
