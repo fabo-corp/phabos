@@ -4,3 +4,5 @@
 # Provided under the three clause BSD license found in the LICENSE file.
 
 CFLAGS += -Idrivers/greybus/
+
+obj-y += ap.o
