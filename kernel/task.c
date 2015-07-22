@@ -66,7 +66,7 @@ void _exit(int code)
         panic("scheduler: trying to exit from idle task.\n");
 
     task_kill(current);
-    panic("scheduler: reach unreachable...\n");
+    panic("_exit: reach unreachable...\n");
 }
 
 struct task *task_create(void)
@@ -173,7 +173,7 @@ void task_kill(struct task *task)
         irq_enable(); // FIXME: force enable the interrupts in order for
                       // PendSV to work
         task_exit();
-        panic("scheduler: reach unreachable...\n");
+        panic("task_kill: reach unreachable...\n");
     }
 
     list_del(&task->list);
@@ -184,6 +184,7 @@ void task_kill(struct task *task)
 
 void task_exit(void)
 {
+    sched_rm_from_runqueue(current);
     kill_task = true;
     sched_yield();
 }
