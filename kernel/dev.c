@@ -228,6 +228,10 @@ int dev_main(int argc, char **argv)
     }
 #endif
 
+#if defined(CONFIG_TSB_APB1)
+    bridge_main(argc, argv);
+#endif
+
     int shell_main(int argc, char **argv);
     shell_main(argc, argv);
     return 0;

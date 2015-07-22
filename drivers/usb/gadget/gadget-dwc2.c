@@ -63,6 +63,8 @@
 #define SNPSID_OTG2 0x4F542000
 #define SNPSID_OTG3 0x4F543000
 
+#define CONFIG_USBDEV_DMA
+
 #if defined(CONFIG_TSB_CHIP_REV_ES1)
 #define DWC_NENDPOINTS        (5)
 #else

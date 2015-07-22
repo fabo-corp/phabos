@@ -35,9 +35,9 @@
 #include "svc-emu.h"
 
 // XXX phabos porting
-#define gb_debug(x...)
-#define gb_info(x...)
-#define gb_error(x...)
+#define gb_debug kprintf
+#define gb_info kprintf
+#define gb_error kprintf
 
 static int state = GBEMU_IDLE;
 static struct semaphore svc_lock;

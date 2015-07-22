@@ -59,6 +59,10 @@ endchoice
 choice
     prompt "Bridge configuration"
 
+    config TSB_APB1
+        bool "APB1"
+        depends on TSB_BOARD_BDB
+
     config TSB_APB2
         bool "APB2"
         depends on TSB_BOARD_BDB

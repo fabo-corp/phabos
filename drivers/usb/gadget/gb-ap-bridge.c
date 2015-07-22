@@ -66,6 +66,7 @@
 #define DEBUGASSERT(x)
 #define CONFIG_APBRIDGE_VENDORID 0xffff
 #define CONFIG_APBRIDGE_PRODUCTID 0x1
+#define CONFIG_TSB_CHIP_REV_ES1
 
 static size_t list_count(struct list_head *head)
 {
@@ -1403,9 +1404,6 @@ static int usbclass_setup(struct usbdevclass_driver_s *driver,
     value = GETUINT16(ctrl->value);
     index = GETUINT16(ctrl->index);
     len = GETUINT16(ctrl->len);
-
-    kprintf("type=%02x req=%02x value=%04x index=%04x len=%04x\n",
-            ctrl->type, ctrl->req, value, index, len);
 
     switch (ctrl->type & USB_REQ_TYPE_MASK) {
      /***********************************************************************
