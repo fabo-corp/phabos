@@ -56,6 +56,8 @@ static uint8_t gb_gpio_line_count(struct gb_operation *operation)
     struct gb_gpio_line_count_response *response;
     int count;
 
+    kprintf("%s()\n", __func__);
+
     response = gb_operation_alloc_response(operation, sizeof(*response));
     if (!response)
         return GB_OP_NO_MEMORY;
