@@ -215,7 +215,14 @@ static void irq_rx_eom(int irq, void *data) {
     struct cport *cport = irqn_to_cport(irq);
     data = cport->rx_buf;
 
-    RET_IF_FAIL(cport->driver,);
+    clear_rx_interrupt(cport);
+
+    if (!cport->driver) {
+        lldbg("dropping message on cport %hu where no driver is registered\n",
+              cport->cportid);
+        return;
+    }
+
     DBG_UNIPRO("cport: %u driver: %s payload=0x%x\n",
                 cport->cportid,
                 cport->driver->name,
@@ -227,8 +234,11 @@ static void irq_rx_eom(int irq, void *data) {
          */
         cport->driver->rx_handler(cport->cportid, data, CPORT_BUF_SIZE);
     }
+}
 
-    clear_rx_interrupt(cport);
+int unipro_unpause_rx(unsigned int cportid)
+{
+    return -ENOSYS;
 }
 
 /**
@@ -463,6 +473,19 @@ void unipro_init(void) {
     lldbg("UniPro enabled\n");
 }
 
+int unipro_send_async(unsigned int cportid, const void *buf, size_t len,
+                      unipro_send_completion_t callback, void *priv)
+{
+    int retval;
+
+    retval = unipro_send(cportid, buf, len);
+
+    if (callback)
+        callback(retval, buf, priv);
+
+    return 0;
+}
+
 /**
  * @brief send data down a CPort
  * @param cportid cport to send down
@@ -574,11 +597,6 @@ int unipro_driver_register(struct unipro_driver *driver, unsigned int cportid) {
     if (cport->driver) {
         lldbg("ERROR: Already registered by: %s\n", cport->driver->name);
         return -EEXIST;
-    }
-
-    if (!cport->connected) {
-        lldbg("ERROR: driver: %s -- CP%u not connected\n", driver->name, cportid);
-        return -ENOTCONN;
     }
 
     cport->driver = driver;
