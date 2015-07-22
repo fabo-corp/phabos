@@ -168,13 +168,24 @@ static struct i2c_dev dw_i2c_device = {
 };
 
 static struct gb_device gb_i2c_device = {
-    .cport = 3,
+    .cport = 4,
     .real_device = &dw_i2c_device.device,
 
     .device = {
         .name = "gb-dw-i2c",
         .description = "Greybus I2C PHY device",
         .driver = "gb-i2c-phy",
+    },
+};
+
+static struct gb_device gb_gpio_device = {
+    .cport = 3,
+    .real_device = &dw_i2c_device.device,
+
+    .device = {
+        .name = "gb-gpio",
+        .description = "Greybus GPIO PHY device",
+        .driver = "gb-gpio-phy",
     },
 };
 
@@ -268,5 +279,6 @@ void machine_init(void)
     device_register(&dw_i2c_device.device);
 
     device_register(&gb_control_device.device);
+    device_register(&gb_gpio_device.device);
     device_register(&gb_i2c_device.device);
 }
