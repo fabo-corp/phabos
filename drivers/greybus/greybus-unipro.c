@@ -40,7 +40,7 @@ static struct unipro_driver greybus_driver = {
 
 static int gb_unipro_listen(unsigned int cport)
 {
-#if 0
+#if 1
     int ret;
 
     do {
@@ -49,6 +49,7 @@ static int gb_unipro_listen(unsigned int cport)
             ret = unipro_driver_register(&greybus_driver, cport);
         else
             mdelay(200);
+        kprintf("loop\n");
     } while (ret == -ENOTCONN);
     return ret;
 #else
