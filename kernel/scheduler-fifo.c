@@ -65,10 +65,22 @@ static int sched_fifo_enqueue_task(struct task *task)
     return 0;
 }
 
+static int sched_fifo_dequeue_task(struct task *task)
+{
+    RET_IF_FAIL(task, -EINVAL);
+
+    spinlock_lock(&fifo_runqueue_lock);
+    list_del(&task->list);
+    spinlock_unlock(&fifo_runqueue_lock);
+
+    return 0;
+}
+
 struct sched_policy sched_fifo_policy = {
     .init = sched_fifo_init,
     .pick_task = sched_fifo_pick_task,
     .enqueue_task = sched_fifo_enqueue_task,
+    .dequeue_task = sched_fifo_dequeue_task,
     .get_priority_min = sched_fifo_get_priority_min,
     .get_priority_max = sched_fifo_get_priority_max,
 };
