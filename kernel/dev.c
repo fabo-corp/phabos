@@ -153,34 +153,10 @@ int dev_main(int argc, char **argv)
 {
     int retval;
 
-    extern struct fs ramfs_fs;
-    extern struct fs devfs_fs;
-
-    fs_register(&ramfs_fs);
-    fs_register(&devfs_fs);
-
 #ifdef CONFIG_BINFS
     extern struct fs binfs_fs;
     fs_register(&binfs_fs);
 #endif
-
-    retval = mount(NULL, NULL, "ramfs", 0, NULL);
-    if (retval < 0)
-        kprintf("failed to mount the ramfs: %s\n", strerror(errno));
-
-    retval = mkdir("/dev", 0);
-    if (retval)
-        kprintf("mkdir: %s\n", strerror(errno));
-
-    device_driver_probe_all();
-
-    retval = mount(NULL, "/dev", "devfs", 0, NULL);
-    if (retval < 0)
-        kprintf("failed to mount devfs: %s\n", strerror(errno));
-
-    open("/dev/ttyS0", 0);
-    open("/dev/ttyS0", 0);
-    open("/dev/ttyS0", 0);
 
 //    gb_gpio_register(3);
 

@@ -12,13 +12,52 @@
 #include <phabos/syscall.h>
 #include <phabos/driver.h>
 #include <phabos/task.h>
+#include <phabos/panic.h>
+
+#include <errno.h>
+#include <string.h>
 
 int CONFIG_INIT_TASK_NAME(int argc, char **argv);
 
 #define xstr(s) str(s)
 #define str(s) #s
 
-void init(void *data)
+static void rootfs_init(void)
+{
+    int retval;
+    extern struct fs ramfs_fs;
+    extern struct fs devfs_fs;
+
+    fs_register(&ramfs_fs);
+    fs_register(&devfs_fs);
+
+    retval = mount(NULL, NULL, "ramfs", 0, NULL);
+    if (retval < 0) {
+        kprintf("failed to mount the ramfs: %s\n", strerror(errno));
+        panic("Cannot initialize kernel\n");
+    }
+
+    retval = mkdir("/dev", 0);
+    if (retval) {
+        kprintf("mkdir: %s\n", strerror(errno));
+        panic("Cannot initialize kernel\n");
+    }
+
+    retval = mount(NULL, "/dev", "devfs", 0, NULL);
+    if (retval < 0) {
+        kprintf("failed to mount devfs: %s\n", strerror(errno));
+        panic("Cannot initialize kernel\n");
+    }
+}
+
+static void open_std_fds(void)
+{
+    open("/dev/ttyS0", 0);
+    open("/dev/ttyS0", 0);
+    open("/dev/ttyS0", 0);
+}
+
+static void init(void *data)
 {
     char* argv[] = {
         xstr(CONFIG_INIT_TASK_NAME),
@@ -29,6 +68,10 @@ void init(void *data)
     devfs_init();
     fs_init();
     driver_init();
+    rootfs_init();
+
+    device_driver_probe_all();
+    open_std_fds();
 
     CONFIG_INIT_TASK_NAME(1, argv);
 
