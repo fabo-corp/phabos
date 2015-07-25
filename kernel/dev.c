@@ -151,8 +151,6 @@ __attribute__((unused)) static void dev(void)
 
 int dev_main(int argc, char **argv)
 {
-    int retval;
-
 #ifdef CONFIG_BINFS
     extern struct fs binfs_fs;
     fs_register(&binfs_fs);
