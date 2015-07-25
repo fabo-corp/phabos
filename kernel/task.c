@@ -28,7 +28,7 @@ void task_init(void)
     hashtable_init_uint(&task_table);
 }
 
-static struct task *find_task_by_id(int id)
+struct task *find_task_by_id(int id)
 {
     struct task *task;
 

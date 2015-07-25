@@ -27,6 +27,12 @@
 #define SYS_UMOUNT                      52
 #define SYS_MMAP                        90
 #define SYS_GETDENTS                    141
+#define SYS_SCHED_SETSCHEDULER          156
+#define SYS_SCHED_GETSCHEDULER          157
+#define SYS_SCHED_YIELD                 158
+#define SYS_SCHED_GET_PRIORITY_MAX      159
+#define SYS_SCHED_GET_PRIORITY_MIN      160
+#define SYS_SCHED_RR_GET_INTERVAL       161
 
 #define SYS_SPAWN                       0xfab0
 

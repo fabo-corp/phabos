@@ -24,6 +24,7 @@ extern bool kill_task;
 
 struct task {
     int id;
+    pid_t ppid;
     int priority;
     uint16_t state;
     hashtable_t fd;
