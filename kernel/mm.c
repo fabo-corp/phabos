@@ -14,6 +14,7 @@
 static volatile unsigned int region;
 static struct spinlock mm_lock = SPINLOCK_INIT(mm_lock);
 static struct list_head mm_bucket[MAX_ADDRESSABLE_MEM_ORDER + 1];
+static bool is_initialized;
 
 struct mm_buffer {
     uint8_t bucket;
@@ -46,7 +47,6 @@ int size_to_order(size_t size)
 
 int mm_add_region(unsigned long addr, unsigned order, unsigned int flags)
 {
-    static bool is_initialized = false;
     struct mm_buffer *buffer;
 
     RET_IF_FAIL(order >= MIN_REGION_ORDER, -EINVAL);
@@ -201,6 +201,10 @@ void *kmalloc(size_t size, unsigned int flags)
     if (!size)
         return NULL;
 
+    if (!is_initialized) {
+        return malloc(size);
+    }
+
     size += sizeof(*buffer);
 
     order = size_to_order(size);
@@ -233,6 +237,11 @@ void kfree(void *ptr)
 
     if (!ptr)
         return;
+
+    if (!is_initialized) {
+        free(ptr);
+        return;
+    }
 
     buffer = (struct mm_buffer*) ((char *) ptr - sizeof(*buffer));
     RET_IF_FAIL(buffer->list.prev == buffer->list.next,);
