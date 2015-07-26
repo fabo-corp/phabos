@@ -270,8 +270,10 @@ void machine_init(void)
 
     tsb_uart_init();
 
+#if defined(CONFIG_ARA_BACKPORT)
     int tsb_device_table_register(void);
     tsb_device_table_register();
+#endif
 
     device_register(&gpio_device.device);
     device_register(&uart16550_device.device);
