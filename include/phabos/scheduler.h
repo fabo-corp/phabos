@@ -22,6 +22,10 @@ extern bool kill_task;
 
 #define TASK_RUNNING                    (1 << 1)
 
+struct task_cond {
+    struct list_head wait_list;
+};
+
 struct task {
     int id;
     pid_t ppid;
@@ -32,12 +36,11 @@ struct task {
     register_t registers[MAX_REG];
     void *allocated_stack;
 
+    struct task_cond wait_cond;
+    struct mutex wait_mutex;
+
     struct sched_policy *policy;
     struct list_head list;
-};
-
-struct task_cond {
-    struct list_head wait_list;
 };
 
 struct sched_policy {
