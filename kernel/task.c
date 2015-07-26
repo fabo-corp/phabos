@@ -90,6 +90,7 @@ void task_cond_wait(struct task_cond* cond, struct mutex *mutex)
 {
     mutex_unlock(mutex);
     task_add_to_wait_list(task_get_running(), &cond->wait_list);
+    sched_yield();
     mutex_lock(mutex);
 }
 
