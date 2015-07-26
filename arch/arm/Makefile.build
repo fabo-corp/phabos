@@ -27,3 +27,9 @@ ifeq ($(CONFIG_CPU_ARM_CORTEX_M3),y)
 	CFLAGS  += -mtune=cortex-m3
 	ASFLAGS += -mtune=cortex-m3
 endif
+
+ifeq ($(CONFIG_CPU_ARM_CORTEX_M4),y)
+	ARCH_ID := $(ARCH_ID)-cm4
+	CFLAGS  += -mtune=cortex-m4
+	ASFLAGS += -mtune=cortex-m4
+endif

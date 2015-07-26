@@ -35,6 +35,7 @@
 #include <config.h>
 
 #include <asm/delay.h>
+#include <asm/gpio.h>
 #include <phabos/sleep.h>
 
 #include <errno.h>

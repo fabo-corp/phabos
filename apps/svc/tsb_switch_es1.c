@@ -32,11 +32,9 @@
 
 #define DBG_COMP    DBG_SWITCH
 
-#include <nuttx/config.h>
-#include <nuttx/arch.h>
-#include <nuttx/i2c.h>
+#include <phabos/i2c.h>
 
-#include <arch/byteorder.h>
+#include <asm/byteordering.h>
 
 #include <errno.h>
 #include <string.h>
@@ -56,13 +54,13 @@ static int es1_transfer(struct tsb_switch *sw,
                         size_t tx_size,
                         uint8_t *rx_buf,
                         size_t rx_size) {
-    struct i2c_dev_s *i2c_dev = sw->priv;
+    struct i2c_dev *i2c_dev = sw->priv;
     int rc;
 
     dbg_insane("\t%s(): TX buffer:\n", __func__);
     dbg_print_buf(DBG_INSANE, tx_buf, tx_size);
 
-    struct i2c_msg_s msgs[] = {
+    struct i2c_msg msgs[] = {
         {
             .addr = ES1_I2C_ADDR,
             .flags = 0,

@@ -37,6 +37,12 @@
 #define DBG_COMP DBG_DBG    /* DBG_COMP macro of the component */
 
 #include "up_debug.h"
+#include <asm/gpio.h>
+
+#define LED_EN                  (GPIO_OUTPUT|GPIO_OPENDRAIN)
+#define GPIO_R_LED_EN           (LED_EN|GPIO_PORTA|GPIO_PIN7)      // PA7
+#define GPIO_G_LED_EN           (LED_EN|GPIO_PORTB|GPIO_PIN0)      // PB0
+#define GPIO_B_LED_EN           (LED_EN|GPIO_PORTB|GPIO_PIN1)      // PB1
 
 /* Debug control internal data */
 dbg_ctrl_t dbg_ctrl = { DBG_ALL, DBG_INFO };

@@ -25,6 +25,10 @@ config CPU_ARM_CORTEX_M3
     bool
     select CPU_ARMV7M
 
+config CPU_ARM_CORTEX_M4
+    bool
+    select CPU_ARMV7M
+
 config BIG_ENDIAN
     bool
 
@@ -39,6 +43,9 @@ choice
 
     config MACH_STELLARIS
         bool "TI Stellaris"
+
+    config MACH_STM32
+        bool "STM32"
 endchoice
 
 if MACH_TSB
@@ -47,6 +54,10 @@ endif
 
 if MACH_STELLARIS
 source "arch/$ARCH/mach-stellaris/Kconfig"
+endif
+
+if MACH_STM32
+source "arch/$ARCH/mach-stm32/Kconfig"
 endif
 
 config ARCH_HAS_SCHEDULER_WATCHDOG

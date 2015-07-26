@@ -1,0 +1,34 @@
+# Copyright (C) 2015 Fabien Parent. All rights reserved.
+# Author: Fabien Parent <parent.f@gmail.com>
+#
+# Provided under the three clause BSD license found in the LICENSE file.
+
+config MACH_NAME
+    string
+    default "stm32"
+
+config STM32_COMMON
+    bool
+    default y
+    select LITTLE_ENDIAN
+
+config STM32F4
+    bool
+    select STM32_COMMON
+    select CPU_ARM_CORTEX_M4
+
+config STM32F417XX
+    bool
+    select STM32F4
+
+choice
+    prompt "Board"
+
+    config BOARD_ARA_SVC
+        bool "ARA SVC"
+        select STM32F417XX
+endchoice
+
+config MACH_LINKER_SCRIPT
+    string
+    default "stm32f417xx"

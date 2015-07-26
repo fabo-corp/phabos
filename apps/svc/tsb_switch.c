@@ -32,25 +32,23 @@
  */
 
 #define DBG_COMP    DBG_SWITCH
-#include <nuttx/config.h>
-#include <nuttx/arch.h>
-#include <nuttx/greybus/unipro.h>
+#include <config.h>
+
+#include <asm/gpio.h>
+#include <phabos/greybus/unipro.h>
+#include <phabos/utils.h>
+#include <phabos/scheduler.h>
+
 #include <errno.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <nuttx/util.h>
-
-#include "stm32.h"
 #include "up_debug.h"
 #include "tsb_switch.h"
 #include "vreg.h"
 #include "tsb_switch_driver_es1.h"
 #include "tsb_switch_driver_es2.h"
-
-#define IRQ_WORKER_DEFPRIO          50
-#define IRQ_WORKER_STACKSIZE        2048
 
 #define SWITCH_SETTLE_TIME_S        (1)
 
@@ -1347,55 +1345,44 @@ int switch_configure_link(struct tsb_switch *sw,
 /* Post a message to the IRQ worker */
 int switch_post_irq(struct tsb_switch *sw)
 {
-    sem_post(&sw->sw_irq_lock);
+    semaphore_up(&sw->sw_irq_lock);
 
     return 0;
 }
 
 /* IRQ worker */
-static int switch_irq_pending_worker(int argc, char *argv[])
+static void switch_irq_pending_worker(void *data)
 {
-    struct tsb_switch *sw = (struct tsb_switch *) strtol(argv[1], NULL, 16);
+    struct tsb_switch *sw = data;
 
     if (!sw) {
         dbg_error("%s: no Switch context\n", __func__);
-        return ERROR;
+        return;
     }
 
     while (!sw->sw_irq_worker_exit) {
 
-        sem_wait(&sw->sw_irq_lock);
+        semaphore_down(&sw->sw_irq_lock);
         if (sw->sw_irq_worker_exit)
             break;
 
         /* Calls the low level handler to clear the interrupt source */
         switch_irq_handler(sw);
     }
-
-    return 0;
 }
 
 /* IRQ worker creation */
 static int create_switch_irq_worker(struct tsb_switch *sw)
 {
-    const char* argv[2];
-    char buf[16];
-    int ret;
+    struct task *task;
 
-    sprintf(buf, "%p", sw);
-    argv[0] = buf;
-    argv[1] = NULL;
-
-    ret = task_create("switch_irq_worker",
-                      IRQ_WORKER_DEFPRIO, IRQ_WORKER_STACKSIZE,
-                      switch_irq_pending_worker,
-                      (char * const*) argv);
-    if (ret == ERROR) {
+    task = task_run(switch_irq_pending_worker, sw, 0);
+    if (!task) {
         dbg_error("%s: Failed to create IRQ worker\n", __func__);
-        return ERROR;
+        return -EINVAL;
     }
 
-    sw->worker_id = ret;
+    sw->worker_id = task->id;
 
     return 0;
 }
@@ -1406,7 +1393,7 @@ static int destroy_switch_irq_worker(struct tsb_switch *sw)
     int ret = 0, status;
 
     sw->sw_irq_worker_exit = true;
-    sem_post(&sw->sw_irq_lock);
+    semaphore_up(&sw->sw_irq_lock);
 
     ret = waitpid(sw->worker_id, &status, 0);
     if (ret < 0)
@@ -1437,7 +1424,7 @@ struct tsb_switch *switch_init(struct tsb_switch_data *pdata) {
     }
 
     sw->pdata = pdata;
-    sem_init(&sw->sw_irq_lock, 0, 0);
+    semaphore_init(&sw->sw_irq_lock, 0);
     sw->sw_irq_worker_exit = false;
 
     list_init(&sw->listeners);
@@ -1562,10 +1549,9 @@ int switch_event_register_listener(struct tsb_switch *sw,
 int tsb_switch_event_notify(struct tsb_switch *sw,
                             struct tsb_switch_event *event) {
 
-    struct list_head *node, *next;
     struct tsb_switch_event_listener *l;
 
-    list_foreach_safe(&sw->listeners, node, next) {
+    list_foreach_safe(&sw->listeners, node) {
         l = list_entry(node, struct tsb_switch_event_listener, entry);
         if (l->cb) {
             l->cb(event);

@@ -1,12 +1,13 @@
 #obj-y += ina230.o
 obj-y += tsb_es2_mphy_fixups.o
 obj-y += vreg.o
-#obj-y += interface.o
-#obj-y += up_debug.o
-obj-y += up_spring_pm.o
+obj-y += interface.o
+obj-y += up_debug.o
+obj-y += tsb_switch.o
+obj-y += tsb_switch_es1.o
+#obj-y += up_spring_pm.o
 
 #CSRCS		= up_boot.c svc.c
-#CSRCS		+= tsb_switch.c
 #CSRCS		+= tsb_switch_es1.c
 #CSRCS		+= tsb_switch_es2.c
 

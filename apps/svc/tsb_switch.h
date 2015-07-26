@@ -35,8 +35,10 @@
 #define  _TSB_SWITCH_H_
 
 #include <phabos/list.h>
-#include <nuttx/greybus/unipro.h>
-#include <nuttx/greybus/tsb_unipro.h>
+#include <phabos/semaphore.h>
+
+#include <phabos/greybus/unipro.h>
+#include <phabos/greybus/tsb_unipro.h>
 
 /* Switch internal attributes */
 #define SWVER                       (0x0000)
@@ -252,7 +254,7 @@ struct tsb_switch {
     struct tsb_switch_ops   *ops;
     struct vreg             *vreg;
     struct tsb_switch_data  *pdata;
-    sem_t                   sw_irq_lock;
+    struct semaphore        sw_irq_lock;
     int                     worker_id;
     bool                    sw_irq_worker_exit;
     uint8_t                 dev_ids[SWITCH_PORT_MAX];
