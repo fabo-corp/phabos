@@ -1,6 +1,9 @@
 #include <asm/hwio.h>
 #include <asm/delay.h>
+
 #include <phabos/kprintf.h>
+#include <phabos/driver.h>
+#include <phabos/serial/uart.h>
 
 #define STM32_USART1_BASE   0x40011000
 #define STM32_GPIOB_BASE    0x40020400
@@ -24,6 +27,22 @@
 #define STM32_USART1_BRR    (STM32_USART1_BASE + 0x08)
 #define STM32_USART1_CR1    (STM32_USART1_BASE + 0x0c)
 
+#define STM32_IRQ_USART1    37
+
+static struct uart_device stm32_usart_device = {
+    .device = {
+        .name = "stm32-usart1",
+        .description = "STM32 USART 1",
+        .driver = "stm32-usart",
+
+        .reg_base = STM32_USART1_BASE,
+        .irq = STM32_IRQ_USART1,
+
+    //    .power_on = tsb_hcd_power_on,
+    //    .power_off = tsb_hcd_power_off,
+    },
+};
+
 void machine_init(void)
 {
 //    write32(STM32_RCC_CR, (1 << 24) | 1);
@@ -31,7 +50,6 @@ void machine_init(void)
 //    write32(STM32_RCC_CIR, 0);
 
     read32(STM32_RCC_AHB1ENR) |= 0x3;  // Enable GPIOA and GPIOB
-    mdelay(100);
 //    read32(STM32_RCC_AHB1RSTR) |= 0x3; // Reset GPIOA and GPIOB
 //    mdelay(300);
 
@@ -57,4 +75,6 @@ void machine_init(void)
     write32(STM32_USART1_BRR, (8 << 4) | 11);
     read32(STM32_USART1_CR1) |= (1 << 3) | (1 << 2);
 #endif
+
+    device_register(&stm32_usart_device.device);
 }
