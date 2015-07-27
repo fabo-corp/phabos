@@ -19,3 +19,6 @@ config UART16550_TX_BUFFER_SIZE
     int "TX Buffer Size"
     default "64"
 endif
+
+menuconfig STM32_USART
+    bool "STM32 USART"
