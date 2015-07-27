@@ -18,6 +18,6 @@
 
 void machine_lowputchar(char c)
 {
-    while (!(read32(STM32_USART1_SR) & STM32_USART1_SR_TXE));
+    while ((read32(STM32_USART1_SR) & STM32_USART1_SR_TXE) != STM32_USART1_SR_TXE);
     write32(STM32_USART1_DR, c);
 }
