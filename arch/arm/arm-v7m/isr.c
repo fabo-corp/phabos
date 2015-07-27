@@ -46,7 +46,7 @@ enum exception_handler {
 typedef void (*intr_handler_t)(void);
 
 extern void _eor(void);
-void reset_handler(void) __boot__;
+void _reset_handler(void) __boot__;
 void hardfault_handler(uint32_t *data);
 static void irq_common_isr(void);
 void main(void);
@@ -61,13 +61,13 @@ void analyze_status_registers(void);
 #define __vector__ __attribute__((section(".isr_vector")))
 __vector__ intr_handler_t boot_vector[] = {
     [STACK] = _eor,
-    [RESET_HANDLER] = reset_handler,
+    [RESET_HANDLER] = _reset_handler,
 };
 
 #define __vector_align__ __attribute__((aligned(VTOR_ALIGNMENT)))
 __vector_align__ intr_handler_t intr_vector[LAST_HANDLER + 1] = {
     [STACK] = _eor,
-    [RESET_HANDLER] = reset_handler,
+    [RESET_HANDLER] = _reset_handler,
     [NMI_HANDLER] = irq_common_isr,
     [HARD_FAULT_HANDLER] = _hardfault_handler,
 #ifdef CONFIG_MPU
@@ -156,13 +156,12 @@ static void _start(void)
     }
 }
 
-__boot__ void reset_handler(void)
+__boot__ void _reset_handler(void)
 {
 #ifdef CONFIG_BOOT_COPYTORAM
     extern void bootstrap(void);
     bootstrap();
 #endif
-    asm volatile("mov r13, %0" ::"r"(_eor));
     _start();
 }
 

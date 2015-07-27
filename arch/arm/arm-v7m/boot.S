@@ -6,10 +6,20 @@
  */
 
 .global bootstrap
+.global reset_handler
 .extern _text_lma, _text_vma, _text_size
 .extern _boot_text_lma, _boot_text_vma, _boot_text_size
+.extern _eor
+.extern _reset_handler
 .syntax unified
 .thumb
+
+.section .text, "ax"
+.align 4
+
+reset_handler:
+    ldr r13, =_eor
+    b _reset_handler
 
 .section .boot.text, "ax"
 .align 4
