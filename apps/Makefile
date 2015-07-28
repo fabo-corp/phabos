@@ -1,6 +1,6 @@
 subdirs-$(CONFIG_MACH_TSB) += tsb
 subdirs-$(CONFIG_TSB_APB1) += apbridgea
-#subdirs-$(CONFIG_BOARD_ARA_SVC) += svc
+subdirs-$(CONFIG_BOARD_ARA_SVC) += svc
 
 obj-$(CONFIG_UNIPRO) += unipro.o
 obj-$(CONFIG_GPIO) += gpio.o

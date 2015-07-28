@@ -28,17 +28,17 @@
 
 #define DBG_COMP DBG_SVC
 
-#include <nuttx/config.h>
-#include <nuttx/arch.h>
-#include <nuttx/util.h>
-#include <nuttx/greybus/unipro.h>
+// XXX porting to phabos
+#define CONFIG_SVC_ROUTE_DEFAULT
 
-#include <apps/greybus-utils/utils.h>
+#include <config.h>
 
-#include <arch/board/board.h>
+#include <phabos/greybus/unipro.h>
+#include <phabos/scheduler.h>
+
+#include <apps/apbridgea/utils.h>
 
 #include <sys/wait.h>
-#include <apps/nsh.h>
 
 #include "string.h"
 #include "ara_board.h"
@@ -375,9 +375,7 @@ static int svcd_cleanup(void) {
 }
 
 
-static int svcd_main(int argc, char **argv) {
-    (void)argc;
-    (void)argv;
+static void svcd_main(void *data) {
     int rc = 0;
 
     pthread_mutex_lock(&svc->lock);
@@ -400,7 +398,6 @@ static int svcd_main(int argc, char **argv) {
 done:
     svcd_set_state(SVC_STATE_STOPPED);
     pthread_mutex_unlock(&svc->lock);
-    return rc;
 }
 
 /*
@@ -425,11 +422,11 @@ int svc_init(int argc, char **argv) {
     /*
      * Now start the shell.
      */
-    return nsh_main(argc, argv);
+    return shell_main(argc, argv);
 }
 
 int svcd_start(void) {
-    int rc;
+    struct task *task;
 
     pthread_mutex_lock(&svc->lock);
     dbg_info("starting svcd\n");
@@ -439,12 +436,12 @@ int svcd_start(void) {
         return -EBUSY;
     }
 
-    rc = task_create("svcd", SVCD_PRIORITY, SVCD_STACK_SIZE, svcd_main, NULL);
-    if (rc == ERROR) {
+    task = task_run(svcd_main, NULL, 0);
+    if (!task) {
         dbg_error("failed to start svcd\n");
-        return rc;
+        return -ENOMEM;
     }
-    svc->svcd_pid = rc;
+    svc->svcd_pid = task->id;
 
     svc->stop = 0;
     svcd_set_state(SVC_STATE_RUNNING);

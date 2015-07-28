@@ -69,7 +69,7 @@ static int es1_transfer(struct tsb_switch *sw,
         },
         {
             .addr = ES1_I2C_ADDR,
-            .flags = I2C_M_READ,
+            .flags = I2C_READ,
             .buffer = rx_buf,
             .length = rx_size,
         }

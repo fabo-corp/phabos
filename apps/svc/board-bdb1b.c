@@ -32,20 +32,16 @@
 
 #define DBG_COMP DBG_SVC     /* DBG_COMP macro of the component */
 
-#include <nuttx/config.h>
-#include <nuttx/arch.h>
-#include <nuttx/util.h>
-#include <nuttx/i2c.h>
-
-#include "nuttx/gpio/stm32_gpio_chip.h"
-#include "nuttx/gpio/tca64xx.h"
+#include <asm/delay.h>
+#include <asm/gpio.h>
+#include <phabos/gpio.h>
+#include <phabos/gpio/tca64xx.h>
+#include <phabos/utils.h>
 
 #include "up_debug.h"
 #include "ara_board.h"
 #include "interface.h"
 #include "tsb_switch_driver_es1.h"
-#include "stm32.h"
-#include <up_adc.h>
 
 #define SWITCH_I2C_BUS      (2)
 
@@ -100,6 +96,7 @@
 /* ADC Channels and GPIOs used for Spring Current Measurements */
 #define SPRING_COUNT            8
 
+#if 0 // XXX phabos
 #define SPRING1_ADC             ADC1
 #define SPRING2_ADC             ADC1
 #define SPRING3_ADC             ADC1
@@ -117,6 +114,7 @@
 #define SPRING6_SENSE_CHANNEL   14    /* PF4 is ADC3_IN14 */
 #define SPRING7_SENSE_CHANNEL   15    /* PF5 is ADC3_IN15 */
 #define SPRING8_SENSE_CHANNEL   11    /* PC1 is ADC1_IN11 */
+#endif
 
 #define SPRING1_SIGN_PIN (GPIO_INPUT | GPIO_PORTD | GPIO_PIN0)  /* PD0 */
 #define SPRING2_SIGN_PIN (GPIO_INPUT | GPIO_PORTG | GPIO_PIN0)  /* PG0 */
@@ -189,6 +187,7 @@ DECLARE_INTERFACE(gpb1, gpb1_vreg_data, 3, WAKEOUT_GPB1);
 DECLARE_INTERFACE(gpb2, gpb2_vreg_data, 4, WAKEOUT_GPB2);
 
 #define SPRING_INTERFACES_COUNT     8
+#if 0 // phabos
 DECLARE_SPRING_INTERFACE(1, STM32_GPIO_PIN(GPIO_PORTI | GPIO_PIN2), 9,
                          SPRING1_ADC, SPRING1_SENSE_CHANNEL, SPRING1_SIGN_PIN);
 DECLARE_SPRING_INTERFACE(2, STM32_GPIO_PIN(GPIO_PORTF | GPIO_PIN14), 10,
@@ -205,6 +204,7 @@ DECLARE_SPRING_INTERFACE(7, STM32_GPIO_PIN(GPIO_PORTG | GPIO_PIN13), 5,
                          SPRING7_ADC, SPRING7_SENSE_CHANNEL, SPRING7_SIGN_PIN);
 DECLARE_SPRING_INTERFACE(8, STM32_GPIO_PIN(GPIO_PORTG | GPIO_PIN15), 13,
                          SPRING8_ADC, SPRING8_SENSE_CHANNEL, SPRING8_SIGN_PIN);
+#endif
 
 /*
  * NB: always declare first the interfaces, then the spring interfaces.
@@ -216,6 +216,7 @@ static struct interface *bdb1b_interfaces[] = {
     &apb3_interface,
     &gpb1_interface,
     &gpb2_interface,
+#if 0
     &bb1_interface,
     &bb2_interface,
     &bb3_interface,
@@ -224,6 +225,7 @@ static struct interface *bdb1b_interfaces[] = {
     &bb6_interface,
     &bb7_interface,
     &bb8_interface,
+#endif
 };
 
 /*
@@ -312,7 +314,7 @@ struct ara_board_info *board_init(void) {
      */
     vreg_config(&sw_vreg);
     stm32_configgpio(bdb1b_board_info.sw_data.gpio_reset);
-    up_udelay(POWER_SWITCH_OFF_STAB_TIME_US);
+    udelay(POWER_SWITCH_OFF_STAB_TIME_US);
 
     /*
      * Enable 1P1 and 1P8, used by the I/O Expanders.

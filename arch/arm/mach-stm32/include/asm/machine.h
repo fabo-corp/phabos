@@ -11,7 +11,7 @@
 #define CPU_NUM_IRQ    82
 #define VTOR_ALIGNMENT 256
 
-#define CPU_FREQ        50000000
+#define CPU_FREQ        168000000
 #define HZ              100
 
 #define LOOP_PER_USEC 6 /* FIXME: configure using oscilloscope */

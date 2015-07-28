@@ -43,8 +43,8 @@ struct svc {
     enum svc_state state;
     int stop;
     pid_t svcd_pid;
-    pthread_mutex_t lock;
-    pthread_cond_t cv;
+    struct mutex lock;
+    struct task_cond cv;
 };
 
 extern struct svc *svc;

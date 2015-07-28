@@ -29,11 +29,14 @@
 #ifndef  _ARA_BOARD_H_
 #define  _ARA_BOARD_H_
 
-#include "nuttx/gpio/stm32_gpio_chip.h"
-#include "nuttx/gpio/tca64xx.h"
+#include <asm/gpio.h>
+#include <phabos/gpio.h>
+#include <phabos/gpio/tca64xx.h>
 
 #include "vreg.h"
 #include "tsb_switch.h"
+
+#define STM32_GPIO_CHIP_BASE 0 // XXX phabos porting
 
 /*
  * GPIO Chip pins
