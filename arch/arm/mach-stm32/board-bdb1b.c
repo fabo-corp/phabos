@@ -7,6 +7,7 @@
 #include <phabos/kprintf.h>
 #include <phabos/driver.h>
 #include <phabos/serial/uart.h>
+#include <phabos/gpio.h>
 
 #define STM32_GPIOB_MODER   (STM32_GPIOB_BASE + 0x00)
 #define STM32_GPIOB_PUPDR   (STM32_GPIOB_BASE + 0x0c)
@@ -27,6 +28,108 @@ static int stm32_usart_power_on(struct device *device)
 {
     return 0;
 }
+
+struct gpio_device gpio_port[] = {
+    {
+        .count = 16,
+        .device = {
+            .name = "stm32-gpio-a",
+            .description = "STM32 GPIO Port A",
+            .driver = "stm32-gpio",
+            .reg_base = STM32_GPIOA_BASE,
+        },
+    },
+    {
+        .count = 16,
+        .device = {
+            .name = "stm32-gpio-b",
+            .description = "STM32 GPIO Port B",
+            .driver = "stm32-gpio",
+            .reg_base = STM32_GPIOB_BASE,
+        },
+    },
+    {
+        .count = 16,
+        .device = {
+            .name = "stm32-gpio-c",
+            .description = "STM32 GPIO Port C",
+            .driver = "stm32-gpio",
+            .reg_base = STM32_GPIOC_BASE,
+        },
+    },
+    {
+        .count = 16,
+        .device = {
+            .name = "stm32-gpio-d",
+            .description = "STM32 GPIO Port D",
+            .driver = "stm32-gpio",
+            .reg_base = STM32_GPIOD_BASE,
+        },
+    },
+    {
+        .count = 16,
+        .device = {
+            .name = "stm32-gpio-e",
+            .description = "STM32 GPIO Port E",
+            .driver = "stm32-gpio",
+            .reg_base = STM32_GPIOE_BASE,
+        },
+    },
+    {
+        .count = 16,
+        .device = {
+            .name = "stm32-gpio-f",
+            .description = "STM32 GPIO Port F",
+            .driver = "stm32-gpio",
+            .reg_base = STM32_GPIOF_BASE,
+        },
+    },
+    {
+        .count = 16,
+        .device = {
+            .name = "stm32-gpio-g",
+            .description = "STM32 GPIO Port G",
+            .driver = "stm32-gpio",
+            .reg_base = STM32_GPIOG_BASE,
+        },
+    },
+    {
+        .count = 16,
+        .device = {
+            .name = "stm32-gpio-h",
+            .description = "STM32 GPIO Port H",
+            .driver = "stm32-gpio",
+            .reg_base = STM32_GPIOH_BASE,
+        },
+    },
+    {
+        .count = 16,
+        .device = {
+            .name = "stm32-gpio-i",
+            .description = "STM32 GPIO Port I",
+            .driver = "stm32-gpio",
+            .reg_base = STM32_GPIOI_BASE,
+        },
+    },
+    {
+        .count = 16,
+        .device = {
+            .name = "stm32-gpio-j",
+            .description = "STM32 GPIO Port J",
+            .driver = "stm32-gpio",
+            .reg_base = STM32_GPIOJ_BASE,
+        },
+    },
+    {
+        .count = 16,
+        .device = {
+            .name = "stm32-gpio-k",
+            .description = "STM32 GPIO Port K",
+            .driver = "stm32-gpio",
+            .reg_base = STM32_GPIOK_BASE,
+        },
+    },
+};
 
 static struct uart_device stm32_usart_device = {
     .device = {
@@ -117,5 +220,7 @@ void machine_init(void)
     write32(STM32_USART1_BRR, (45 << 4) | 9);
     read32(STM32_USART1_CR1) |= (1 << 3) | (1 << 2);
 
+    for (int i = 0; i < ARRAY_SIZE(gpio_port); i++)
+        device_register(&gpio_port[i].device);
     device_register(&stm32_usart_device.device);
 }
