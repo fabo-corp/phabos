@@ -1,3 +1,5 @@
+#include "stm32f4xx.h"
+
 #include <asm/hwio.h>
 #include <asm/delay.h>
 #include <asm/gpio.h>
@@ -6,13 +8,8 @@
 #include <phabos/driver.h>
 #include <phabos/serial/uart.h>
 
-#define STM32_USART1_BASE   0x40011000
-#define STM32_GPIOB_BASE    0x40020400
-#define STM32_RCC_BASE      0x40023800
-
 #define STM32_GPIOB_MODER   (STM32_GPIOB_BASE + 0x00)
 #define STM32_GPIOB_PUPDR   (STM32_GPIOB_BASE + 0x0c)
-#define STM32_GPIOB_BSRR    (STM32_GPIOB_BASE + 0x18)
 #define STM32_GPIOB_AFRL    (STM32_GPIOB_BASE + 0x20)
 
 #define STM32_RCC_CR            (STM32_RCC_BASE + 0x00)
@@ -23,12 +20,8 @@
 #define STM32_RCC_AHB1ENR      (STM32_RCC_BASE + 0x30)
 #define STM32_RCC_APB2ENR       (STM32_RCC_BASE + 0x44)
 
-#define STM32_USART1_SR     (STM32_USART1_BASE + 0x00)
-#define STM32_USART1_DR     (STM32_USART1_BASE + 0x04)
 #define STM32_USART1_BRR    (STM32_USART1_BASE + 0x08)
 #define STM32_USART1_CR1    (STM32_USART1_BASE + 0x0c)
-
-#define STM32_IRQ_USART1    37
 
 static int stm32_usart_power_on(struct device *device)
 {
