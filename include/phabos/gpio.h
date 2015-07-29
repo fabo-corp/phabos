@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <phabos/driver.h>
 #include <phabos/list.h>
+#include <phabos/utils.h>
 
 #define IRQ_TYPE_NONE           0x00000000
 #define IRQ_TYPE_EDGE_RISING    0x00000001
