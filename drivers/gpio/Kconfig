@@ -8,3 +8,6 @@ config TCA6408
 
 config TCA64XX
     bool "TCA64xx support"
+
+config STM32_GPIO
+    bool "STM32 GPIO support"

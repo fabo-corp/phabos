@@ -6,3 +6,4 @@
 obj-$(CONFIG_GPIO) += core.o
 obj-$(CONFIG_TCA6408) += tca6408.o
 obj-$(CONFIG_TCA64XX) += tca64xx.o
+obj-$(CONFIG_STM32_GPIO) += stm32-gpio.o
