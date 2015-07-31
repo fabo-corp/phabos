@@ -216,6 +216,13 @@ static struct i2c_adapter stm32_i2c_adapter = {
 
 void machine_init(void)
 {
+    extern uint32_t _sheap;
+    extern uint32_t _eor;
+
+    int order = size_to_order((uintptr_t) &_eor - (uintptr_t) &_sheap);
+
+    mm_add_region((unsigned long) &_sheap, order, MM_DMA);
+
     /*
      * PLL: 168MHz
      * AHB: 168MHz
