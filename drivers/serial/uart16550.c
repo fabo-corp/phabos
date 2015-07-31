@@ -271,6 +271,7 @@ static int uart16550_ioctl(struct file *file, unsigned long cmd, ...)
         va_start(vl, cmd);
         uart16550_tcsetattr(dev, TCSANOW, va_arg(vl, struct termios*));
         va_end(vl);
+        break;
 
     default:
         return -EINVAL;

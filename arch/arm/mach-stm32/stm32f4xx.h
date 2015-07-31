@@ -1,6 +1,7 @@
 #ifndef __STM32F4XX_H__
 #define __STM32F4XX_H__
 
+#define STM32_I2C2_BASE         0x40005800
 #define STM32_UART7_BASE        0x40007800
 #define STM32_UART8_BASE        0x40007c00
 #define STM32_TIM1_BASE         0x40010000

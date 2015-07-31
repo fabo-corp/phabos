@@ -118,6 +118,23 @@ int mkdir(const char *pathname, mode_t mode)
     return 0;
 }
 
+int ioctl(int fd, unsigned long request, ...)
+{
+    va_list vl;
+
+    va_start(vl, request);
+
+    long retval = syscall(SYS_IOCTL, fd, request, vl);
+
+    if (retval < 0) {
+        errno = -retval;
+    }
+
+    va_end(vl);
+
+    return retval;
+}
+
 int mount(const char *source, const char *target, const char *filesystemtype,
           unsigned long mountflags, const void *data)
 {

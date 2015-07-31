@@ -5,3 +5,6 @@
 
 config I2C_DW
     bool "Designware I2C support"
+
+config STM32_I2C
+    bool "STM32 I2C"

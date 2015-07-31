@@ -8,17 +8,27 @@
 #include <phabos/driver.h>
 #include <phabos/serial/uart.h>
 #include <phabos/gpio.h>
+#include <phabos/i2c.h>
+#include <phabos/i2c/stm32-i2c.h>
 
 #define STM32_GPIOB_MODER   (STM32_GPIOB_BASE + 0x00)
 #define STM32_GPIOB_PUPDR   (STM32_GPIOB_BASE + 0x0c)
 #define STM32_GPIOB_AFRL    (STM32_GPIOB_BASE + 0x20)
 
+#define STM32_GPIOH_MODER   (STM32_GPIOH_BASE + 0x00)
+#define STM32_GPIOH_OTYPER  (STM32_GPIOH_BASE + 0x04)
+#define STM32_GPIOH_OSPEEDR (STM32_GPIOH_BASE + 0x08)
+#define STM32_GPIOH_PUPDR   (STM32_GPIOH_BASE + 0x0c)
+#define STM32_GPIOH_AFRL    (STM32_GPIOH_BASE + 0x20)
+
 #define STM32_RCC_CR            (STM32_RCC_BASE + 0x00)
 #define STM32_RCC_CFGR          (STM32_RCC_BASE + 0x08)
 #define STM32_RCC_CIR           (STM32_RCC_BASE + 0x0c)
 #define STM32_RCC_AHB1RSTR      (STM32_RCC_BASE + 0x10)
+#define STM32_RCC_APB1RSTR      (STM32_RCC_BASE + 0x20)
 #define STM32_RCC_APB2RSTR      (STM32_RCC_BASE + 0x24)
-#define STM32_RCC_AHB1ENR      (STM32_RCC_BASE + 0x30)
+#define STM32_RCC_AHB1ENR       (STM32_RCC_BASE + 0x30)
+#define STM32_RCC_APB1ENR       (STM32_RCC_BASE + 0x40)
 #define STM32_RCC_APB2ENR       (STM32_RCC_BASE + 0x44)
 
 #define STM32_USART1_BRR    (STM32_USART1_BASE + 0x08)
@@ -134,7 +144,7 @@ struct gpio_device gpio_port[] = {
 static struct uart_device stm32_usart_device = {
     .device = {
         .name = "stm32-usart1",
-        .description = "STM32 USART 1",
+        .description = "STM32 USART-1",
         .driver = "stm32-usart",
 
         .reg_base = STM32_USART1_BASE,
@@ -142,6 +152,23 @@ static struct uart_device stm32_usart_device = {
 
         .power_on = stm32_usart_power_on,
     //    .power_off = tsb_hcd_power_off,
+    },
+};
+
+static struct stm32_i2c_adapter_platform stm32_i2c_pdata = {
+    .evt_irq = STM32_IRQ_I2C2_EV,
+    .err_irq = STM32_IRQ_I2C2_ER,
+    .clk = 42,
+};
+
+static struct i2c_adapter stm32_i2c_adapter = {
+    .device = {
+        .name = "stm32-i2c2",
+        .description = "STM32 I2C-2",
+        .driver = "stm32-i2c",
+
+        .reg_base = STM32_I2C2_BASE,
+        .pdata = &stm32_i2c_pdata,
     },
 };
 
@@ -220,7 +247,30 @@ void machine_init(void)
     write32(STM32_USART1_BRR, (45 << 4) | 9);
     read32(STM32_USART1_CR1) |= (1 << 3) | (1 << 2);
 
+    // XXX: Enable I2C2
+    read32(STM32_RCC_APB1ENR) |= 1 << 22;
+
+    mdelay(100);
+
+    read32(STM32_RCC_APB1RSTR) |= 1 << 22;
+
+    mdelay(100);
+
+    read32(STM32_RCC_APB1RSTR) &= ~(1 << 22);
+
+    mdelay(100);
+    read32(STM32_GPIOH_MODER) |= 0x2 << 8 | 0x2 << 10;
+    mdelay(100);
+    read32(STM32_GPIOH_OSPEEDR) |= 0x2 << 8 | 0x2 << 10;
+    mdelay(100);
+    read32(STM32_GPIOH_OTYPER) |= (1 << 4) | (1 << 5);
+    mdelay(100);
+    read32(STM32_GPIOH_AFRL) |= 0x4 << 16 | 0x4 << 20;
+
+    mdelay(100);
+
     for (int i = 0; i < ARRAY_SIZE(gpio_port); i++)
         device_register(&gpio_port[i].device);
     device_register(&stm32_usart_device.device);
+//    device_register(&stm32_i2c_adapter.device);
 }

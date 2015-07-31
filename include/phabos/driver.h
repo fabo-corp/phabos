@@ -28,6 +28,7 @@ struct device {
     struct file_operations ops;
 
     void *priv;
+    void *pdata;
 
     struct list_head list;
 

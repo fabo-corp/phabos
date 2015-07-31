@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <phabos/assert.h>
 #include <phabos/mutex.h>
+#include <stdarg.h>
 
 #define DT_UNKNOWN  0
 #define DT_BLK      1
@@ -25,9 +26,11 @@ struct file;
 struct phabos_dirent;
 
 struct file_operations {
-    int (*ioctl)(struct file *file, unsigned long cmd, ...);
+    int (*ioctl)(struct file *file, unsigned long cmd, va_list vl);
     int (*getdents)(struct file *file, struct phabos_dirent *dirp,
                     size_t count);
+    int (*open)(struct file *file);
+    int (*close)(struct file *file);
     ssize_t (*write)(struct file *file, const void *buf, size_t count);
     ssize_t (*read)(struct file *file, void *buf, size_t count);
     void *(*mmap)(struct file *file, void *addr, size_t length, int prot,

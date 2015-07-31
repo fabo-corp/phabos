@@ -289,17 +289,41 @@ int sys_open(const char *pathname, int flags, mode_t mode)
     if (is_directory(inode))
         mutex_lock(&inode->dlock);
 
+    if (is_char_device(fd->file->inode)) {
+        struct device *dev = devnum_get_device(fd->file->inode->dev);
+
+        if (dev->ops.open) {
+            retval =  dev->ops.open(fd->file);
+            if (retval)
+                goto error_char_device_open;
+        }
+    }
+
     return fdnum;
 
+error_char_device_open:
 error_file_alloc:
     free_fdnum(fdnum);
     return retval;
 }
 DEFINE_SYSCALL(SYS_OPEN, open, 3);
 
-int sys_close(int fd)
+int sys_close(int fdnum)
 {
-    return free_fdnum(fd);
+    struct fd *fd;
+
+    fd = to_fd(fdnum);
+    if (!fd)
+        return -EBADF;
+
+    if (is_char_device(fd->file->inode)) {
+        struct device *dev = devnum_get_device(fd->file->inode->dev);
+
+        if (dev->ops.close)
+            dev->ops.close(fd->file);
+    }
+
+    return free_fdnum(fdnum);
 }
 DEFINE_SYSCALL(SYS_CLOSE, close, 1);
 
@@ -318,6 +342,36 @@ int sys_getdents(int fdnum, struct phabos_dirent *dirp, size_t count)
     return fd->file->inode->fs->file_ops.getdents(fd->file, dirp, count);
 }
 DEFINE_SYSCALL(SYS_GETDENTS, getdents, 3);
+
+int sys_ioctl(int fdnum, unsigned long cmd, va_list vl)
+{
+    struct fd *fd;
+
+    fd = to_fd(fdnum);
+    if (!fd)
+        return -EBADF;
+
+    RET_IF_FAIL(fd->file, -EINVAL);
+    RET_IF_FAIL(fd->file->inode, -EINVAL);
+
+    if (is_char_device(fd->file->inode)) {
+        struct device *dev = devnum_get_device(fd->file->inode->dev);
+        RET_IF_FAIL(dev, -EINVAL);
+
+        if (dev->ops.ioctl)
+            return dev->ops.ioctl(fd->file, cmd, vl);
+
+        return -ENOSYS;
+    }
+
+    RET_IF_FAIL(fd->file->inode->fs, -EINVAL);
+
+    if (!fd->file->inode->fs->file_ops.ioctl)
+        return -ENOSYS;
+
+    return fd->file->inode->fs->file_ops.ioctl(fd->file, cmd, vl);
+}
+DEFINE_SYSCALL(SYS_IOCTL, ioctl, 3);
 
 ssize_t sys_write(int fdnum, const void *buf, size_t count)
 {

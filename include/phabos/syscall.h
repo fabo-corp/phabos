@@ -25,6 +25,7 @@
 #define SYS_MKDIR                       39
 #define SYS_RMDIR                       40
 #define SYS_UMOUNT                      52
+#define SYS_IOCTL                       54
 #define SYS_MMAP                        90
 #define SYS_GETDENTS                    141
 #define SYS_SCHED_SETSCHEDULER          156
