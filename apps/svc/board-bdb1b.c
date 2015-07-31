@@ -326,7 +326,7 @@ struct ara_board_info *board_init(void) {
     for (i = 0; i < bdb1b_board_info.nr_io_expanders; i++) {
         struct io_expander_info *io_exp = &bdb1b_board_info.io_expanders[i];
 
-        io_exp->i2c_dev = up_i2cinitialize(io_exp->i2c_bus);
+        io_exp->i2c_dev = open("/dev/i2c-0", 0);
         if (!io_exp->i2c_dev) {
             dbg_error("%s(): Failed to get I/O Expander I2C bus %u\n",
                       __func__, io_exp->i2c_bus);
@@ -340,7 +340,7 @@ struct ara_board_info *board_init(void) {
                              io_exp->gpio_base) < 0) {
                 dbg_error("%s(): Failed to register I/O Expander(0x%02x)\n",
                           __func__, io_exp->i2c_addr);
-                up_i2cuninitialize(io_exp->i2c_dev);
+                close((int) io_exp->i2c_dev);
             }
         }
     }
@@ -363,8 +363,8 @@ void board_exit(void) {
         if (io_exp->io_exp_driver_data)
             tca64xx_deinit(io_exp->io_exp_driver_data);
 
-        if (io_exp->i2c_dev)
-            up_i2cuninitialize(io_exp->i2c_dev);
+        if (io_exp->i2c_dev >= 0)
+            close((int) io_exp->i2c_dev);
     }
 
     /* Disable 1V1 and 1V8, used by the I/O Expanders */

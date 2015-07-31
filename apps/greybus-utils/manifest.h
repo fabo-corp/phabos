@@ -30,6 +30,17 @@
 #define __GREYBUS_MANIFEST_H
 
 #include <phabos/list.h>
+#include <phabos/greybus-types.h>
+
+#define GREYBUS_VERSION_MAJOR  0x00
+
+#ifdef CONFIG_ENDIAN_BIG
+#define htole16(x) ((LSBYTE(x) << 8) | (MSBYTE(x) & 0xFF))
+#define le16toh(x) ((LSBYTE(x) << 8) | (MSBYTE(x) & 0xFF))
+#else
+#define htole16(x) (x)
+#define le16toh(x) (x)
+#endif
 
 enum greybus_descriptor_type {
     GREYBUS_TYPE_INVALID = 0x00,

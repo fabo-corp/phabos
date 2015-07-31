@@ -1437,12 +1437,14 @@ struct tsb_switch *switch_init(struct tsb_switch_data *pdata) {
             goto error;
         }
         break;
+#if 0 // FIXME phabos
     case SWITCH_REV_ES2:
         // Initialize the SPI port
         if (tsb_switch_es2_init(sw, sw->pdata->bus)) {
             goto error;
         }
         break;
+#endif
     default:
         dbg_error("Unsupported switch revision: %u\n", sw->pdata->rev);
         goto error;
@@ -1522,9 +1524,11 @@ void switch_exit(struct tsb_switch *sw) {
     case SWITCH_REV_ES1:
         tsb_switch_es1_exit(sw);
         break;
+#if 0
     case SWITCH_REV_ES2:
         tsb_switch_es2_exit(sw);
         break;
+#endif
     default:
         dbg_error("Unsupported switch revision: %u\n", sw->pdata->rev);
         break;

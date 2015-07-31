@@ -205,7 +205,7 @@ static int stm32_i2c_close(struct file *file)
 
 static inline int stm32_i2c_generate_start_condition(struct device *device)
 {
-    struct stm32_adapter_priv *priv = device->priv;
+//    struct stm32_adapter_priv *priv = device->priv;
     uint32_t sr1;
 
     kprintf("%s()\n", __func__);
@@ -232,7 +232,7 @@ static inline void stm32_i2c_generate_stop_condition(struct device *device)
 static inline int stm32_i2c_send_rx_address(struct device *device,
                                             uint16_t addr)
 {
-    struct stm32_adapter_priv *priv = device->priv;
+//    struct stm32_adapter_priv *priv = device->priv;
     uint32_t sr1;
 
     kprintf("%s()\n", __func__);
@@ -252,7 +252,7 @@ static inline int stm32_i2c_send_rx_address(struct device *device,
 static inline int stm32_i2c_send_tx_address(struct device *device,
                                             uint16_t addr)
 {
-    struct stm32_adapter_priv *priv = device->priv;
+//    struct stm32_adapter_priv *priv = device->priv;
     uint32_t sr1;
 
     kprintf("%s()\n", __func__);

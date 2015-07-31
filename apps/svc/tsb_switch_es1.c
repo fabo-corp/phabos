@@ -69,12 +69,12 @@ static int es1_transfer(struct tsb_switch *sw,
         },
         {
             .addr = ES1_I2C_ADDR,
-            .flags = I2C_READ,
+            .flags = I2C_M_READ,
             .buffer = rx_buf,
             .length = rx_size,
         }
     };
-    rc = I2C_TRANSFER(i2c_dev, msgs, 2);
+    rc = ioctl(i2c_dev, I2C_TRANSFER, msgs, 2);
 
     dbg_insane("\t%s(): RX buffer:\n", __func__);
     dbg_print_buf(DBG_INSANE, rx_buf, rx_size);
@@ -597,19 +597,23 @@ static struct tsb_switch_ops es1_ops = {
     .switch_id_set         = es1_switch_id_set,
 };
 
-int tsb_switch_es1_init(struct tsb_switch *sw, unsigned int i2c_bus) {
-    struct i2c_dev_s *i2c_dev;
+/*
+ * FIXME fix all i2c usage
+ */
+int tsb_switch_es1_init(struct tsb_switch *sw, unsigned int i2c_bus)
+{
+    int i2c_dev;
 
     dbg_info("Initializing ES1 switch...\n");
 
-    i2c_dev = up_i2cinitialize(i2c_bus);
-    if (!i2c_dev) {
+    i2c_dev = open("/dev/i2c-0", 0);
+    if (i2c_dev < 0) {
         return -ENODEV;
     }
 
-    I2C_SETFREQUENCY(i2c_dev, ES1_I2C_FREQUENCY);
+    ioctl(i2c_dev, I2C_SET_FREQUENCY, ES1_I2C_FREQUENCY);
 
-    sw->priv = i2c_dev;
+    sw->priv = (void*) i2c_dev;
     sw->ops = &es1_ops;
 
     dbg_info("... Done!\n");
@@ -618,7 +622,7 @@ int tsb_switch_es1_init(struct tsb_switch *sw, unsigned int i2c_bus) {
 }
 
 void tsb_switch_es1_exit(struct tsb_switch *sw) {
-    up_i2cuninitialize((struct i2c_dev_s*) sw->priv);
+    close((int) sw->priv);
     sw->priv = NULL;
     sw->ops = NULL;
 }

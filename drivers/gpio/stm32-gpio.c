@@ -7,6 +7,7 @@
 #include <phabos/gpio.h>
 
 #define STM32_GPIO_MODER    0x0
+#define STM32_GPIO_OTYPER   0x4
 #define STM32_GPIO_IDR      0x10
 #define STM32_GPIO_BSRR     0x18
 

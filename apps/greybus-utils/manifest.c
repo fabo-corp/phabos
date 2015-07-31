@@ -34,8 +34,9 @@
 
 #include <asm/byteordering.h>
 
-#include "svc-emu.h"
 #include "manifest.h"
+
+#include <phabos/utils.h>
 
 // XXX phabos porting
 #define gb_debug(x...)

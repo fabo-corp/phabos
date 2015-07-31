@@ -8,6 +8,8 @@ obj-y += svc.o
 obj-y += tsb_switch_es1.o
 obj-y += board-bdb1b.o
 
+CFLAGS += -Iapps/greybus-utils
+
 #CSRCS		= up_boot.c
 #CSRCS		+= tsb_switch_es1.c
 #CSRCS		+= tsb_switch_es2.c

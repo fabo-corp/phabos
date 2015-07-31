@@ -9,6 +9,7 @@
 #define GPIO_SIZE   0x400
 
 #define GPIO_MODER   0x00
+#define GPIO_OTYPER  0x04
 #define GPIO_PUPDR   0x0c
 #define GPIO_BSRR    0x18
 #define GPIO_AFRL    0x20
@@ -27,16 +28,37 @@ int stm32_configgpio(unsigned long config)
 {
     uintptr_t base = config_to_regbase(config);
 
-    read32(base + GPIO_MODER) &= ~(3 << (config_to_pin(config) << 1));
-
     if (config & GPIO_OUTPUT) {
         read32(base + GPIO_MODER) |=
             GPIO_MODER_OUTPUT << (config_to_pin(config) << 1);
+    } else {
+        read32(base + GPIO_MODER) &=
+            ~(GPIO_MODER_OUTPUT << (config_to_pin(config) << 1));
+    }
+
+    if (config & GPIO_OUTPUT_CLEAR) {
+        stm32_gpiowrite(config, false);
     }
 
     if (config & GPIO_OUTPUT_SET) {
         stm32_gpiowrite(config, true);
     }
+
+    if (config & GPIO_OPENDRAIN) {
+        read32(base + GPIO_OTYPER) |= 1 << config_to_pin(config);
+    } else {
+        read32(base + GPIO_OTYPER) &= ~(1 << config_to_pin(config));
+    }
+
+    if ((config & GPIO_PULLDOWN) == GPIO_PULLDOWN) {
+        read32(base + GPIO_PUPDR) |=
+            GPIO_PULLDOWN << (config_to_pin(config) << 1);
+    } else if ((config & GPIO_PULLUP) == GPIO_PULLUP){
+        read32(base + GPIO_PUPDR) &=
+            ~(GPIO_PULLUP << (config_to_pin(config) << 1));
+    }
+
+    read32(base + GPIO_MODER) &= ~(3 << (config_to_pin(config) << 1));
 
     return 0;
 }

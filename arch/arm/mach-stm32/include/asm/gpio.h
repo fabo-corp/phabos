@@ -33,13 +33,15 @@
 #define GPIO_INPUT      (0 << 16)
 #define GPIO_OUTPUT     (1 << 16)
 
-#define GPIO_OUTPUT_CLEAR (0 << 17)
+#define GPIO_OUTPUT_CLEAR (1 << 21)
 #define GPIO_OUTPUT_SET   (1 << 17)
 
+#define GPIO_PUSHPULL   (0 << 18)
 #define GPIO_OPENDRAIN  (1 << 18)
-#define GPIO_PUSHPULL   (1 << 31) // FIXME
-#define GPIO_PULLUP     (1 << 31) // FIXME
-#define GPIO_FLOAT      (1 << 32) // FIXME
+
+#define GPIO_FLOAT      (0 << 19)
+#define GPIO_PULLUP     (1 << 19)
+#define GPIO_PULLDOWN   (2 << 19)
 
 int stm32_configgpio(unsigned long config);
 int stm32_gpiowrite(unsigned long port, bool high_level);
