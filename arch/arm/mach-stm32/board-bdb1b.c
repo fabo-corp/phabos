@@ -234,19 +234,6 @@ void machine_init(void)
     read32(STM32_RCC_AHB1RSTR) |= 0x1ff;
     read32(STM32_RCC_AHB1RSTR) &= ~0x1ff;
 
-    // XXX: Enable USART1
-    read32(STM32_GPIOB_MODER) |= 0x2 << 12 | 0x2 << 14;
-    read32(STM32_GPIOB_PUPDR) |= 0x1 << 12 | 0x1 << 14;
-    read32(STM32_GPIOB_AFRL) |= 0x7 << 24 | 0x7 << 28;
-
-    read32(STM32_RCC_APB2ENR) |= (1 << 4);
-    read32(STM32_RCC_APB2RSTR) |= (1 << 4);
-    read32(STM32_RCC_APB2RSTR) &= ~(1 << 4);
-
-    write32(STM32_USART1_CR1, (1 << 13));
-    write32(STM32_USART1_BRR, (45 << 4) | 9);
-    read32(STM32_USART1_CR1) |= (1 << 3) | (1 << 2);
-
     // XXX: Enable I2C2
     read32(STM32_RCC_APB1ENR) |= 1 << 22;
 
@@ -268,6 +255,19 @@ void machine_init(void)
     read32(STM32_GPIOH_AFRL) |= 0x4 << 16 | 0x4 << 20;
 
     mdelay(100);
+
+    // XXX: Enable USART1
+    read32(STM32_GPIOB_MODER) |= 0x2 << 12 | 0x2 << 14;
+    read32(STM32_GPIOB_PUPDR) |= 0x1 << 12 | 0x1 << 14;
+    read32(STM32_GPIOB_AFRL) |= 0x7 << 24 | 0x7 << 28;
+
+    read32(STM32_RCC_APB2ENR) |= (1 << 4);
+    read32(STM32_RCC_APB2RSTR) |= (1 << 4);
+    read32(STM32_RCC_APB2RSTR) &= ~(1 << 4);
+
+    write32(STM32_USART1_CR1, (1 << 13));
+    write32(STM32_USART1_BRR, (45 << 4) | 9);
+    read32(STM32_USART1_CR1) |= (1 << 3) | (1 << 2);
 
     for (int i = 0; i < ARRAY_SIZE(gpio_port); i++)
         device_register(&gpio_port[i].device);
