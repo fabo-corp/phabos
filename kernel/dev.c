@@ -275,7 +275,7 @@ int dev_main(int argc, char **argv)
 #endif
 
 
-    i2c_test();
+//    i2c_test();
 
 //    gb_gpio_register(3);
 
@@ -324,7 +324,7 @@ int dev_main(int argc, char **argv)
 #endif
 
     ls("/dev");
-#if 0
+#if 1
     int fd = open("/dev/i2c-0", 0);
 
     struct i2c_msg {

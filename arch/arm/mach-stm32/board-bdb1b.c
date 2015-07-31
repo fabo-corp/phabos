@@ -158,7 +158,7 @@ static struct uart_device stm32_usart_device = {
 static struct stm32_i2c_adapter_platform stm32_i2c_pdata = {
     .evt_irq = STM32_IRQ_I2C2_EV,
     .err_irq = STM32_IRQ_I2C2_ER,
-    .clk = 42,
+    .clk = 42000000,
 };
 
 static struct i2c_adapter stm32_i2c_adapter = {
@@ -246,7 +246,7 @@ void machine_init(void)
     read32(STM32_RCC_APB1RSTR) &= ~(1 << 22);
 
     mdelay(100);
-    read32(STM32_GPIOH_MODER) |= 0x2 << 8 | 0x2 << 10;
+
     mdelay(100);
     read32(STM32_GPIOH_OSPEEDR) |= 0x2 << 8 | 0x2 << 10;
     mdelay(100);
@@ -255,6 +255,7 @@ void machine_init(void)
     read32(STM32_GPIOH_AFRL) |= 0x4 << 16 | 0x4 << 20;
 
     mdelay(100);
+    read32(STM32_GPIOH_MODER) |= 0x2 << 8 | 0x2 << 10;
 
     // XXX: Enable USART1
     read32(STM32_GPIOB_MODER) |= 0x2 << 12 | 0x2 << 14;
@@ -272,5 +273,5 @@ void machine_init(void)
     for (int i = 0; i < ARRAY_SIZE(gpio_port); i++)
         device_register(&gpio_port[i].device);
     device_register(&stm32_usart_device.device);
-//    device_register(&stm32_i2c_adapter.device);
+    device_register(&stm32_i2c_adapter.device);
 }
