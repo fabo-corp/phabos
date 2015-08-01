@@ -50,7 +50,7 @@ struct tca64xx_platform_data;
 struct tca64xx_device {
     struct gpio_device device;
 
-    struct i2c_dev *i2c_dev;
+    struct i2c_adapter *i2c_adapter;
     tca64xx_part part;
     unsigned int reset_gpio;
     uint8_t addr;

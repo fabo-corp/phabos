@@ -126,7 +126,7 @@
 
 struct tca64xx_platform_data {
     tca64xx_part part;
-    struct i2c_dev *dev;
+    struct i2c_adapter *adapter;
     uint8_t addr;
     uint32_t reset;
     uint32_t irq;
@@ -305,7 +305,7 @@ static int i2c_get(void *driver_data, uint8_t regaddr, uint8_t *val)
 {
     int ret;
     struct tca64xx_platform_data *tca64xx = driver_data;
-    struct i2c_dev *dev = tca64xx->dev;
+    struct i2c_adapter *adapter = tca64xx->adapter;
     uint8_t addr = tca64xx->addr;
     struct i2c_msg msg[] = {
         {
@@ -316,19 +316,17 @@ static int i2c_get(void *driver_data, uint8_t regaddr, uint8_t *val)
         },
         {
          .addr = addr,
-         .flags = I2C_READ,
+         .flags = I2C_M_READ,
          .buffer = val,
          .length = 1,
         },
     };
 
-    if (!dev) {
+    if (!adapter) {
         return -EINVAL;
     }
 
-    i2c_set_address(dev, addr, 7);
-
-    ret = i2c_transfer(dev, msg, 2);
+    ret = i2c_transfer(adapter, msg, 2);
     if (!ret) {
         lldbg("%s: addr=0x%02hhX, regaddr=0x%02hhX: read 0x%02hhX\n",
               __func__, addr, regaddr, *val);
@@ -344,31 +342,28 @@ static int i2c_set(void *driver_data, uint8_t regaddr, uint8_t val)
 {
     int ret;
     struct tca64xx_platform_data *tca64xx = driver_data;
-    struct i2c_dev *dev = tca64xx->dev;
-    uint8_t addr = tca64xx->addr;
+    struct i2c_adapter *adapter = tca64xx->adapter;
     uint8_t cmd[2] = { regaddr, val };
     struct i2c_msg msg[] = {
         {
-         .addr = addr,
+         .addr = tca64xx->addr,
          .flags = 0,
          .buffer = cmd,
          .length = 2,
         },
     };
 
-    if (!dev) {
+    if (!adapter) {
         return -EINVAL;
     }
 
-    i2c_set_address(dev, addr, 7);
-
-    ret = i2c_transfer(dev, msg, 1);
+    ret = i2c_transfer(adapter, msg, 1);
     if (ret == 0) {
         lldbg("%s: addr=0x%02hhX, regaddr=0x%02hhX, val=0x%02hhX\n",
-              __func__, addr, regaddr, val);
+              __func__, tca64xx->addr, regaddr, val);
     } else {
         lldbg_error("%s: addr=0x%02hhX, regaddr=0x%02hhX: failed, ret=%d!\n",
-              __func__, addr, regaddr, ret);
+              __func__, tca64xx->addr, regaddr, ret);
     }
 
     return ret;
@@ -953,7 +948,7 @@ static int tca64xx_probe(struct device *device)
         return -ENOMEM;
     }
 
-    tca64xx->dev = dev->i2c_dev;
+    tca64xx->adapter = dev->i2c_adapter;
     tca64xx->addr = dev->addr;
     tca64xx->irq = device->irq;
     tca64xx->reset = dev->reset_gpio;
