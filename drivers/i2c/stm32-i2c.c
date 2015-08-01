@@ -58,12 +58,14 @@ struct stm32_adapter_priv {
 static void i2c_dump(struct device *device)
 {
 //#define kprintf(x...)
+#if 1
     kprintf("\tCR1: %#X\n", read32(device->reg_base + I2C_CR1));
     kprintf("\tCR2: %#X\n", read32(device->reg_base + I2C_CR2));
     kprintf("\tSR1: %#X\n", read32(device->reg_base + I2C_SR1));
     kprintf("\tSR2: %#X\n", read32(device->reg_base + I2C_SR2));
     kprintf("\tCCR: %#X\n", read32(device->reg_base + I2C_CCR));
     kprintf("\tTRISE: %#X\n", read32(device->reg_base + I2C_TRISE));
+#endif
 }
 
 static void stm32_i2c_err_irq(int irq, void *data)
@@ -84,7 +86,6 @@ static void stm32_i2c_evt_irq(int irq, void *data)
     struct stm32_adapter_priv *priv = device->priv;
 
     kprintf("EVT\n");
-    i2c_dump(device);
 
     irq_disable_line(irq);
 
@@ -99,8 +100,6 @@ static int stm32_i2c_set_freq(struct i2c_adapter *adapter, unsigned long freq)
     unsigned speed;
     uint32_t cr1;
     int retval = 0;
-
-    kprintf("%s()\n", __func__);
 
     // Disable I2C controller
     cr1 = read32(adapter->device.reg_base + I2C_CR1);
@@ -154,8 +153,6 @@ static inline int stm32_i2c_generate_start_condition(struct device *device)
 //    struct stm32_adapter_priv *priv = device->priv;
     uint32_t sr1;
 
-    kprintf("%s()\n", __func__);
-
     write32(device->reg_base + I2C_CR1, I2C_CR1_PE | I2C_CR1_START);
 
 //    semaphore_down(&priv->xfer_semaphore);
@@ -170,8 +167,6 @@ static inline int stm32_i2c_generate_start_condition(struct device *device)
 
 static inline void stm32_i2c_generate_stop_condition(struct device *device)
 {
-    kprintf("%s()\n", __func__);
-
     write32(device->reg_base + I2C_CR1, I2C_CR1_PE | I2C_CR1_STOP);
 }
 
@@ -182,8 +177,6 @@ static inline int stm32_i2c_send_rx_address(struct device *device,
 {
 //    struct stm32_adapter_priv *priv = device->priv;
     uint32_t sr1;
-
-    kprintf("%s()\n", __func__);
 
     write32(device->reg_base + I2C_DR, (addr << 1) | 1);
 //    semaphore_down(&priv->xfer_semaphore);
@@ -206,8 +199,6 @@ static inline int stm32_i2c_send_tx_address(struct device *device,
 //    struct stm32_adapter_priv *priv = device->priv;
     uint32_t sr1;
 
-    kprintf("%s()\n", __func__);
-
     write32(device->reg_base + I2C_DR, addr << 1);
 //    semaphore_down(&priv->xfer_semaphore);
 
@@ -225,8 +216,6 @@ static int stm32_i2c_recv(struct device *device, struct i2c_msg *msg)
 {
     int retval;
     uint32_t sr1;
-
-    kprintf("%s()\n", __func__);
 
     irq_disable();
 
@@ -269,8 +258,6 @@ static int stm32_i2c_send(struct device *device, struct i2c_msg *msg)
     int retval;
     uint32_t sr1;
 
-    kprintf("%s()\n", __func__);
-
     irq_disable();
 
 i2c_dump(device);
@@ -305,16 +292,12 @@ static ssize_t stm32_i2c_transfer(struct i2c_adapter *adapter,
     ssize_t retval = 0;
     struct stm32_adapter_priv *priv = adapter->device.priv;
 
-    kprintf("%s()\n", __func__);
-
     if (!count)
         return 0;
 
     mutex_lock(&priv->lock);
 
     for (unsigned i = 0; i < count; i++) {
-
-i2c_dump(&adapter->device);
 
         retval = stm32_i2c_generate_start_condition(&adapter->device); // repeated start
         if (retval)
@@ -370,8 +353,6 @@ static int stm32_i2c_probe(struct device *device)
 
     write32(device->reg_base + I2C_CR1, 0);
 
-    i2c_dump(device);
-
     // Set APB1 clock + enable EVT and ERR interrupts
     write32(device->reg_base + I2C_CR2, (pdata->clk / ONE_MHZ) |
                                         I2C_CR2_ITEVTEN | I2C_CR2_ITERREN);
@@ -380,8 +361,6 @@ static int stm32_i2c_probe(struct device *device)
 
     // Enable controller
     write32(device->reg_base + I2C_CR1, I2C_CR1_PE);
-
-i2c_dump(device);
 
     irq_attach(pdata->evt_irq, stm32_i2c_evt_irq, device);
     irq_attach(pdata->err_irq, stm32_i2c_err_irq, device);

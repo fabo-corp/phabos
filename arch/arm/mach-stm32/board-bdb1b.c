@@ -338,7 +338,7 @@ void machine_init(void)
     write32(STM32_USART1_BRR, (45 << 4) | 9);
     read32(STM32_USART1_CR1) |= (1 << 3) | (1 << 2);
 
-    kprintf("Heap: %u (order: %d)\n", heap_size, order);
+    //kprintf("Heap: %u (order: %d)\n", heap_size, order);
 
     for (int i = 0; i < ARRAY_SIZE(gpio_port); i++)
         device_register(&gpio_port[i].device);

@@ -12,8 +12,8 @@
 
 static inline void udelay(unsigned long usecs)
 {
-//    for (int i = 0; i < LOOP_PER_USEC * usecs; i++)
-//        asm volatile("nop");
+    for (int i = 0; i < LOOP_PER_USEC * usecs; i++)
+        asm volatile("nop");
 }
 
 static inline void mdelay(unsigned long msecs)
