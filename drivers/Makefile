@@ -3,6 +3,7 @@
 #
 # Provided under the three clause BSD license found in the LICENSE file.
 
+subdirs-y += char
 subdirs-$(CONFIG_SERIAL) += serial
 subdirs-$(CONFIG_I2C) += i2c
 subdirs-$(CONFIG_USB) += usb
