@@ -14,7 +14,6 @@ CFLAGS += -Iapps/greybus-utils
 #CSRCS		+= tsb_switch_es2.c
 
 #ifeq ($(CONFIG_ARCH_BOARD_ARA_BDB1B_SVC),y)
-#CSRCS		+= board-bdb1b.c
 #CSRCS		+= up_bdb_pm.c
 #CSRCS       += up_adc.c up_spring_pm.c
 #endif

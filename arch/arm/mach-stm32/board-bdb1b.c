@@ -285,7 +285,8 @@ void machine_init(void)
     extern uint32_t _sheap;
     extern uint32_t _eor;
 
-    int order = size_to_order((uintptr_t) &_eor - (uintptr_t) &_sheap);
+    size_t heap_size = (uintptr_t) &_eor - (uintptr_t) &_sheap;
+    int order = size_to_order(heap_size);
 
     mm_add_region((unsigned long) &_sheap, order, MM_DMA);
 
@@ -302,6 +303,7 @@ void machine_init(void)
                       RCC_CFGR_PPRE2_DIV2);
     read32(RCC_CR) |= RCC_CR_PLLON;
 
+#if 1
     // XXX: Enable all GPIOs for now
     read32(STM32_RCC_AHB1ENR) |= 0x1ff;
     read32(STM32_RCC_AHB1RSTR) |= 0x1ff;
@@ -329,6 +331,7 @@ void machine_init(void)
 
     mdelay(100);
     read32(STM32_GPIOH_MODER) |= 0x2 << 8 | 0x2 << 10;
+#endif
 
     // XXX: Enable USART1
     read32(STM32_GPIOB_MODER) |= 0x2 << 12 | 0x2 << 14;
@@ -342,6 +345,8 @@ void machine_init(void)
     write32(STM32_USART1_CR1, (1 << 13));
     write32(STM32_USART1_BRR, (45 << 4) | 9);
     read32(STM32_USART1_CR1) |= (1 << 3) | (1 << 2);
+
+    kprintf("Heap: %u (order: %d)\n", heap_size, order);
 
     for (int i = 0; i < ARRAY_SIZE(gpio_port); i++)
         device_register(&gpio_port[i].device);

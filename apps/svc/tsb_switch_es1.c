@@ -54,7 +54,7 @@ static int es1_transfer(struct tsb_switch *sw,
                         size_t tx_size,
                         uint8_t *rx_buf,
                         size_t rx_size) {
-    struct i2c_dev *i2c_dev = sw->priv;
+    int i2c_fd = (int) sw->priv;
     int rc;
 
     dbg_insane("\t%s(): TX buffer:\n", __func__);
@@ -74,7 +74,7 @@ static int es1_transfer(struct tsb_switch *sw,
             .length = rx_size,
         }
     };
-    rc = ioctl(i2c_dev, I2C_TRANSFER, msgs, 2);
+    rc = ioctl(i2c_fd, I2C_TRANSFER, msgs, 2);
 
     dbg_insane("\t%s(): RX buffer:\n", __func__);
     dbg_print_buf(DBG_INSANE, rx_buf, rx_size);

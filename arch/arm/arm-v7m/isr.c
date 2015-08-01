@@ -112,7 +112,7 @@ __attribute__((weak)) void machine_init(void)
 {
 }
 
-static void _start(void)
+__attribute__((noinline)) static void _start(void)
 {
     clear_bss_section();
     copy_data_section();

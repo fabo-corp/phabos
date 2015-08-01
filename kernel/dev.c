@@ -266,6 +266,10 @@ static void i2c_test(void)
     write32(STM32_I2C2_BASE + I2C_CR1, 0);
 }
 
+void __aeabi_memclr4(void *dest, size_t n)
+{
+    memset(dest, 0, n);
+}
 
 int dev_main(int argc, char **argv)
 {

@@ -19,6 +19,7 @@
 #define I2C_CR1_PE          (1 << 0)
 #define I2C_CR1_START       (1 << 8)
 #define I2C_CR1_STOP        (1 << 9)
+#define I2C_CR1_ACK         (1 << 10)
 
 #define I2C_CR2_ITERREN     (1 << 8)
 #define I2C_CR2_ITEVTEN     (1 << 9)
@@ -26,7 +27,7 @@
 #define I2C_SR1_SB          (1 << 0)
 #define I2C_SR1_ADDR        (1 << 1)
 #define I2C_SR1_BTF         (1 << 2)
-#define I2C_SR1_RXE         (1 << 6)
+#define I2C_SR1_RXNE        (1 << 6)
 #define I2C_SR1_TXE         (1 << 7)
 #define I2C_SR1_BERR        (1 << 8)
 #define I2C_SR1_ARLO        (1 << 9)
@@ -56,6 +57,7 @@ struct stm32_adapter_priv {
 
 static void i2c_dump(struct device *device)
 {
+//#define kprintf(x...)
     kprintf("\tCR1: %#X\n", read32(device->reg_base + I2C_CR1));
     kprintf("\tCR2: %#X\n", read32(device->reg_base + I2C_CR2));
     kprintf("\tSR1: %#X\n", read32(device->reg_base + I2C_SR1));
@@ -70,6 +72,8 @@ static void stm32_i2c_err_irq(int irq, void *data)
     struct stm32_adapter_priv *priv = device->priv;
 
     kprintf("ERR\n");
+
+    irq_disable_line(irq);
 
     semaphore_up(&priv->xfer_semaphore);
 }
@@ -171,6 +175,8 @@ static inline void stm32_i2c_generate_stop_condition(struct device *device)
     write32(device->reg_base + I2C_CR1, I2C_CR1_PE | I2C_CR1_STOP);
 }
 
+#include <asm/delay.h>
+
 static inline int stm32_i2c_send_rx_address(struct device *device,
                                             uint16_t addr)
 {
@@ -182,12 +188,15 @@ static inline int stm32_i2c_send_rx_address(struct device *device,
     write32(device->reg_base + I2C_DR, (addr << 1) | 1);
 //    semaphore_down(&priv->xfer_semaphore);
 
+    mdelay(100);
+
     sr1 = read32(device->reg_base + I2C_SR1);
     if (sr1 & SR1_ERROR_MASK) {
         return -EIO;
     }
 
     read32(device->reg_base + I2C_SR2);
+
     return 0;
 }
 
@@ -215,26 +224,56 @@ static inline int stm32_i2c_send_tx_address(struct device *device,
 static int stm32_i2c_recv(struct device *device, struct i2c_msg *msg)
 {
     int retval;
+    uint32_t sr1;
 
     kprintf("%s()\n", __func__);
+
+    irq_disable();
+
+    read32(device->reg_base + I2C_CR1) |= I2C_CR1_ACK;
+
+i2c_dump(device);
 
     retval = stm32_i2c_send_rx_address(device, msg->addr);
     if (retval)
         return retval;
 
-    for (unsigned i = 0; i < msg->length; i++)
-        msg->buffer[i] = read32(device->reg_base + I2C_DR);
+i2c_dump(device);
 
-    return 0;
+    for (unsigned i = 0; i < msg->length; i++) {
+        while (!((sr1 = read32(device->reg_base + I2C_SR1)) & I2C_SR1_RXNE)) {
+            if (sr1 & SR1_ERROR_MASK) {
+                i2c_dump(device);
+                retval = -EIO;
+                goto out;
+            }
+        }
+
+        if (i + 4 > msg->length)
+            read32(device->reg_base + I2C_CR1) &= ~I2C_CR1_ACK;
+
+        msg->buffer[i] = read32(device->reg_base + I2C_DR);
+        kprintf("<- %u\n", msg->buffer[i]);
+
+        read32(device->reg_base + I2C_SR1);
+        read32(device->reg_base + I2C_SR2);
+    }
+
+out:
+    irq_enable();
+    return retval;
 }
 
 static int stm32_i2c_send(struct device *device, struct i2c_msg *msg)
 {
     int retval;
+    uint32_t sr1;
 
     kprintf("%s()\n", __func__);
 
     irq_disable();
+
+i2c_dump(device);
 
     retval = stm32_i2c_send_tx_address(device, msg->addr);
     if (retval)
@@ -243,14 +282,21 @@ static int stm32_i2c_send(struct device *device, struct i2c_msg *msg)
     i2c_dump(device);
 
     for (unsigned i = 0; i < msg->length; i++) {
-        while (!(read32(device->reg_base + I2C_SR1) & I2C_SR1_TXE)) {
+        while (!((sr1 = read32(device->reg_base + I2C_SR1)) & I2C_SR1_TXE)) {
+            if (sr1 & SR1_ERROR_MASK) {
+                i2c_dump(device);
+                retval = -EIO;
+                goto out;
+            }
         }
+
+        kprintf("-> %u\n", msg->buffer[i]);
         write32(device->reg_base + I2C_DR, msg->buffer[i]);
     }
 
+out:
     irq_enable();
-
-    return 0;
+    return retval;
 }
 
 static ssize_t stm32_i2c_transfer(struct i2c_adapter *adapter,
@@ -264,14 +310,17 @@ static ssize_t stm32_i2c_transfer(struct i2c_adapter *adapter,
     if (!count)
         return 0;
 
-i2c_dump(&adapter->device);
-
     mutex_lock(&priv->lock);
 
     for (unsigned i = 0; i < count; i++) {
+
+i2c_dump(&adapter->device);
+
         retval = stm32_i2c_generate_start_condition(&adapter->device); // repeated start
         if (retval)
             break;
+
+i2c_dump(&adapter->device);
 
         if (msg[i].flags & I2C_M_READ)
             retval = stm32_i2c_recv(&adapter->device, &msg[i]);
@@ -285,6 +334,7 @@ i2c_dump(&adapter->device);
 i2c_dump(&adapter->device);
 
     stm32_i2c_generate_stop_condition(&adapter->device);
+    read32(adapter->device.reg_base + I2C_DR);
 
     mutex_unlock(&priv->lock);
 

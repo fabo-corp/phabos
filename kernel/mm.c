@@ -209,6 +209,12 @@ void *kmalloc(size_t size, unsigned int flags)
 
     size += sizeof(*buffer);
 
+#if 0
+    static size_t total_size = 0;
+    total_size += size;
+    kprintf("%s(%u) = %u\n", __func__, size, total_size);
+#endif
+
     order = size_to_order(size);
     if (order < 0)
         return NULL;
