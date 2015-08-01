@@ -87,9 +87,9 @@ static void stm32_i2c_evt_irq(int irq, void *data)
     semaphore_up(&priv->xfer_semaphore);
 }
 
-static int stm32_i2c_set_freq(struct device *device, unsigned int freq)
+static int stm32_i2c_set_freq(struct i2c_adapter *adapter, unsigned long freq)
 {
-    struct stm32_i2c_adapter_platform *pdata = device->pdata;
+    struct stm32_i2c_adapter_platform *pdata = adapter->device.pdata;
     uint32_t ccr;
     uint32_t trise;
     unsigned speed;
@@ -99,8 +99,8 @@ static int stm32_i2c_set_freq(struct device *device, unsigned int freq)
     kprintf("%s()\n", __func__);
 
     // Disable I2C controller
-    cr1 = read32(device->reg_base + I2C_CR1);
-    write32(device->reg_base + I2C_CR1, 0);
+    cr1 = read32(adapter->device.reg_base + I2C_CR1);
+    write32(adapter->device.reg_base + I2C_CR1, 0);
 
     if (freq > I2C_FASTMODE_MAX_FREQ) {
         retval = -EINVAL;
@@ -117,7 +117,7 @@ static int stm32_i2c_set_freq(struct device *device, unsigned int freq)
     else
         ccr = pdata->clk / (freq * 3);
 
-    write32(device->reg_base + I2C_CCR, speed | ccr);
+    write32(adapter->device.reg_base + I2C_CCR, speed | ccr);
 
     // Configure Max Rise Time
     if (freq > I2C_FASTMODE_MAX_FREQ)
@@ -125,10 +125,10 @@ static int stm32_i2c_set_freq(struct device *device, unsigned int freq)
     else
         trise = (pdata->clk / I2C_STDMODE_INVT) + 1;
 
-    write32(device->reg_base + I2C_TRISE, trise);
+    write32(adapter->device.reg_base + I2C_TRISE, trise);
 
 out:
-    write32(device->reg_base + I2C_CR1, cr1);
+    write32(adapter->device.reg_base + I2C_CR1, cr1);
     return retval;
 }
 
@@ -143,64 +143,6 @@ static struct stm32_adapter_priv *stm32_adapter_priv_alloc(void)
     mutex_init(&priv->lock);
     semaphore_init(&priv->xfer_semaphore, 0);
     return priv;
-}
-
-static int stm32_i2c_open(struct file *file)
-{
-    struct device *device;
-    struct stm32_i2c_adapter_platform *pdata;
-
-    kprintf("%s()\n", __func__);
-
-    RET_IF_FAIL(file, -EINVAL);
-    RET_IF_FAIL(file->inode, -EINVAL);
-
-    device = devnum_get_device(file->inode->dev);
-    RET_IF_FAIL(device, -EINVAL);
-
-    pdata = device->pdata;
-    if (!pdata)
-        return -EINVAL;
-
-    device->priv = stm32_adapter_priv_alloc();
-    if (!device->priv)
-        return -ENOMEM;
-
-    write32(device->reg_base + I2C_CR1, 0);
-
-    i2c_dump(device);
-
-    // Set APB1 clock + enable EVT and ERR interrupts
-    write32(device->reg_base + I2C_CR2, (pdata->clk / ONE_MHZ) |
-                                        I2C_CR2_ITEVTEN | I2C_CR2_ITERREN);
-
-    stm32_i2c_set_freq(device, I2C_STDMODE_MAX_FREQ);
-
-    // Enable controller
-    write32(device->reg_base + I2C_CR1, I2C_CR1_PE);
-
-i2c_dump(device);
-
-    return 0;
-}
-
-static int stm32_i2c_close(struct file *file)
-{
-    struct device *device;
-
-    kprintf("%s()\n", __func__);
-
-    RET_IF_FAIL(file, -EINVAL);
-    RET_IF_FAIL(file->inode, -EINVAL);
-
-    device = devnum_get_device(file->inode->dev);
-    RET_IF_FAIL(device, -EINVAL);
-
-    write32(device->reg_base + I2C_CR1, 0);
-
-    kfree(device->priv);
-
-    return 0;
 }
 
 static inline int stm32_i2c_generate_start_condition(struct device *device)
@@ -311,77 +253,47 @@ static int stm32_i2c_send(struct device *device, struct i2c_msg *msg)
     return 0;
 }
 
-static ssize_t stm32_i2c_transfer(struct device *device, struct i2c_msg *msg,
-                                  size_t count)
+static ssize_t stm32_i2c_transfer(struct i2c_adapter *adapter,
+                                  struct i2c_msg *msg, size_t count)
 {
     ssize_t retval = 0;
-    struct stm32_adapter_priv *priv = device->priv;
+    struct stm32_adapter_priv *priv = adapter->device.priv;
 
     kprintf("%s()\n", __func__);
 
     if (!count)
         return 0;
 
-i2c_dump(device);
+i2c_dump(&adapter->device);
 
     mutex_lock(&priv->lock);
 
     for (unsigned i = 0; i < count; i++) {
-        retval = stm32_i2c_generate_start_condition(device); // repeated start
+        retval = stm32_i2c_generate_start_condition(&adapter->device); // repeated start
         if (retval)
             break;
 
         if (msg[i].flags & I2C_M_READ)
-            retval = stm32_i2c_recv(device, &msg[i]);
+            retval = stm32_i2c_recv(&adapter->device, &msg[i]);
         else
-            retval = stm32_i2c_send(device, &msg[i]);
+            retval = stm32_i2c_send(&adapter->device, &msg[i]);
 
         if (retval)
             break;
     }
 
-i2c_dump(device);
+i2c_dump(&adapter->device);
 
-    stm32_i2c_generate_stop_condition(device);
+    stm32_i2c_generate_stop_condition(&adapter->device);
 
     mutex_unlock(&priv->lock);
 
     return retval;
 }
 
-int stm32_i2c_ioctl(struct file *file, unsigned long cmd, va_list vl)
-{
-    struct device *device = devnum_get_device(file->inode->dev);
-    int retval;
-    size_t msg_count;
-    struct i2c_msg *msg;
-
-    kprintf("%s()\n", __func__);
-
-    RET_IF_FAIL(file, -EINVAL);
-
-    switch (cmd) {
-    case I2C_TRANSFER:
-        msg = va_arg(vl, struct i2c_msg*);
-        msg_count = va_arg(vl, size_t);
-        retval = stm32_i2c_transfer(device, msg, msg_count);
-        break;
-
-    case I2C_SET_FREQUENCY:
-        retval = stm32_i2c_set_freq(device, va_arg(vl, unsigned));
-        break;
-
-    default:
-        retval = -EINVAL;
-    }
-
-    return 0;
-}
-
-static struct file_operations stm32_i2c_ops = {
-    .open = stm32_i2c_open,
-    .close = stm32_i2c_close,
-    .ioctl = stm32_i2c_ioctl,
+static struct i2c_adapter_ops stm32_i2c_adapter_ops = {
+    .transfer = stm32_i2c_transfer,
+    .set_frequency = stm32_i2c_set_freq,
 };
 
 static int stm32_i2c_probe(struct device *device)
@@ -394,8 +306,6 @@ static int stm32_i2c_probe(struct device *device)
 
     RET_IF_FAIL(adapter, -EINVAL);
 
-    device->ops = stm32_i2c_ops;
-
     retval = devnum_alloc(&stm32_i2c_driver, device, &devnum);
     if (retval)
         return -ENOMEM;
@@ -404,11 +314,32 @@ static int stm32_i2c_probe(struct device *device)
     if (!pdata)
         return -EINVAL;
 
+    device->priv = stm32_adapter_priv_alloc();
+    if (!device->priv)
+        return -ENOMEM;
+
+    write32(device->reg_base + I2C_CR1, 0);
+
+    i2c_dump(device);
+
+    // Set APB1 clock + enable EVT and ERR interrupts
+    write32(device->reg_base + I2C_CR2, (pdata->clk / ONE_MHZ) |
+                                        I2C_CR2_ITEVTEN | I2C_CR2_ITERREN);
+
+    stm32_i2c_set_freq(adapter, I2C_STDMODE_MAX_FREQ);
+
+    // Enable controller
+    write32(device->reg_base + I2C_CR1, I2C_CR1_PE);
+
+i2c_dump(device);
+
     irq_attach(pdata->evt_irq, stm32_i2c_evt_irq, device);
     irq_attach(pdata->err_irq, stm32_i2c_err_irq, device);
 
     irq_enable_line(pdata->evt_irq);
     irq_enable_line(pdata->err_irq);
+
+    adapter->ops = &stm32_i2c_adapter_ops;
 
     return i2c_adapter_register(adapter, devnum);
 }
@@ -422,6 +353,10 @@ static int stm32_i2c_remove(struct device *device)
     pdata = device->pdata;
     if (!pdata)
         return -EINVAL;
+
+    write32(device->reg_base + I2C_CR1, 0);
+
+    kfree(device->priv);
 
     irq_detach(pdata->evt_irq);
     irq_detach(pdata->err_irq);
