@@ -282,14 +282,6 @@ static struct device tsb_unipro_switch = {
 
 void machine_init(void)
 {
-    extern uint32_t _sheap;
-    extern uint32_t _eor;
-
-    size_t heap_size = (uintptr_t) &_eor - (uintptr_t) &_sheap;
-    int order = size_to_order(heap_size);
-
-    mm_add_region((unsigned long) &_sheap, order, MM_DMA);
-
     /*
      * PLL: 168MHz
      * AHB: 168MHz

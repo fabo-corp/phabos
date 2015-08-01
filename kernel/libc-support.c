@@ -5,7 +5,6 @@
  * Provided under the three clause BSD license found in the LICENSE file.
  */
 
-#if 0
 #include <stdint.h>
 #include <asm/spinlock.h>
 #include <stdio.h>
@@ -35,4 +34,3 @@ void __malloc_unlock(struct _reent *reent)
 {
     spinlock_unlock(&malloc_spinlock);
 }
-#endif

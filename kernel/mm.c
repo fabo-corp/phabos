@@ -102,7 +102,7 @@ static int fill_bucket(int order, unsigned int flags)
     struct mm_buffer *buffer2;
     int retval;
 
-    if (order >= MAX_ADDRESSABLE_MEM_ORDER)
+    if (order >= 15)
         return -ENOMEM;
 
     buffer1 = find_buffer_in_bucket(order + 1, flags);
@@ -201,11 +201,9 @@ void *kmalloc(size_t size, unsigned int flags)
     if (!size)
         return NULL;
 
-#if 0
     if (!is_initialized) {
         return malloc(size);
     }
-#endif
 
     size += sizeof(*buffer);
 
@@ -246,12 +244,10 @@ void kfree(void *ptr)
     if (!ptr)
         return;
 
-#if 0
     if (!is_initialized) {
         free(ptr);
         return;
     }
-#endif
 
     buffer = (struct mm_buffer*) ((char *) ptr - sizeof(*buffer));
     RET_IF_FAIL(buffer->list.prev == buffer->list.next,);
@@ -279,47 +275,4 @@ void page_free(void *ptr, int order)
     buffer->bucket = size_to_order((1 << order) * PAGE_SIZE);
 
     kfree((char *) buffer + sizeof(*buffer));
-}
-
-void *malloc(size_t size)
-{
-    return kmalloc(size, 0);
-}
-
-void free(void *ptr)
-{
-    return kfree(ptr);
-}
-
-void *__wrap__malloc_r(struct _reent *reent, size_t size)
-{
-    return kmalloc(size, 0);
-}
-
-void *__wrap__free_r(struct _reent *reent, size_t size)
-{
-    return kmalloc(size, 0);
-}
-
-void *__wrap__realloc_r(struct _reent *reent, void *ptr, size_t size)
-{
-    struct mm_buffer *buffer;
-    void *newptr = kmalloc(size, 0);
-    size_t old_size;
-
-    if (!ptr)
-        return newptr;
-
-    if (!newptr)
-        return NULL;
-
-    buffer = (struct mm_buffer*) ((char *) ptr - sizeof(*buffer));
-    RET_IF_FAIL(buffer->list.prev == buffer->list.next, NULL);
-
-    old_size = order_to_size(buffer->bucket) - sizeof(*buffer);
-
-    memcpy(newptr, ptr, MIN(old_size, size));
-    kfree(ptr);
-
-    return newptr;
 }
