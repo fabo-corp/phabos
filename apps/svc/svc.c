@@ -62,6 +62,17 @@ static inline void svcd_set_state(enum svc_state state){
 }
 
 
+// XXX: porting to phabos
+static size_t list_count(struct list_head *head)
+{
+    size_t count = 0;
+
+    list_foreach(head, iter)
+        count++;
+
+    return count;
+}
+
 /*
  * Static connections table
  *
@@ -134,7 +145,7 @@ static struct unipro_connection *conn;
 
 static int setup_routes_from_manifest(void)
 {
-    struct list_head *cports, *iter;
+    struct list_head *cports;
     struct gb_cport *gb_cport;
     uint8_t device_id0;
     int hd_cport_max;
@@ -378,14 +389,14 @@ static int svcd_cleanup(void) {
 static void svcd_main(void *data) {
     int rc = 0;
 
-    pthread_mutex_lock(&svc->lock);
+    mutex_lock(&svc->lock);
     rc = svcd_startup();
     if (rc < 0) {
         goto done;
     }
 
     while (!svc->stop) {
-        pthread_cond_wait(&svc->cv, &svc->lock);
+        task_cond_wait(&svc->cv, &svc->lock);
         /* check to see if we were told to stop */
         if (svc->stop) {
             dbg_verbose("svc stop requested\n");
@@ -397,7 +408,7 @@ static void svcd_main(void *data) {
 
 done:
     svcd_set_state(SVC_STATE_STOPPED);
-    pthread_mutex_unlock(&svc->lock);
+    mutex_unlock(&svc->lock);
 }
 
 /*
@@ -410,8 +421,8 @@ int svc_init(int argc, char **argv) {
     svc->board_info = NULL;
     svc->svcd_pid = 0;
     svc->stop = 0;
-    pthread_mutex_init(&svc->lock, NULL);
-    pthread_cond_init(&svc->cv, NULL);
+    mutex_init(&svc->lock);
+    task_cond_init(&svc->cv);
     svcd_set_state(SVC_STATE_STOPPED);
 
     rc = svcd_start();
@@ -428,11 +439,11 @@ int svc_init(int argc, char **argv) {
 int svcd_start(void) {
     struct task *task;
 
-    pthread_mutex_lock(&svc->lock);
+    mutex_lock(&svc->lock);
     dbg_info("starting svcd\n");
     if (!svcd_state_stopped()) {
         dbg_info("svcd already started\n");
-        pthread_mutex_unlock(&svc->lock);
+        mutex_unlock(&svc->lock);
         return -EBUSY;
     }
 
@@ -445,7 +456,7 @@ int svcd_start(void) {
 
     svc->stop = 0;
     svcd_set_state(SVC_STATE_RUNNING);
-    pthread_mutex_unlock(&svc->lock);
+    mutex_unlock(&svc->lock);
 
     return 0;
 }
@@ -455,28 +466,31 @@ void svcd_stop(void) {
     int rc;
     pid_t pid_tmp;
 
-    pthread_mutex_lock(&svc->lock);
+    mutex_lock(&svc->lock);
     dbg_verbose("stopping svcd\n");
 
     pid_tmp = svc->svcd_pid;
 
     if (!svcd_state_running()) {
         dbg_info("svcd not running\n");
-        pthread_mutex_unlock(&svc->lock);
+        mutex_unlock(&svc->lock);
         return;
     }
 
     /* signal main thread to stop */
     svc->stop = 1;
-    pthread_cond_signal(&svc->cv);
-    pthread_mutex_unlock(&svc->lock);
+    task_cond_signal(&svc->cv);
+    mutex_unlock(&svc->lock);
 
     /* wait for the svcd to stop */
+    task_wait(find_task_by_id(pid_tmp));
+#if 0 // FIXME
     rc = waitpid(pid_tmp, &status, 0);
     if (rc != pid_tmp) {
         dbg_error("failed to stop svcd\n");
     } else {
         dbg_info("svcd stopped\n");
     }
+#endif
 }
 

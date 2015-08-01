@@ -306,7 +306,9 @@ struct ara_board_info *board_init(void) {
      * This needs to happen before the I/O Expanders registration, which
      * uses some STM32 pins
      */
+#if 0 // FIXME
     stm32_gpio_init();
+#endif
 
     /*
      * Configure the switch reset and power supply lines.
@@ -322,6 +324,7 @@ struct ara_board_info *board_init(void) {
      */
     vreg_get(&sw_vreg);
 
+#if 0 // FIXME
     /* Register the TCA64xx I/O Expanders GPIOs to Gpio Chip */
     for (i = 0; i < bdb1b_board_info.nr_io_expanders; i++) {
         struct io_expander_info *io_exp = &bdb1b_board_info.io_expanders[i];
@@ -344,6 +347,7 @@ struct ara_board_info *board_init(void) {
             }
         }
     }
+#endif
 
     return &bdb1b_board_info;
 }
@@ -351,7 +355,7 @@ struct ara_board_info *board_init(void) {
 void board_exit(void) {
     int i;
 
-
+#if 0 // FIXME
     /*
      * First unregister the TCA64xx I/O Expanders and associated I2C bus(ses).
      * Done in reverse order from registration to account for IRQ chaining
@@ -366,10 +370,13 @@ void board_exit(void) {
         if (io_exp->i2c_dev >= 0)
             close((int) io_exp->i2c_dev);
     }
+#endif
 
     /* Disable 1V1 and 1V8, used by the I/O Expanders */
     vreg_put(&sw_vreg);
 
+#if 0 // FIXME
     /* Lastly unregister the GPIO Chip driver */
     stm32_gpio_deinit();
+#endif
 }

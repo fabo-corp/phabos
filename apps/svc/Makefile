@@ -1,4 +1,4 @@
-#obj-y += ina230.o
+obj-y += ina230.o
 obj-y += tsb_es2_mphy_fixups.o
 obj-y += vreg.o
 obj-y += interface.o
@@ -11,7 +11,6 @@ obj-y += board-bdb1b.o
 CFLAGS += -Iapps/greybus-utils
 
 #CSRCS		= up_boot.c
-#CSRCS		+= tsb_switch_es1.c
 #CSRCS		+= tsb_switch_es2.c
 
 #ifeq ($(CONFIG_ARCH_BOARD_ARA_BDB1B_SVC),y)

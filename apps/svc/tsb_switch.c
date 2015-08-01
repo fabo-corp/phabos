@@ -1395,9 +1395,12 @@ static int destroy_switch_irq_worker(struct tsb_switch *sw)
     sw->sw_irq_worker_exit = true;
     semaphore_up(&sw->sw_irq_lock);
 
+    task_wait(find_task_by_id(sw->worker_id));
+#if 0 // FIXME
     ret = waitpid(sw->worker_id, &status, 0);
     if (ret < 0)
         dbg_warn("%s: waitpid failed with ret=%d\n", __func__, ret);
+#endif
 
     return ret;
 }

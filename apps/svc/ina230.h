@@ -36,8 +36,8 @@
 #define __INA_230_H__
 
 #include <stdint.h>
-#include <pwr_measure.h>
-#include <nuttx/i2c.h>
+#include "pwr_measure.h"
+#include <phabos/i2c.h>
 
 typedef enum {
     ina230_ct_140us = 0x0,          /* 140us */
@@ -76,16 +76,16 @@ typedef enum {
 
 typedef struct
 {
-    struct i2c_dev_s *i2c_dev;  /* Nuttx I2C bus handler */
-    uint8_t addr;               /* I2C device address */
-    uint32_t mohm;              /* Shunt resistor value in milliohms */
-    uint32_t current_lsb;       /* Current LSB in microamps */
-    ina230_power_mode mode;     /* Acquisition mode */
-    ina230_conversion_time ct;  /* Conversion time */
-    ina230_avg_count count;     /* Average sample count */
+    struct i2c_adapter *i2c_adapter;    /* I2C bus handler */
+    uint8_t addr;                       /* I2C device address */
+    uint32_t mohm;                      /* Shunt resistor value in milliohms */
+    uint32_t current_lsb;               /* Current LSB in microamps */
+    ina230_power_mode mode;             /* Acquisition mode */
+    ina230_conversion_time ct;          /* Conversion time */
+    ina230_avg_count count;             /* Average sample count */
 } ina230_device;
 
-ina230_device *ina230_init(struct i2c_dev_s *dev, uint8_t addr,
+ina230_device *ina230_init(struct i2c_adapter *adapter, uint8_t addr,
                            uint32_t mohm, uint32_t current_lsb,
                            ina230_conversion_time ct,
                            ina230_avg_count count,

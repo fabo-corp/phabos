@@ -172,6 +172,72 @@ static struct i2c_adapter stm32_i2c_adapter = {
     },
 };
 
+#if 0
+static struct tca64xx_platform tca64xx_io_expander_pdata[] = {
+    {
+        .part = TCA6416_PART,
+        .i2c_adapter = &stm32_i2c_adapter,
+        .i2c_addr = 0x21,
+        .reset = IO_RESET,
+    },
+    {
+        .part = TCA6416_PART,
+        .i2c_adapter = &stm32_i2c_adapter,
+        .i2c_addr = 0x20,
+        .reset = IO_RESET,
+    },
+    {
+        .part = TCA6416_PART,
+        .i2c_adapter = &stm32_i2c_adapter,
+        .i2c_addr = 0x23,
+        .reset = TCA64XX_IO_UNUSED,
+    },
+};
+
+static struct gpio_device tca64xx_io_expander[] = {
+    {
+        .count = 16,
+        .device = {
+            .name = "tca6416",
+            .description = "TCA6416 U90",
+            .driver = "tca64xx",
+
+            .irq = 
+            .pdata = &tca64xx_io_expander_pdata[0],
+        },
+    },
+    {
+        .count = 16,
+        .device = {
+            .name = "tca6416",
+            .description = "TCA6416 U96",
+            .driver = "tca64xx",
+
+            .irq = 
+            .pdata = &tca64xx_io_expander_pdata[1],
+        },
+    },
+    {
+        .count = 16,
+        .device = {
+            .name = "tca6416",
+            .description = "TCA6416 U135",
+            .driver = "tca64xx",
+
+            .irq = 
+            .pdata = &tca64xx_io_expander_pdata[2],
+        },
+    },
+};
+#endif
+
+static struct device tsb_unipro_switch = {
+    .name = "tsb-unipro_switch-es1",
+    .description = "TSB UniPro Switch ES1",
+    .driver = "tsb-unipro-switch-es1",
+};
+
+
 #define RCC_CR      (STM32_RCC_BASE + 0x00)
 #define RCC_PLLCFGR (STM32_RCC_BASE + 0x04)
 #define RCC_CFGR    (STM32_RCC_BASE + 0x08)
