@@ -12,6 +12,50 @@
 static struct hashtable adapter_table;
 static struct spinlock adapter_table_lock;
 
+int i2c_transfer(struct i2c_adapter *adapter, struct i2c_msg *msg, size_t count)
+{
+    if (!adapter->ops->transfer)
+        return -ENOSYS;
+
+    return adapter->ops->transfer(adapter, msg, count);
+}
+
+int i2c_set_frequency(struct i2c_adapter *adapter, unsigned long freq)
+{
+        if (!adapter->ops->set_frequency)
+            return -ENOSYS;
+
+        return adapter->ops->set_frequency(adapter, freq);
+}
+
+static int i2c_adapter_ioctl(struct file *file, unsigned long cmd, va_list vl)
+{
+    struct device *device = devnum_get_device(file->inode->dev);
+    struct i2c_adapter *adapter = to_adapter(device);
+    struct i2c_msg *msg;
+    size_t msg_count;
+
+    RET_IF_FAIL(file, -EINVAL);
+    RET_IF_FAIL(adapter->ops, -EINVAL);
+
+    switch (cmd) {
+    case I2C_TRANSFER:
+        msg = va_arg(vl, struct i2c_msg*);
+        msg_count = va_arg(vl, size_t);
+        return i2c_transfer(adapter, msg, msg_count);
+
+    case I2C_SET_FREQUENCY:
+        return i2c_set_frequency(adapter, va_arg(vl, unsigned long));
+
+    default:
+        return -EINVAL;
+    }
+}
+
+static struct file_operations i2c_operations = {
+    .ioctl = i2c_adapter_ioctl,
+};
+
 int i2c_adapter_register(struct i2c_adapter *adapter, dev_t devnum)
 {
     unsigned int i;
@@ -34,12 +78,10 @@ int i2c_adapter_register(struct i2c_adapter *adapter, dev_t devnum)
     if (retval < 0)
         return -ENOMEM;
 
-    devfs_mknod(name, S_IFCHR, devnum);
-
-    kprintf(DRIVER_NAME ": new device i2c-%u\n", i);
+    retval = chrdev_register(&adapter->device, devnum, name, &i2c_operations);
 
     free(name);
-    return 0;
+    return retval;
 }
 
 int i2c_adapter_unregister(struct i2c_adapter *adapter)

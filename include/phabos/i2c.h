@@ -8,6 +8,8 @@
 #ifndef __I2C_H__
 #define __I2C_H__
 
+#include <phabos/utils.h>
+
 #define I2C_STDMODE_MAX_FREQ        100000
 #define I2C_STDMODE_MAX_RISE_TIME   1000
 
@@ -32,9 +34,11 @@
 
 struct i2c_dev;
 struct i2c_msg;
+struct i2c_adapter;
 
 struct i2c_adapter_ops {
-    int (*transfer)(struct i2c_dev *dev, struct i2c_msg *msg, size_t count);
+    int (*transfer)(struct i2c_adapter *adt, struct i2c_msg *msg, size_t count);
+    int (*set_frequency)(struct i2c_adapter *adapter, unsigned long freq);
 };
 
 struct i2c_adapter {
@@ -56,7 +60,15 @@ struct i2c_msg {
     unsigned long flags;
 };
 
+static inline struct i2c_adapter *to_adapter(struct device *device)
+{
+    return containerof(device, struct i2c_adapter, device);
+}
+
 int i2c_adapter_register(struct i2c_adapter *adapter, dev_t devnum);
+int i2c_adapter_unregister(struct i2c_adapter *adapter);
+int i2c_set_frequency(struct i2c_adapter *adapter, unsigned long freq);
+int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msg, size_t count);
 
 #endif /* __I2C_H__ */
 
