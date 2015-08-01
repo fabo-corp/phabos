@@ -84,6 +84,7 @@ void sched_yield(void);
  */
 void task_kill(struct task *task);
 
+int task_wait(struct task *task);
 void task_exit(void);
 void task_add_to_wait_list(struct task *task, struct list_head *wait_list);
 void task_remove_from_wait_list(struct task *task);
@@ -105,10 +106,12 @@ struct task *task_run(task_entry_t task, void *data, uint32_t stack_addr);
  * Get the task ID of the running task
  */
 struct task *task_get_running(void);
+struct task *find_task_by_id(int id);
 
 void sched_lock(void);
 void sched_unlock(void);
 
+void task_cond_init(struct task_cond* cond);
 void task_cond_wait(struct task_cond* cond, struct mutex *mutex);
 void task_cond_signal(struct task_cond* cond);
 void task_cond_broadcast(struct task_cond* cond);

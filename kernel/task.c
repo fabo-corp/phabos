@@ -76,7 +76,7 @@ struct task *task_create(void)
     task = zalloc(sizeof(*task));
     RET_IF_FAIL(task, NULL);
 
-    list_init(&task->wait_cond.wait_list);
+    task_cond_init(&task->wait_cond);
     mutex_init(&task->wait_mutex);
 
     list_init(&task->list);
@@ -87,6 +87,11 @@ struct task *task_create(void)
     irq_enable();
 
     return task;
+}
+
+void task_cond_init(struct task_cond* cond)
+{
+    list_init(&cond->wait_list);
 }
 
 void task_cond_wait(struct task_cond* cond, struct mutex *mutex)
