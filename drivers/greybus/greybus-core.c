@@ -332,7 +332,7 @@ int gb_operation_send_request(struct gb_operation *operation,
         hdr->id = atomic_inc(&request_id);
         if (hdr->id == 0) /* ID 0 is for request with no response */
             hdr->id = atomic_inc(&request_id);
-        clock_gettime(CLOCK_REALTIME, &operation->time);
+        clock_gettime(CLOCK_MONOTONIC, &operation->time);
         operation->callback = callback;
         gb_operation_ref(operation);
         list_add(&g_cport[operation->cport].tx_fifo, &operation->list);
