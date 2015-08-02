@@ -145,6 +145,13 @@ static char shell_getc(void)
     return c;
 }
 
+static inline void shell_move_left(void)
+{
+    shell_putc(0x1B);
+    shell_putc('[');
+    shell_putc('D');
+}
+
 static void shell_process_special_key(char *buffer, int *pos, int *cursor_pos,
                                       size_t size)
 {
@@ -166,9 +173,9 @@ static void shell_process_special_key(char *buffer, int *pos, int *cursor_pos,
             shell_putc(' ');
 
         for (int i = 0; i < *pos; i++) {
-            shell_putc(0x7F);
+            shell_move_left();
             shell_putc(' ');
-            shell_putc(0x7F);
+           shell_move_left();
         }
         printf("%s", cmd->command);
 
@@ -181,9 +188,9 @@ static void shell_process_special_key(char *buffer, int *pos, int *cursor_pos,
             shell_putc(' ');
 
         for (int i = 0; i < *pos; i++) {
-            shell_putc(0x7F);
+           shell_move_left();
             shell_putc(' ');
-            shell_putc(0x7F);
+           shell_move_left();
         }
         *pos = 0;
 
@@ -257,20 +264,20 @@ static size_t shell_readline(char *buffer, size_t size)
             }
 
             cursor_pos--;
-            shell_putc(0x7F);
+            shell_move_left();
 
             for (int i = cursor_pos; i < eol; i++)
                 buffer[i] = buffer[i + 1];
             for (int i = cursor_pos; i > 0; i--)
-                shell_putc(0x7F);
+                shell_move_left();
             for (int i = 0; i < eol; i++)
                 shell_putc(' ');
             for (int i = eol; i > 0; i--)
-                shell_putc(0x7F);
+                shell_move_left();
             for (int i = 0; i < eol - 1; i++)
                 shell_putc(buffer[i]);
             for (int i = eol - 1; i > cursor_pos; i--)
-                shell_putc(0x7F);
+                shell_move_left();
 
             eol -= 2;
             break;
@@ -287,7 +294,7 @@ static size_t shell_readline(char *buffer, size_t size)
             for (int i = cursor_pos; i <= eol; i++)
                 shell_putc(buffer[i]);
             for (int i = cursor_pos; i < eol; i++)
-                shell_putc(0x7F);
+                shell_move_left();
             cursor_pos++;
             break;
         }
