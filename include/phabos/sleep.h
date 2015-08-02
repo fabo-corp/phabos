@@ -11,6 +11,8 @@
 #include <time.h>
 
 int usleep(useconds_t usec);
+int nanosleep(const struct timespec *req, struct timespec *rem);
+unsigned int sleep(unsigned int seconds);
 
 #endif /* __LIB_SLEEP_H__ */
 
