@@ -69,13 +69,12 @@
  * @brief           Read content from a given 16-bit register of a given
  *                  device on a given I2C bus.
  * @return          0 on success, standard error codes otherwise
- * @param[in]       adapter: I2C bus adapter
+ * @param[in]       i2c_fd: I2C bus adapter fd
  * @param[in]       addr: I2C device address
  * @param[in]       reg: I2C device register address
  * @param[out]      val: content read from I2C device register
  */
-static int ina230_i2c_get(struct i2c_adapter *adapter,
-                          uint8_t addr, uint8_t reg, uint16_t *val)
+static int ina230_i2c_get(int i2c_fd, uint8_t addr, uint8_t reg, uint16_t *val)
 {
     int ret;
     uint8_t buf[2];
@@ -94,7 +93,7 @@ static int ina230_i2c_get(struct i2c_adapter *adapter,
         },
     };
 
-    ret = i2c_transfer(adapter, msg, 2);
+    ret = ioctl(i2c_fd, I2C_TRANSFER, msg, 2);
     if (ret == 0) {
         *val = (uint16_t) buf[1] + (((uint16_t) buf[0]) << (uint16_t) 8);
         dbg_verbose("%s(): addr=0x%02X, reg=0x%02hhX: buf[0]=0x%02hhX buf[1]=0x%02hhX read 0x%04hX\n",
@@ -112,13 +111,12 @@ static int ina230_i2c_get(struct i2c_adapter *adapter,
  * @brief           Write data into a given 16-bit register of a given
  *                  device on a given I2C bus.
  * @return          0 on success, standard error codes otherwise
- * @param[in]       adapter: I2C bus adapter
+ * @param[in]       i2c_fd: I2C bus adapter fd
  * @param[in]       addr: I2C device address
  * @param[in]       reg: I2C device register address
  * @param[in]       val: data to be written into I2C device register
  */
-static int ina230_i2c_set(struct i2c_adapter *adapter,
-                          uint8_t addr, uint8_t reg, uint16_t val)
+static int ina230_i2c_set(int i2c_fd, uint8_t addr, uint8_t reg, uint16_t val)
 {
     int ret;
     uint8_t val_lsb = (uint8_t) (val & 0x00FF);
@@ -135,7 +133,7 @@ static int ina230_i2c_set(struct i2c_adapter *adapter,
 
     dbg_verbose("%s(): addr=0x%02hhX: reg=0x%02hhX, val=0x%04hX\n",
                 __func__, addr, reg, val);
-    ret = i2c_transfer(adapter, msg, 1);
+    ret = ioctl(i2c_fd, I2C_TRANSFER, msg, 2);
 
     return ret;
 }
@@ -144,14 +142,14 @@ static int ina230_i2c_set(struct i2c_adapter *adapter,
  * @brief           Update register content of a given 16-bit register of a
  *                  given device on a given I2C bus.
  * @return          0 on success, standard error codes otherwise
- * @param[in]       adapter: I2C bus adapter
+ * @param[in]       i2c_fd: I2C bus adapter fd
  * @param[in]       addr: I2C device address
  * @param[in]       reg: I2C device register address
  * @param[in]       mask: mask to be applied to the register content
  * @param[in]       shift: shift to be applied to argument 'val'
  * @param[in]       val: data to be written into I2C device register
  */
-static int ina230_update_reg(struct i2c_adapter *adapter, uint8_t addr,
+static int ina230_update_reg(int i2c_fd, uint8_t addr,
                              uint8_t reg, uint16_t mask, uint8_t shift,
                              uint16_t val)
 {
@@ -165,7 +163,7 @@ static int ina230_update_reg(struct i2c_adapter *adapter, uint8_t addr,
     }
 
     /* Get register content */
-    ret = ina230_i2c_get(adapter, addr, reg, &content);
+    ret = ina230_i2c_get(i2c_fd, addr, reg, &content);
     if (ret) {
         return ret;
     }
@@ -175,7 +173,7 @@ static int ina230_update_reg(struct i2c_adapter *adapter, uint8_t addr,
     content |= (val << shift);
     dbg_verbose("%s(): new content=0x%04hX\n", __func__, content);
     /* Write back new register content */
-    return ina230_i2c_set(adapter, addr, reg, content);
+    return ina230_i2c_set(i2c_fd, addr, reg, content);
 }
 
 /**
@@ -186,7 +184,7 @@ static int ina230_update_reg(struct i2c_adapter *adapter, uint8_t addr,
 static int ina230_reset(ina230_device *dev)
 {
     dbg_verbose("%s(): addr=0x%02hhX\n", __func__, dev->addr);
-    return ina230_update_reg(dev->i2c_adapter, dev->addr,
+    return ina230_update_reg(dev->i2c_fd, dev->addr,
                              INA230_CONFIG,
                              INA230_CONFIG_RST_MASK,
                              INA230_CONFIG_RST_SHIFT,
@@ -202,7 +200,7 @@ static int ina230_set_mode(ina230_device *dev)
 {
     dbg_verbose("%s(): addr=0x%02hhX, mode=%02hhu\n",
                 __func__, dev->addr, dev->mode);
-    return ina230_update_reg(dev->i2c_adapter, dev->addr,
+    return ina230_update_reg(dev->i2c_fd, dev->addr,
                              INA230_CONFIG,
                              INA230_CONFIG_POWER_MODE_MASK,
                              INA230_CONFIG_POWER_MODE_SHIFT,
@@ -220,12 +218,12 @@ static int ina230_set_conversion_time(ina230_device *dev)
 
     dbg_verbose("%s(): addr=0x%02hhX, ct=%02hhu\n",
                 __func__, dev->addr, dev->ct);
-    ret = ina230_update_reg(dev->i2c_adapter, dev->addr,
+    ret = ina230_update_reg(dev->i2c_fd, dev->addr,
                              INA230_CONFIG,
                              INA230_CONFIG_VSHUNT_CT_MASK,
                              INA230_CONFIG_VSHUNT_CT_SHIFT,
                              dev->ct);
-    ret = ret || ina230_update_reg(dev->i2c_adapter, dev->addr,
+    ret = ret || ina230_update_reg(dev->i2c_fd, dev->addr,
                                    INA230_CONFIG,
                                    INA230_CONFIG_VBUS_CT_MASK,
                                    INA230_CONFIG_VBUS_CT_SHIFT,
@@ -248,7 +246,7 @@ static int ina230_set_avg_sample_count(ina230_device *dev)
     dbg_verbose("%s(): addr=0x%02hhX, count=%02hhu\n",
                 __func__, dev->addr, dev->count);
 
-    return ina230_update_reg(dev->i2c_adapter, dev->addr,
+    return ina230_update_reg(dev->i2c_fd, dev->addr,
                              INA230_CONFIG,
                              INA230_CONFIG_AVG_MASK,
                              INA230_CONFIG_AVG_SHIFT,
@@ -367,7 +365,7 @@ static int ina230_set_current_lsb(ina230_device *dev)
     /* Convert to CALIBRATION value (equation 1 in datasheet) */
     cal = INA230_CALIBRATION_MULT / (dev->mohm * dev->current_lsb);
     dbg_verbose("%s(): cal=%u\n", __func__, cal);
-    return ina230_i2c_set(dev->i2c_adapter, dev->addr, INA230_CALIBRATION, cal);
+    return ina230_i2c_set(dev->i2c_fd, dev->addr, INA230_CALIBRATION, cal);
 }
 
 /**
@@ -386,7 +384,7 @@ static int ina230_set_current_lsb(ina230_device *dev)
  *                   - Between 2 measurements
  *                     (otherwise previous sample will be read)
  * @return          0 on success, standard error codes otherwise
- * @param[in]       i2c_adapter: I2C bus adapter
+ * @param[in]       i2c_fd: I2C bus adapter fd
  * @param[in]       addr: INA230 device I2C address on bus
  * @param[in]       mohm: shunt resistor value (in milli-ohms)
  * @param[in]       current_lsb: current measurement LSB
@@ -394,7 +392,7 @@ static int ina230_set_current_lsb(ina230_device *dev)
  * @param[in]       count: averaging sample count
  * @param[in]       mode: INA230 mode
  */
-ina230_device *ina230_init(struct i2c_adapter *i2c_adapter, uint8_t addr,
+ina230_device *ina230_init(int i2c_fd, uint8_t addr,
                            uint32_t mohm, uint32_t current_lsb,
                            ina230_conversion_time ct,
                            ina230_avg_count count,
@@ -404,7 +402,7 @@ ina230_device *ina230_init(struct i2c_adapter *i2c_adapter, uint8_t addr,
     int ret = 0;
 
     dbg_verbose("%s(): initializing INA230 device...\n", __func__);
-    if ((!i2c_adapter)
+    if ((!i2c_fd)
         || (addr >= 0x7F)
         || (ct >= ina230_ct_count)
         || (count >= ina230_avg_count_max)
@@ -419,7 +417,7 @@ ina230_device *ina230_init(struct i2c_adapter *i2c_adapter, uint8_t addr,
     }
     dbg_verbose("%s(): init options: addr=0x%02X, mohm=%u, lsb=%uuA, ct=%u, avg_count=%u, mode=%u\n",
                 __func__, addr, mohm, current_lsb, ct, count, mode);
-    ina230_dev->i2c_adapter = i2c_adapter;
+    ina230_dev->i2c_fd = i2c_fd;
     ina230_dev->addr = addr;
     ina230_dev->mohm = mohm;
     ina230_dev->current_lsb = current_lsb;
@@ -460,11 +458,11 @@ int ina230_get_data(ina230_device *dev, pwr_measure *m)
     m->uA = 0;
     m->uW = 0;
 
-    ret = ina230_i2c_get(dev->i2c_adapter, dev->addr,
+    ret = ina230_i2c_get(dev->i2c_fd, dev->addr,
                          INA230_BUS_VOLTAGE, (uint16_t *) &raw_vbus);
-    ret = ret || ina230_i2c_get(dev->i2c_adapter, dev->addr,
+    ret = ret || ina230_i2c_get(dev->i2c_fd, dev->addr,
                                 INA230_CURRENT, (uint16_t *) &raw_current);
-    ret = ret || ina230_i2c_get(dev->i2c_adapter, dev->addr,
+    ret = ret || ina230_i2c_get(dev->i2c_fd, dev->addr,
                                 INA230_POWER, (uint16_t *) &raw_power);
     if (ret) {
         dbg_error("%s(): failed to read data registers! (%d)\n", __func__, ret);

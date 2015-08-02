@@ -36,8 +36,9 @@
 #define __UP_BDB_PM_H__
 
 #include <stdint.h>
-#include <ina230.h>
-#include <pwr_measure.h>
+
+#include "ina230.h"
+#include "pwr_measure.h"
 
 #define APB_DEV_COUNT               3
 #define GPB_DEV_COUNT               2

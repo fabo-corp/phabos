@@ -7,14 +7,13 @@ obj-y += tsb_switch.o
 obj-y += svc.o
 obj-y += tsb_switch_es1.o
 obj-y += board-bdb1b.o
+obj-y += up_bdb_pm.o
 
 CFLAGS += -Iapps/greybus-utils
 
-#CSRCS		= up_boot.c
 #CSRCS		+= tsb_switch_es2.c
 
 #ifeq ($(CONFIG_ARCH_BOARD_ARA_BDB1B_SVC),y)
-#CSRCS		+= up_bdb_pm.c
 #CSRCS       += up_adc.c up_spring_pm.c
 #endif
 
