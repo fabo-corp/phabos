@@ -1,4 +1,5 @@
 #include "stm32f4xx.h"
+#include "rcc.h"
 
 #include <asm/hwio.h>
 #include <asm/delay.h>
@@ -24,12 +25,6 @@
 #define STM32_RCC_CR            (STM32_RCC_BASE + 0x00)
 #define STM32_RCC_CFGR          (STM32_RCC_BASE + 0x08)
 #define STM32_RCC_CIR           (STM32_RCC_BASE + 0x0c)
-#define STM32_RCC_AHB1RSTR      (STM32_RCC_BASE + 0x10)
-#define STM32_RCC_APB1RSTR      (STM32_RCC_BASE + 0x20)
-#define STM32_RCC_APB2RSTR      (STM32_RCC_BASE + 0x24)
-#define STM32_RCC_AHB1ENR       (STM32_RCC_BASE + 0x30)
-#define STM32_RCC_APB1ENR       (STM32_RCC_BASE + 0x40)
-#define STM32_RCC_APB2ENR       (STM32_RCC_BASE + 0x44)
 
 #define STM32_USART1_BRR    (STM32_USART1_BASE + 0x08)
 #define STM32_USART1_CR1    (STM32_USART1_BASE + 0x0c)
@@ -119,24 +114,6 @@ struct gpio_device gpio_port[] = {
             .description = "STM32 GPIO Port I",
             .driver = "stm32-gpio",
             .reg_base = STM32_GPIOI_BASE,
-        },
-    },
-    {
-        .count = 16,
-        .device = {
-            .name = "stm32-gpio-j",
-            .description = "STM32 GPIO Port J",
-            .driver = "stm32-gpio",
-            .reg_base = STM32_GPIOJ_BASE,
-        },
-    },
-    {
-        .count = 16,
-        .device = {
-            .name = "stm32-gpio-k",
-            .description = "STM32 GPIO Port K",
-            .driver = "stm32-gpio",
-            .reg_base = STM32_GPIOK_BASE,
         },
     },
 };
@@ -283,10 +260,11 @@ static struct device tsb_unipro_switch = {
 void machine_init(void)
 {
     /*
-     * PLL: 168MHz
-     * AHB: 168MHz
-     * APB1: 42MHz
-     * APB2: 84Mhz
+     * Configure clocks to the following:
+     *     PLL: 168MHz
+     *     AHB: 168MHz
+     *     APB1: 42MHz
+     *     APB2: 84Mhz
      */
     write32(RCC_PLLCFGR, RCC_PLLCFGR_PLLSRC_HSI |
                          (336 << RCC_PLLCFGR_PLLN_OFFSET) | RCC_PLLCFGR_PLLP4 |
@@ -297,31 +275,18 @@ void machine_init(void)
 
 #if 1
     // XXX: Enable all GPIOs for now
-    read32(STM32_RCC_AHB1ENR) |= 0x1ff;
-    read32(STM32_RCC_AHB1RSTR) |= 0x1ff;
-    read32(STM32_RCC_AHB1RSTR) &= ~0x1ff;
+    for (int i = 0; i < ARRAY_SIZE(gpio_port); i++) {
+        stm32_clk_enable(STM32_CLK_GPIOA + i);
+        stm32_reset(STM32_RST_GPIOA + i);
+    }
 
     // XXX: Enable I2C2
-    read32(STM32_RCC_APB1ENR) |= 1 << 22;
+    stm32_clk_enable(STM32_CLK_I2C2);
+    stm32_reset(STM32_RST_I2C2);
 
-    mdelay(100);
-
-    read32(STM32_RCC_APB1RSTR) |= 1 << 22;
-
-    mdelay(100);
-
-    read32(STM32_RCC_APB1RSTR) &= ~(1 << 22);
-
-    mdelay(100);
-
-    mdelay(100);
     read32(STM32_GPIOH_OSPEEDR) |= 0x2 << 8 | 0x2 << 10;
-    mdelay(100);
     read32(STM32_GPIOH_OTYPER) |= (1 << 4) | (1 << 5);
-    mdelay(100);
     read32(STM32_GPIOH_AFRL) |= 0x4 << 16 | 0x4 << 20;
-
-    mdelay(100);
     read32(STM32_GPIOH_MODER) |= 0x2 << 8 | 0x2 << 10;
 #endif
 
@@ -330,9 +295,8 @@ void machine_init(void)
     read32(STM32_GPIOB_PUPDR) |= 0x1 << 12 | 0x1 << 14;
     read32(STM32_GPIOB_AFRL) |= 0x7 << 24 | 0x7 << 28;
 
-    read32(STM32_RCC_APB2ENR) |= (1 << 4);
-    read32(STM32_RCC_APB2RSTR) |= (1 << 4);
-    read32(STM32_RCC_APB2RSTR) &= ~(1 << 4);
+    stm32_clk_enable(STM32_CLK_USART1);
+    stm32_reset(STM32_RST_USART1);
 
     write32(STM32_USART1_CR1, (1 << 13));
     write32(STM32_USART1_BRR, (45 << 4) | 9);
