@@ -34,7 +34,7 @@ int usleep(useconds_t usec)
     watchdog.timeout = usleep_timeout;
     watchdog.user_priv = &semaphore;
 
-    watchdog_start(&watchdog, usec);
+    watchdog_start_usec(&watchdog, usec);
     semaphore_lock(&semaphore);
     watchdog_delete(&watchdog);
 

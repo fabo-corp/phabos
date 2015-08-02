@@ -642,7 +642,7 @@ static int gb_i2s_start_transmitter(struct gb_i2s_info *info)
         info->tx_wdog.user_priv = info;
         info->tx_wdog.timeout = gb_i2s_tx_delay_timeout;
         /* TODO: Subtract out estimate of time it took to get here */
-        watchdog_start(&info->tx_wdog, info->delay / CLOCKS_PER_SEC);
+        watchdog_start_usec(&info->tx_wdog, info->delay);
     }
 
     ret = device_i2s_start_receiver(info->dev);

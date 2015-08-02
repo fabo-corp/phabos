@@ -86,7 +86,7 @@ static unsigned int     g_rx_outstanding;
                                   DW_I2C_INTR_STOP_DET)
 
 #define TIMEOUT                     20              /* 20 ms */
-#define DW_I2C_TIMEOUT              10000000        /* 1sec in usec */
+#define DW_I2C_TIMEOUT              1               /* 1sec */
 
 static uint32_t dw_read(int offset)
 {
@@ -373,11 +373,6 @@ static int dw_transfer(struct i2c_dev *dev, struct i2c_msg *msg, size_t count)
     lldbg("msgs: %d\n", count);
 
     mutex_lock(&g_mutex);
-    /**
-     * FIXME This seems wrong to me to disable the IRQs when calling
-     * watchdog_start, and especially when calling semaphore_lock
-     */
-//    irq_disable();
 
     g_msgs = msg;
     g_msgs_count = count;
@@ -398,7 +393,7 @@ static int dw_transfer(struct i2c_dev *dev, struct i2c_msg *msg, size_t count)
      * start a watchdog to timeout the transfer if
      * the bus is locked up...
      */
-    watchdog_start(&g_timeout, DW_I2C_TIMEOUT);
+    watchdog_start_sec(&g_timeout, DW_I2C_TIMEOUT);
 
     /* start the transfers */
     tsb_i2c_start_transfer();
@@ -441,7 +436,6 @@ static int dw_transfer(struct i2c_dev *dev, struct i2c_msg *msg, size_t count)
     lldbg("unknown error %x\n", ret);
 
 done:
-//    irq_enable();
     mutex_unlock(&g_mutex);
 
     return ret;
