@@ -87,20 +87,17 @@ void watchdog_check_expired(void)
     }
 }
 
-void watchdog_start(struct watchdog *wd, unsigned long usec)
+void watchdog_start(struct watchdog *wd, unsigned long ticks)
 {
     RET_IF_FAIL(wd,);
     RET_IF_FAIL(wd->priv,);
-    RET_IF_FAIL(usec > 0,);
+    RET_IF_FAIL(ticks > 0,);
 
-    uint64_t ticks = get_ticks();
+    uint64_t current_ticks = get_ticks();
     struct watchdog_priv *wdog = to_watchdog_priv(wd);
 
-    wdog->start = ticks;
-#define ONE_SEC_IN_USEC 1000000
-    wdog->end = ticks + (usec / ONE_SEC_IN_USEC) * HZ;
-    if (wdog->end == ticks)
-        wdog->end = ticks + 1;
+    wdog->start = current_ticks;
+    wdog->end = current_ticks + ticks;
 
     spinlock_lock(&wdog_lock);
     list_sorted_add(&wdog_head, &wdog->list, watchdog_expiration_comparator);
