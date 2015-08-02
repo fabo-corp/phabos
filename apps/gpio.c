@@ -129,7 +129,7 @@ static void print_usage(void)
 static void usage(int exit_status)
 {
     print_usage();
-    // exit(exit_status); FIXME: porting to phabos
+    exit(exit_status);
 }
 
 static void do_line_count(void)
