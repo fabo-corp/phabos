@@ -6,3 +6,4 @@
 obj-y += stm32f4-lowio.o
 obj-y += board-bdb1b.o
 obj-y += gpio.o
+obj-y += rcc.o
