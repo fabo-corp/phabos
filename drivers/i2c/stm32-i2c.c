@@ -57,23 +57,18 @@ struct stm32_adapter_priv {
 
 static void i2c_dump(struct device *device)
 {
-//#define kprintf(x...)
-#if 1
     kprintf("\tCR1: %#X\n", read32(device->reg_base + I2C_CR1));
     kprintf("\tCR2: %#X\n", read32(device->reg_base + I2C_CR2));
     kprintf("\tSR1: %#X\n", read32(device->reg_base + I2C_SR1));
     kprintf("\tSR2: %#X\n", read32(device->reg_base + I2C_SR2));
     kprintf("\tCCR: %#X\n", read32(device->reg_base + I2C_CCR));
     kprintf("\tTRISE: %#X\n", read32(device->reg_base + I2C_TRISE));
-#endif
 }
 
 static void stm32_i2c_err_irq(int irq, void *data)
 {
     struct device *device = data;
     struct stm32_adapter_priv *priv = device->priv;
-
-    kprintf("ERR\n");
 
     irq_disable_line(irq);
 
@@ -84,8 +79,6 @@ static void stm32_i2c_evt_irq(int irq, void *data)
 {
     struct device *device = data;
     struct stm32_adapter_priv *priv = device->priv;
-
-    kprintf("EVT\n");
 
     irq_disable_line(irq);
 
@@ -157,23 +150,43 @@ static inline int stm32_i2c_generate_start_condition(struct device *device)
 
 //    semaphore_down(&priv->xfer_semaphore);
 
-    sr1 = read32(device->reg_base + I2C_SR1);
-    if (sr1 & SR1_ERROR_MASK) {
-        return -EIO;
-    }
+    do {
+        sr1 = read32(device->reg_base + I2C_SR1);
+        if (sr1 & SR1_ERROR_MASK) {
+            return -EIO;
+        }
+    } while (!(sr1 & I2C_SR1_SB));
 
     return 0;
 }
 
 static inline void stm32_i2c_generate_stop_condition(struct device *device)
 {
+    uint32_t sr1;
+
+    do {
+        sr1 = read32(device->reg_base + I2C_SR1);
+        if (sr1 & SR1_ERROR_MASK) {
+            return;
+        }
+    } while (!(sr1 & (I2C_SR1_RXNE | I2C_SR1_TXE)));
+
     write32(device->reg_base + I2C_CR1, I2C_CR1_PE | I2C_CR1_STOP);
+
+#if 0
+    do {
+        sr1 = read32(device->reg_base + I2C_SR1);
+        if (sr1 & SR1_ERROR_MASK) {
+            return -EIO;
+        }
+    } while (!(sr1 & I2C_SR2_BUSY));
+#endif
 }
 
 #include <asm/delay.h>
 
 static inline int stm32_i2c_send_rx_address(struct device *device,
-                                            uint16_t addr)
+                                            uint16_t addr, bool nack)
 {
 //    struct stm32_adapter_priv *priv = device->priv;
     uint32_t sr1;
@@ -181,14 +194,19 @@ static inline int stm32_i2c_send_rx_address(struct device *device,
     write32(device->reg_base + I2C_DR, (addr << 1) | 1);
 //    semaphore_down(&priv->xfer_semaphore);
 
-    mdelay(100);
-
-    sr1 = read32(device->reg_base + I2C_SR1);
-    if (sr1 & SR1_ERROR_MASK) {
-        return -EIO;
+    if (nack) {
+        read32(device->reg_base + I2C_CR1) &= ~I2C_CR1_ACK;
     }
 
-    read32(device->reg_base + I2C_SR2);
+    do {
+        sr1 = read32(device->reg_base + I2C_SR1);
+        if (sr1 & SR1_ERROR_MASK) {
+            kprintf("%u %d %u\n", sr1, SR1_ERROR_MASK, sr1 & SR1_ERROR_MASK);
+            return -EIO;
+        }
+
+        read32(device->reg_base + I2C_SR2);
+    } while (!(sr1 & I2C_SR1_ADDR));
 
     return 0;
 }
@@ -202,13 +220,16 @@ static inline int stm32_i2c_send_tx_address(struct device *device,
     write32(device->reg_base + I2C_DR, addr << 1);
 //    semaphore_down(&priv->xfer_semaphore);
 
-    sr1 = read32(device->reg_base + I2C_SR1);
-    if (sr1 & SR1_ERROR_MASK) {
-        kprintf("%u %d %u\n", sr1, SR1_ERROR_MASK, sr1 & SR1_ERROR_MASK);
-        return -EIO;
-    }
+    do {
+        sr1 = read32(device->reg_base + I2C_SR1);
+        if (sr1 & SR1_ERROR_MASK) {
+            kprintf("%u %d %u\n", sr1, SR1_ERROR_MASK, sr1 & SR1_ERROR_MASK);
+            return -EIO;
+        }
 
-    read32(device->reg_base + I2C_SR2);
+        read32(device->reg_base + I2C_SR2);
+    } while (!(sr1 & I2C_SR1_ADDR));
+
     return 0;
 }
 
@@ -221,31 +242,28 @@ static int stm32_i2c_recv(struct device *device, struct i2c_msg *msg)
 
     read32(device->reg_base + I2C_CR1) |= I2C_CR1_ACK;
 
-i2c_dump(device);
-
-    retval = stm32_i2c_send_rx_address(device, msg->addr);
+    retval = stm32_i2c_send_rx_address(device, msg->addr, msg->length == 1);
     if (retval)
         return retval;
 
-i2c_dump(device);
+    if (msg->length == 1)
+        stm32_i2c_generate_stop_condition(device);
 
     for (unsigned i = 0; i < msg->length; i++) {
         while (!((sr1 = read32(device->reg_base + I2C_SR1)) & I2C_SR1_RXNE)) {
             if (sr1 & SR1_ERROR_MASK) {
-                i2c_dump(device);
                 retval = -EIO;
                 goto out;
             }
         }
 
-        if (i + 4 > msg->length)
+        if (i + 2 >= msg->length)
             read32(device->reg_base + I2C_CR1) &= ~I2C_CR1_ACK;
 
         msg->buffer[i] = read32(device->reg_base + I2C_DR);
-        kprintf("<- %u\n", msg->buffer[i]);
 
-        read32(device->reg_base + I2C_SR1);
-        read32(device->reg_base + I2C_SR2);
+        if (i + 2 >= msg->length)
+            write32(device->reg_base + I2C_CR1, I2C_CR1_PE | I2C_CR1_STOP);
     }
 
 out:
@@ -260,24 +278,19 @@ static int stm32_i2c_send(struct device *device, struct i2c_msg *msg)
 
     irq_disable();
 
-i2c_dump(device);
-
     retval = stm32_i2c_send_tx_address(device, msg->addr);
     if (retval)
         return retval;
 
-    i2c_dump(device);
-
     for (unsigned i = 0; i < msg->length; i++) {
         while (!((sr1 = read32(device->reg_base + I2C_SR1)) & I2C_SR1_TXE)) {
             if (sr1 & SR1_ERROR_MASK) {
-                i2c_dump(device);
+                kprintf("ERROR: %s()\n", __func__);
                 retval = -EIO;
                 goto out;
             }
         }
 
-        kprintf("-> %u\n", msg->buffer[i]);
         write32(device->reg_base + I2C_DR, msg->buffer[i]);
     }
 
@@ -290,6 +303,7 @@ static ssize_t stm32_i2c_transfer(struct i2c_adapter *adapter,
                                   struct i2c_msg *msg, size_t count)
 {
     ssize_t retval = 0;
+    uint32_t sr1;
     struct stm32_adapter_priv *priv = adapter->device.priv;
 
     if (!count)
@@ -303,21 +317,23 @@ static ssize_t stm32_i2c_transfer(struct i2c_adapter *adapter,
         if (retval)
             break;
 
-i2c_dump(&adapter->device);
-
         if (msg[i].flags & I2C_M_READ)
             retval = stm32_i2c_recv(&adapter->device, &msg[i]);
-        else
+        else {
             retval = stm32_i2c_send(&adapter->device, &msg[i]);
+            do {
+                sr1 = read32(adapter->device.reg_base + I2C_SR1);
+                if (sr1 & SR1_ERROR_MASK) {
+                    break;
+                }
+            } while (!(sr1 & (I2C_SR1_RXNE | I2C_SR1_TXE)));
+
+            stm32_i2c_generate_stop_condition(&adapter->device);
+        }
 
         if (retval)
             break;
     }
-
-i2c_dump(&adapter->device);
-
-    stm32_i2c_generate_stop_condition(&adapter->device);
-    read32(adapter->device.reg_base + I2C_DR);
 
     mutex_unlock(&priv->lock);
 
