@@ -9,10 +9,12 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <fcntl.h>
 
 #include <phabos/shell.h>
 #include <phabos/list.h>
 #include <phabos/mm.h>
+#include <phabos/scheduler.h>
 
 #define BOLD_TEXT_ESCAPE "\033[1m"
 #define NORMAL_TEXT_ESCAPE "\033[0m"
@@ -30,6 +32,12 @@ static struct list_head *history_iter;
 struct shell_history_command {
     char *command;
     struct list_head list;
+};
+
+struct task_context {
+    int (*entry)(int argc, char **argv);
+    int argc;
+    char *argv[ARGV_MAX_SIZE];
 };
 
 static int hello_main(int argc, char **argv);
@@ -290,31 +298,42 @@ static size_t shell_readline(char *buffer, size_t size)
     return nread;
 }
 
+static void exec_task(void *data)
+{
+    open("/dev/ttyS0", 0);
+    open("/dev/ttyS0", 0);
+    open("/dev/ttyS0", 0);
+
+    struct task_context *context = data;
+    context->entry(context->argc, context->argv);
+}
+
 static void shell_process_line(char *line)
 {
     struct shell_command *cmd = shell_get_commands();
     size_t size = shell_get_command_count();
-    int argc = 1;
-    char *argv[ARGV_MAX_SIZE];
+    struct task_context task_ctx = { .argc = 1 };
     char *saveptr;
 
-    argv[0] = strtok_r(line, " ", &saveptr);
+    task_ctx.argv[0] = strtok_r(line, " ", &saveptr);
     do {
-        argv[argc] = strtok_r(NULL, " ", &saveptr);
-    } while (argv[argc++]);
-    argc--;
+        task_ctx.argv[task_ctx.argc] = strtok_r(NULL, " ", &saveptr);
+    } while (task_ctx.argv[task_ctx.argc++]);
+    task_ctx.argc--;
 
-    if (!argv[0])
+    if (!task_ctx.argv[0])
         return;
 
     for (int i = 0; i < size; i++) {
-        if (!strcmp(argv[0], cmd[i].name)) {
-            cmd[i].entry(argc, argv);
+        if (!strcmp(task_ctx.argv[0], cmd[i].name)) {
+            task_ctx.entry = cmd[i].entry;
+            struct task *task = task_run(exec_task, &task_ctx, 0);
+            task_wait(task);
             return;
         }
     }
 
-    printf("Command not found: %s\n", argv[0]);
+    printf("Command not found: %s\n", task_ctx.argv[0]);
 }
 
 int shell_main(int argc, char **argv)
