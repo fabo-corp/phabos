@@ -93,9 +93,14 @@ static ssize_t stm32_usart_write(struct file *file, const void *buf,
     mutex_lock(&dev->tx_mutex);
 
     while (nwrite < count) {
-        if (dev->tx_start == uart16550_get_next_tx_byte(dev->tx_end)) {
+        while (dev->tx_start == uart16550_get_next_tx_byte(dev->tx_end)) {
             irq_pend(device->irq);
+            stm32_usart_write32(&dev->device, STM32_USART1_CR1,STM32_USART1_CR1_UE |
+                                STM32_USART1_CR1_RXNEIE | STM32_USART1_CR1_TXEIE |
+                                STM32_USART1_CR1_TE | STM32_USART1_CR1_RE);
             semaphore_down(&dev->tx_semaphore);
+            stm32_usart_write32(&dev->device, STM32_USART1_CR1,STM32_USART1_CR1_UE |
+                                STM32_USART1_CR1_TE | STM32_USART1_CR1_RE);
         }
 
         dev->tx_buffer[dev->tx_end] = buffer[nwrite++];
