@@ -134,6 +134,49 @@
 #define STM32_CLK_TIM10     RCC_PERIPHERAL(STM32_RCC_CLK, STM32_RCC_APB2, 17)
 #define STM32_CLK_TIM11     RCC_PERIPHERAL(STM32_RCC_CLK, STM32_RCC_APB2, 18)
 
+/* RCC register */
+#define RCC_CR      (STM32_RCC_BASE + 0x00)
+#define RCC_PLLCFGR (STM32_RCC_BASE + 0x04)
+#define RCC_CFGR    (STM32_RCC_BASE + 0x08)
+
+#define RCC_CR_HSEON    (1 << 16)
+#define RCC_CR_HSERDY   (1 << 17)
+#define RCC_CR_HSEBYP   (1 << 18)
+#define RCC_CR_PLLON    (1 << 24)
+#define RCC_CR_PLLRDY   (1 << 25)
+
+#define RCC_PLLCFGR_PLLP2       (0 << 16)
+#define RCC_PLLCFGR_PLLP4       (1 << 16)
+#define RCC_PLLCFGR_PLLP6       (2 << 16)
+#define RCC_PLLCFGR_PLLP8       (3 << 16)
+#define RCC_PLLCFGR_PLLSRC_HSI  (0 << 22)
+#define RCC_PLLCFGR_PLLSRC_HSE  (1 << 22)
+#define RCC_PLLCFGR_PLLM_OFFSET 0
+#define RCC_PLLCFGR_PLLN_OFFSET 6
+
+#define RCC_CFGR_SW_HSI         (0 << 0)
+#define RCC_CFGR_SW_HSE         (1 << 0)
+#define RCC_CFGR_SW_PLL         (2 << 0)
+#define RCC_CFGR_HPRE_DIV1      (0 << 4)
+#define RCC_CFGR_HPRE_DIV2      (8 << 4)
+#define RCC_CFGR_HPRE_DIV4      (9 << 4)
+#define RCC_CFGR_HPRE_DIV8      (10 << 4)
+#define RCC_CFGR_HPRE_DIV16     (11 << 4)
+#define RCC_CFGR_HPRE_DIV64     (12 << 4)
+#define RCC_CFGR_HPRE_DIV128    (13 << 4)
+#define RCC_CFGR_HPRE_DIV256    (14 << 4)
+#define RCC_CFGR_HPRE_DIV512    (15 << 4)
+#define RCC_CFGR_PPRE1_DIV1     (0 << 10)
+#define RCC_CFGR_PPRE1_DIV2     (4 << 10)
+#define RCC_CFGR_PPRE1_DIV4     (5 << 10)
+#define RCC_CFGR_PPRE1_DIV8     (6 << 10)
+#define RCC_CFGR_PPRE1_DIV16    (7 << 10)
+#define RCC_CFGR_PPRE2_DIV1     (0 << 13)
+#define RCC_CFGR_PPRE2_DIV2     (4 << 13)
+#define RCC_CFGR_PPRE2_DIV4     (5 << 13)
+#define RCC_CFGR_PPRE2_DIV8     (6 << 13)
+#define RCC_CFGR_PPRE2_DIV16    (7 << 13)
+
 void stm32_clk_enable(unsigned clock);
 void stm32_clk_disable(unsigned clock);
 void stm32_reset(unsigned rst);
