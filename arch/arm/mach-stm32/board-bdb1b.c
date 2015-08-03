@@ -248,6 +248,48 @@ static void gpio_init(void)
     }
 }
 
+static void display_temperature(void)
+{
+    stm32_clk_enable(STM32_CLK_ADC);
+    stm32_reset(STM32_RST_ADC);
+
+#define ADC_CR2     0x08
+#define ADC_SMPR1   0x0c
+#define ADC_SQR3    0x34
+#define ADC_DR      0x4c
+#define ADC_CCR     (0x300 + 0x04)
+
+#define ADC_CR2_ADON    (1 << 0)
+#define ADC_CR2_SWSTART (1 << 30)
+#define ADC_CR2_CONT    (1 << 1)
+
+#define ADC_CCR_ADCPRE_DIV2 (0 << 16)
+#define ADC_CCR_ADCPRE_DIV4 (1 << 16)
+#define ADC_CCR_ADCPRE_DIV6 (2 << 16)
+#define ADC_CCR_ADCPRE_DIV8 (3 << 16)
+#define ADC_CCR_TSVREFE     (1 << 23)
+
+    write32(STM32_ADC_BASE + ADC_CR2, ADC_CR2_ADON);
+    write32(STM32_ADC_BASE + ADC_SMPR1, 7 << 18);
+    write32(STM32_ADC_BASE + ADC_SQR3, 16);
+//    write32(STM32_ADC_BASE + ADC_SMPR1, 4 << 24);
+//    write32(STM32_ADC_BASE + ADC_SQR3, 18);
+    write32(STM32_ADC_BASE + ADC_CCR, ADC_CCR_TSVREFE | (1 << 22) | ADC_CCR_ADCPRE_DIV6);
+    write32(STM32_ADC_BASE + ADC_CR2, ADC_CR2_SWSTART | ADC_CR2_ADON | ADC_CR2_CONT);
+
+    for (int i = 0;; i++) {
+        uint16_t temperature = read32(STM32_ADC_BASE + ADC_DR);
+        int32_t vsense = (temperature * 1800) / 4096;
+        vsense = (vsense * 10 - 7600) / 250 + 25;
+
+        kprintf("Vsense = %u\n", temperature);
+        kprintf("Temperature = %d°C\n", vsense);
+        if (vsense != 25)
+            while(1);
+        mdelay(2500);
+    }
+}
+
 void machine_init(void)
 {
     /*
