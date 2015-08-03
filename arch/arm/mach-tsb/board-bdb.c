@@ -153,7 +153,7 @@ static struct usb_hcd usb_hcd_device = {
     },
 };
 
-static struct i2c_dev dw_i2c_device = {
+static struct i2c_adapter dw_i2c_device = {
     .device = {
         .name = "dw_i2c",
         .description = "Designware I2C Controller Driver",
