@@ -12,27 +12,23 @@
 #include <phabos/i2c.h>
 #include <phabos/i2c/stm32-i2c.h>
 
-#define STM32_GPIOB_MODER   (STM32_GPIOB_BASE + 0x00)
-#define STM32_GPIOB_PUPDR   (STM32_GPIOB_BASE + 0x0c)
-#define STM32_GPIOB_AFRL    (STM32_GPIOB_BASE + 0x20)
-
-#define STM32_GPIOH_MODER   (STM32_GPIOH_BASE + 0x00)
-#define STM32_GPIOH_OTYPER  (STM32_GPIOH_BASE + 0x04)
-#define STM32_GPIOH_OSPEEDR (STM32_GPIOH_BASE + 0x08)
-#define STM32_GPIOH_PUPDR   (STM32_GPIOH_BASE + 0x0c)
-#define STM32_GPIOH_AFRL    (STM32_GPIOH_BASE + 0x20)
-
-#define STM32_RCC_CR            (STM32_RCC_BASE + 0x00)
-#define STM32_RCC_CFGR          (STM32_RCC_BASE + 0x08)
-#define STM32_RCC_CIR           (STM32_RCC_BASE + 0x0c)
-
 #define STM32_USART1_BRR    (STM32_USART1_BASE + 0x08)
 #define STM32_USART1_CR1    (STM32_USART1_BASE + 0x0c)
 
-static int stm32_usart_power_on(struct device *device)
-{
-    return 0;
-}
+#define MAINPLL_FREQ    168000000 // 168 MHz
+#define SYSCLOCK_FREQ   MAINPLL_FREQ
+#define AHB_FREQ        MAINPLL_FREQ
+#define APB1_FREQ       42000000 // 42 MHz
+#define APB2_FREQ       84000000 // 84 MHz
+
+#define STM32_USART1_CR1_UE (1 << 13)
+#define STM32_USART1_CR1_TE (1 << 3)
+
+#define STM32_USART1_BRR_APB2_84MHZ_B115200_MANTISSA (45 << 4)
+#define STM32_USART1_BRR_APB2_84MHZ_B115200_FRACTION 9
+#define STM32_USART1_BRR_APB2_84MHZ_B115200 \
+    (STM32_USART1_BRR_APB2_84MHZ_B115200_MANTISSA | \
+     STM32_USART1_BRR_APB2_84MHZ_B115200_FRACTION)
 
 struct gpio_device gpio_port[] = {
     {
@@ -126,16 +122,13 @@ static struct uart_device stm32_usart_device = {
 
         .reg_base = STM32_USART1_BASE,
         .irq = STM32_IRQ_USART1,
-
-        .power_on = stm32_usart_power_on,
-    //    .power_off = tsb_hcd_power_off,
     },
 };
 
 static struct stm32_i2c_adapter_platform stm32_i2c_pdata = {
     .evt_irq = STM32_IRQ_I2C2_EV,
     .err_irq = STM32_IRQ_I2C2_ER,
-    .clk = 42000000,
+    .clk = APB1_FREQ,
 };
 
 static struct i2c_adapter stm32_i2c_adapter = {
@@ -208,54 +201,39 @@ static struct gpio_device tca64xx_io_expander[] = {
 };
 #endif
 
-static struct device tsb_unipro_switch = {
-    .name = "tsb-unipro_switch-es1",
-    .description = "TSB UniPro Switch ES1",
-    .driver = "tsb-unipro-switch-es1",
-};
+static void uart_init(void)
+{
+    stm32_clk_enable(STM32_CLK_USART1);
+    stm32_reset(STM32_RST_USART1);
 
+    stm32_configgpio(GPIO_PORTB | GPIO_PIN6 | GPIO_AF7 | GPIO_ALT_FCT |
+                     GPIO_PULLUP);
+    stm32_configgpio(GPIO_PORTB | GPIO_PIN7 | GPIO_AF7 | GPIO_ALT_FCT |
+                     GPIO_PULLUP);
 
-#define RCC_CR      (STM32_RCC_BASE + 0x00)
-#define RCC_PLLCFGR (STM32_RCC_BASE + 0x04)
-#define RCC_CFGR    (STM32_RCC_BASE + 0x08)
+    write32(STM32_USART1_CR1, STM32_USART1_CR1_UE);
+    write32(STM32_USART1_BRR, STM32_USART1_BRR_APB2_84MHZ_B115200);
+    write32(STM32_USART1_CR1, STM32_USART1_CR1_UE | STM32_USART1_CR1_TE);
+}
 
-#define RCC_CR_HSEON    (1 << 16)
-#define RCC_CR_HSERDY   (1 << 17)
-#define RCC_CR_HSEBYP   (1 << 18)
-#define RCC_CR_PLLON    (1 << 24)
-#define RCC_CR_PLLRDY   (1 << 25)
+static void i2c_init(void)
+{
+    stm32_clk_enable(STM32_CLK_I2C2);
+    stm32_reset(STM32_RST_I2C2);
 
-#define RCC_PLLCFGR_PLLP2       (0 << 16)
-#define RCC_PLLCFGR_PLLP4       (1 << 16)
-#define RCC_PLLCFGR_PLLP6       (2 << 16)
-#define RCC_PLLCFGR_PLLP8       (3 << 16)
-#define RCC_PLLCFGR_PLLSRC_HSI  (0 << 22)
-#define RCC_PLLCFGR_PLLSRC_HSE  (1 << 22)
-#define RCC_PLLCFGR_PLLM_OFFSET 0
-#define RCC_PLLCFGR_PLLN_OFFSET 6
+    stm32_configgpio(GPIO_PORTH | GPIO_PIN4 | GPIO_AF4 | GPIO_ALT_FCT |
+                     GPIO_OPENDRAIN | GPIO_SPEED_FAST);
+    stm32_configgpio(GPIO_PORTH | GPIO_PIN5 | GPIO_AF4 | GPIO_ALT_FCT |
+                     GPIO_OPENDRAIN | GPIO_SPEED_FAST);
+}
 
-#define RCC_CFGR_SW_HSI         (0 << 0)
-#define RCC_CFGR_SW_HSE         (1 << 0)
-#define RCC_CFGR_SW_PLL         (2 << 0)
-#define RCC_CFGR_HPRE_DIV1      (0 << 4)
-#define RCC_CFGR_HPRE_DIV2      (8 << 4)
-#define RCC_CFGR_HPRE_DIV4      (9 << 4)
-#define RCC_CFGR_HPRE_DIV8      (10 << 4)
-#define RCC_CFGR_HPRE_DIV16     (11 << 4)
-#define RCC_CFGR_HPRE_DIV64     (12 << 4)
-#define RCC_CFGR_HPRE_DIV128    (13 << 4)
-#define RCC_CFGR_HPRE_DIV256    (14 << 4)
-#define RCC_CFGR_HPRE_DIV512    (15 << 4)
-#define RCC_CFGR_PPRE1_DIV1     (0 << 10)
-#define RCC_CFGR_PPRE1_DIV2     (4 << 10)
-#define RCC_CFGR_PPRE1_DIV4     (5 << 10)
-#define RCC_CFGR_PPRE1_DIV8     (6 << 10)
-#define RCC_CFGR_PPRE1_DIV16    (7 << 10)
-#define RCC_CFGR_PPRE2_DIV1     (0 << 13)
-#define RCC_CFGR_PPRE2_DIV2     (4 << 13)
-#define RCC_CFGR_PPRE2_DIV4     (5 << 13)
-#define RCC_CFGR_PPRE2_DIV8     (6 << 13)
-#define RCC_CFGR_PPRE2_DIV16    (7 << 13)
+static void gpio_init(void)
+{
+    for (int i = 0; i < ARRAY_SIZE(gpio_port); i++) {
+        stm32_clk_enable(STM32_CLK_GPIOA + i);
+        stm32_reset(STM32_RST_GPIOA + i);
+    }
+}
 
 void machine_init(void)
 {
@@ -273,36 +251,12 @@ void machine_init(void)
                       RCC_CFGR_PPRE2_DIV2);
     read32(RCC_CR) |= RCC_CR_PLLON;
 
-#if 1
-    // XXX: Enable all GPIOs for now
-    for (int i = 0; i < ARRAY_SIZE(gpio_port); i++) {
-        stm32_clk_enable(STM32_CLK_GPIOA + i);
-        stm32_reset(STM32_RST_GPIOA + i);
-    }
-
-    // XXX: Enable I2C2
-    stm32_clk_enable(STM32_CLK_I2C2);
-    stm32_reset(STM32_RST_I2C2);
-
-    read32(STM32_GPIOH_OSPEEDR) |= 0x2 << 8 | 0x2 << 10;
-    read32(STM32_GPIOH_OTYPER) |= (1 << 4) | (1 << 5);
-    read32(STM32_GPIOH_AFRL) |= 0x4 << 16 | 0x4 << 20;
-    read32(STM32_GPIOH_MODER) |= 0x2 << 8 | 0x2 << 10;
-#endif
-
-    // XXX: Enable USART1
-    read32(STM32_GPIOB_MODER) |= 0x2 << 12 | 0x2 << 14;
-    read32(STM32_GPIOB_PUPDR) |= 0x1 << 12 | 0x1 << 14;
-    read32(STM32_GPIOB_AFRL) |= 0x7 << 24 | 0x7 << 28;
-
-    stm32_clk_enable(STM32_CLK_USART1);
-    stm32_reset(STM32_RST_USART1);
-
-    write32(STM32_USART1_CR1, (1 << 13));
-    write32(STM32_USART1_BRR, (45 << 4) | 9);
-    read32(STM32_USART1_CR1) |= (1 << 3) | (1 << 2);
-
-    //kprintf("Heap: %u (order: %d)\n", heap_size, order);
+    /*
+     * FIXME These doesn't belong here and should go away in the near future
+     */
+    gpio_init(); // XXX: Enable all GPIOs for now
+    uart_init(); // XXX: Enable USART1
+    i2c_init();  // XXX: Enable I2C2
 
     for (int i = 0; i < ARRAY_SIZE(gpio_port); i++)
         device_register(&gpio_port[i].device);
