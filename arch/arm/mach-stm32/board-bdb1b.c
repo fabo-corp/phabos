@@ -30,6 +30,19 @@
     (STM32_USART1_BRR_APB2_84MHZ_B115200_MANTISSA | \
      STM32_USART1_BRR_APB2_84MHZ_B115200_FRACTION)
 
+#define FLASH_ACR (STM32_FLASH_BASE + 0x00)
+
+#define FLASH_ACR_LATENCY_0WS   (0 << 0)
+#define FLASH_ACR_LATENCY_1WS   (1 << 0)
+#define FLASH_ACR_LATENCY_2WS   (2 << 0)
+#define FLASH_ACR_LATENCY_3WS   (3 << 0)
+#define FLASH_ACR_LATENCY_4WS   (4 << 0)
+#define FLASH_ACR_LATENCY_5WS   (5 << 0)
+#define FLASH_ACR_LATENCY_6WS   (6 << 0)
+#define FLASH_ACR_LATENCY_7WS   (7 << 0)
+#define FLASH_ACR_ICEN          (1 << 9)
+#define FLASH_ACR_DCEN          (1 << 19)
+
 struct gpio_device gpio_port[] = {
     {
         .count = 16,
@@ -250,6 +263,11 @@ void machine_init(void)
     write32(RCC_CFGR, RCC_CFGR_SW_PLL | RCC_CFGR_PPRE1_DIV4 |
                       RCC_CFGR_PPRE2_DIV2);
     read32(RCC_CR) |= RCC_CR_PLLON;
+
+    /*
+     * Enable Flash I-Cache and D-Cache + set the latency to 7 wait states
+     */
+    write32(FLASH_ACR, FLASH_ACR_LATENCY_7WS | FLASH_ACR_ICEN | FLASH_ACR_DCEN);
 
     /*
      * FIXME These doesn't belong here and should go away in the near future
