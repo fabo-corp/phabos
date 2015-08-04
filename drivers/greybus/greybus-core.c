@@ -32,6 +32,7 @@
 #include <phabos/greybus.h>
 #include <phabos/scheduler.h>
 #include <phabos/time.h>
+#include <phabos/watchdog.h>
 
 #include <asm/unipro.h>
 #include <asm/atomic.h>
@@ -50,6 +51,8 @@
 #define ONE_SEC_IN_MSEC         1000
 #define ONE_MSEC_IN_NSEC        1000000
 
+#define TIMEOUT_WD_DELAY    (TIMEOUT_IN_MS * CLOCKS_PER_SEC) / ONE_SEC_IN_MSEC
+
 struct gb_cport_driver {
     struct gb_driver *driver;
     struct list_head tx_fifo;
@@ -58,11 +61,67 @@ struct gb_cport_driver {
     struct list_head rx_fifo;
     struct semaphore rx_fifo_semaphore;
     struct task *thread;
+    struct watchdog timeout_wd;
+    struct gb_operation timedout_operation;
 };
 
 static atomic_t request_id;
 static struct gb_cport_driver g_cport[CPORT_MAX];
 static struct gb_transport_backend *transport_backend;
+static struct gb_operation_hdr timedout_hdr = {
+    .size = sizeof(timedout_hdr),
+    .result = GB_OP_TIMEOUT,
+    .type = TYPE_RESPONSE_FLAG,
+};
+
+static void gb_operation_timeout(int argc, uint32_t cport, ...);
+
+uint8_t gb_errno_to_op_result(int err)
+{
+    switch (err) {
+    case 0:
+        return GB_OP_SUCCESS;
+
+    case ENOMEM:
+    case -ENOMEM:
+        return GB_OP_NO_MEMORY;
+
+    case EINTR:
+    case -EINTR:
+        return GB_OP_INTERRUPTED;
+
+    case ETIMEDOUT:
+    case -ETIMEDOUT:
+        return GB_OP_TIMEOUT;
+
+    case EPROTO:
+    case -EPROTO:
+    case ENOSYS:
+    case -ENOSYS:
+        return GB_OP_PROTOCOL_BAD;
+
+    case EINVAL:
+    case -EINVAL:
+        return GB_OP_INVALID;
+
+    case EOVERFLOW:
+    case -EOVERFLOW:
+        return GB_OP_OVERFLOW;
+
+    case ENODEV:
+    case -ENODEV:
+    case ENXIO:
+    case -ENXIO:
+        return GB_OP_NONEXISTENT;
+
+    case EBUSY:
+    case -EBUSY:
+        return GB_OP_RETRY;
+
+    default:
+        return GB_OP_UNKNOWN_ERROR;
+    }
+}
 
 static int gb_compare_handlers(const void *data1, const void *data2)
 {
@@ -134,46 +193,78 @@ static bool gb_operation_has_timedout(struct gb_operation *operation)
     return current_time.tv_nsec > timeout_time.tv_nsec;
 }
 
+/**
+ * Update watchdog state
+ *
+ * Cancel cport watchdog if there is no outgoing message waiting for a response,
+ * or update the watchdog if there is still outgoing messages.
+ *
+ * TODO use fine-grain timeout delay when doing the update
+ *
+ * @note This function should be called from an atomic context
+ */
+static void gb_watchdog_update(unsigned int cport)
+{
+    irqstate_t flags;
+
+    flags = irqsave();
+
+    if (list_is_empty(&g_cport[cport].tx_fifo)) {
+        wd_cancel(&g_cport[cport].timeout_wd);
+    } else {
+        wd_start(&g_cport[cport].timeout_wd, TIMEOUT_WD_DELAY,
+                 gb_operation_timeout, 1, cport);
+    }
+
+    irqrestore(flags);
+}
+
+static void gb_clean_timedout_operation(unsigned int cport)
+{
+    irqstate_t flags;
+    struct list_head *iter, *iter_next;
+    struct gb_operation *op;
+
+    list_foreach_safe(&g_cport[cport].tx_fifo, iter, iter_next) {
+        op = list_entry(iter, struct gb_operation, list);
+
+        if (!gb_operation_has_timedout(op)) {
+            continue;
+        }
+
+        flags = irqsave();
+        list_del(iter);
+        irqrestore(flags);
+
+        if (op->callback) {
+            op->callback(op);
+        }
+        gb_operation_unref(op);
+    }
+
+    gb_watchdog_update(cport);
+}
+
 static void gb_process_response(struct gb_operation_hdr *hdr,
                                 struct gb_operation *operation)
 {
     struct gb_operation *op;
     struct gb_operation_hdr *op_hdr;
-    struct gb_operation_hdr timedout_hdr = {
-        .size = sizeof(timedout_hdr),
-        .result = GB_OP_TIMEOUT,
-    };
 
     list_foreach_safe(&g_cport[operation->cport].tx_fifo, iter) {
         op = list_entry(iter, struct gb_operation, list);
         op_hdr = op->request_buffer;
-
-        // Destroy all the operation that have timedout
-        if (gb_operation_has_timedout(op)) {
-            spinlock_lock(&g_cport[operation->cport].tx_fifo_lock);
-            list_del(iter);
-            spinlock_unlock(&g_cport[operation->cport].tx_fifo_lock);
-
-            if (op->callback) {
-                timedout_hdr.id = op_hdr->id;
-                timedout_hdr.type = TYPE_RESPONSE_FLAG | op_hdr->type;
-
-                op->response_buffer = &timedout_hdr;
-                op->callback(op);
-                op->response_buffer = NULL;
-            }
-            gb_operation_unref(op);
-            continue;
-        }
 
         if (hdr->id != op_hdr->id)
             continue;
 
         spinlock_lock(&g_cport[operation->cport].tx_fifo_lock);
         list_del(iter);
+        gb_watchdog_update(operation->cport);
         spinlock_unlock(&g_cport[operation->cport].tx_fifo_lock);
 
         /* attach this response with the original request */
+        gb_operation_ref(operation);
         op->response = operation;
         if (op->callback)
             op->callback(op);
@@ -200,6 +291,11 @@ static void gb_pending_message_worker(void *data)
         operation = list_entry(head, struct gb_operation, list);
         hdr = operation->request_buffer;
 
+        if (hdr == &timedout_hdr) {
+            gb_clean_timedout_operation(cportid);
+            continue;
+        }
+
         if (hdr->type & TYPE_RESPONSE_FLAG)
             gb_process_response(hdr, operation);
         else
@@ -213,6 +309,7 @@ int greybus_rx_handler(unsigned int cport, void *data, size_t size)
     struct gb_operation *op;
     struct gb_operation_hdr *hdr = data;
     struct gb_operation_handler *op_handler;
+    size_t hdr_size;
 
     if (cport >= CPORT_MAX || !data)
         return -EINVAL;
@@ -220,8 +317,17 @@ int greybus_rx_handler(unsigned int cport, void *data, size_t size)
     if (!g_cport[cport].driver || !g_cport[cport].driver->op_handlers)
         return 0;
 
-    if (sizeof(*hdr) > size || hdr->size > size || sizeof(*hdr) > hdr->size)
+    if (sizeof(*hdr) > size) {
         return -EINVAL; /* Dropping garbage request */
+    }
+
+    hdr_size = le16_to_cpu(hdr->size);
+
+    if (hdr_size > size || sizeof(*hdr) > hdr_size) {
+        return -EINVAL; /* Dropping garbage request */
+    }
+
+    gb_dump(data, size);
 
     op_handler = find_operation_handler(hdr->type, cport);
     if (op_handler && op_handler->fast_handler) {
@@ -229,11 +335,11 @@ int greybus_rx_handler(unsigned int cport, void *data, size_t size)
         return 0;
     }
 
-    op = gb_operation_create(cport, 0, hdr->size - sizeof(*hdr));
+    op = gb_operation_create(cport, 0, hdr_size - sizeof(*hdr));
     if (!op)
         return -ENOMEM;
 
-    memcpy(op->request_buffer, data, hdr->size);
+    memcpy(op->request_buffer, data, hdr_size);
 
     spinlock_lock(&g_cport[cport].rx_fifo_lock);
     list_add(&g_cport[cport].rx_fifo, &op->list);
@@ -246,9 +352,6 @@ int greybus_rx_handler(unsigned int cport, void *data, size_t size)
 int gb_register_driver(unsigned int cport, struct gb_driver *driver)
 {
     int retval;
-
-    RET_IF_FAIL(transport_backend, -EINVAL);
-    RET_IF_FAIL(transport_backend->listen, -EINVAL);
 
     if (cport >= CPORT_MAX || !driver)
         return -EINVAL;
@@ -313,6 +416,22 @@ int gb_stop_listening(unsigned int cport)
     return transport_backend->stop_listening(cport);
 }
 
+static void gb_operation_timeout(int argc, uint32_t cport, ...)
+{
+    irqstate_t flags;
+
+    flags = irqsave();
+
+    /* timedout operation could potentially already been queued */
+    if (list_is_empty(&g_cport[cport].timedout_operation.list)) {
+        return;
+    }
+
+    list_add(&g_cport[cport].rx_fifo, &g_cport[cport].timedout_operation.list);
+    sem_post(&g_cport[cport].rx_fifo_lock);
+    irqrestore(flags);
+}
+
 int gb_operation_send_request(struct gb_operation *operation,
                               gb_operation_callback callback,
                               bool need_response)
@@ -329,19 +448,26 @@ int gb_operation_send_request(struct gb_operation *operation,
     spinlock_lock(&g_cport[operation->cport].tx_fifo_lock);
 
     if (need_response) {
-        hdr->id = atomic_inc(&request_id);
+        hdr->id = cpu_to_le16(atomic_inc(&request_id));
         if (hdr->id == 0) /* ID 0 is for request with no response */
-            hdr->id = atomic_inc(&request_id);
+            hdr->id = cpu_to_le16(atomic_inc(&request_id));
         clock_gettime(CLOCK_MONOTONIC, &operation->time);
         operation->callback = callback;
         gb_operation_ref(operation);
         list_add(&g_cport[operation->cport].tx_fifo, &operation->list);
+        if (!WDOG_ISACTIVE(&g_cport[operation->cport].timeout_wd)) {
+            wd_start(&g_cport[operation->cport].timeout_wd, TIMEOUT_WD_DELAY,
+                     gb_operation_timeout, 1, operation->cport);
+        }
     }
 
+    gb_dump(operation->request_buffer, hdr->size);
     retval = transport_backend->send(operation->cport,
-                                     operation->request_buffer, hdr->size);
+                                     operation->request_buffer,
+                                     le16_to_cpu(hdr->size));
     if (need_response && retval) {
         list_del(&operation->list);
+        gb_watchdog_update(operation->cport);
         gb_operation_unref(operation);
     }
 
@@ -395,9 +521,10 @@ int gb_operation_send_response(struct gb_operation *operation, uint8_t result)
     resp_hdr = operation->response_buffer;
     resp_hdr->result = result;
 
+    gb_dump(operation->response_buffer, resp_hdr->size);
     retval = transport_backend->send(operation->cport,
                                      operation->response_buffer,
-                                     resp_hdr->size);
+                                     le16_to_cpu(resp_hdr->size));
     if (retval) {
         if (has_allocated_response) {
             free(operation->response_buffer);
@@ -426,7 +553,7 @@ void *gb_operation_alloc_response(struct gb_operation *operation, size_t size)
     req_hdr = operation->request_buffer;
     resp_hdr = operation->response_buffer;
 
-    resp_hdr->size = size + sizeof(*resp_hdr);
+    resp_hdr->size = cpu_to_le16(size + sizeof(*resp_hdr));
     resp_hdr->id = req_hdr->id;
     resp_hdr->type = TYPE_RESPONSE_FLAG | req_hdr->type;
     return gb_operation_get_response_payload(operation);
@@ -457,6 +584,9 @@ void gb_operation_unref(struct gb_operation *operation)
 
     free(operation->request_buffer);
     free(operation->response_buffer);
+    if (operation->response) {
+        gb_operation_unref(operation->response);
+    }
     free(operation);
 }
 
@@ -483,7 +613,7 @@ struct gb_operation *gb_operation_create(unsigned int cport, uint8_t type,
 
     memset(operation->request_buffer, 0, req_size + sizeof(*hdr));
     hdr = operation->request_buffer;
-    hdr->size = req_size + sizeof(*hdr);
+    hdr->size = cpu_to_le16(req_size + sizeof(*hdr));
     hdr->type = type;
 
     list_init(&operation->list);
@@ -504,11 +634,31 @@ size_t gb_operation_get_request_payload_size(struct gb_operation *operation)
     }
 
     hdr = operation->request_buffer;
-    if (hdr->size < sizeof(*hdr)) {
+    if (le16_to_cpu(hdr->size) < sizeof(*hdr)) {
         return 0;
     }
 
-    return hdr->size - sizeof(*hdr);
+    return le16_to_cpu(hdr->size) - sizeof(*hdr);
+}
+
+uint8_t gb_operation_get_request_result(struct gb_operation *operation)
+{
+    struct gb_operation_hdr *hdr;
+
+    if (!operation) {
+        return GB_OP_MALFUNCTION;
+    }
+
+    if (!operation->response) {
+        return GB_OP_TIMEOUT;
+    }
+
+    hdr = operation->response->request_buffer;
+    if (!hdr || hdr->size < sizeof(*hdr)) {
+        return GB_OP_MALFUNCTION;
+    }
+
+    return hdr->result;
 }
 
 int gb_init(struct gb_transport_backend *transport)

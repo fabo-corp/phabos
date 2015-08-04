@@ -39,7 +39,6 @@
 #define GB_BATTERY_VERSION_MAJOR    0x00
 #define GB_BATTERY_VERSION_MINOR    0x01
 
-#define gb_info(x...)
 
 static uint8_t gb_battery_protocol_version(struct gb_operation *operation)
 {

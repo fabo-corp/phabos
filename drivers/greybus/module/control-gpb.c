@@ -102,6 +102,8 @@ static uint8_t gb_control_connected(struct gb_operation *operation)
 
     retval = gb_listen(le16_to_cpu(request->cport_id));
     if (retval) {
+        gb_error("Can not connect cport %d: error %d\n",
+                 le16_to_cpu(request->cport_id), retval);
         return GB_OP_INVALID;
     }
 
@@ -118,6 +120,8 @@ static uint8_t gb_control_disconnected(struct gb_operation *operation)
 
     retval = gb_stop_listening(le16_to_cpu(request->cport_id));
     if (retval) {
+        gb_error("Can not disconnect cport %d: error %d\n",
+                 le16_to_cpu(request->cport_id), retval);
         return GB_OP_INVALID;
     }
 

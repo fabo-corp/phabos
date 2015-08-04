@@ -26,37 +26,46 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __LOOPBACK_GB_H__
-#define __LOOPBACK_GB_H__
+#include <nuttx/greybus/debug.h>
+#include <arch/irq.h>
 
-#include <phabos/greybus-types.h>
-
-/* Greybus loopback request types */
-#define	GB_LOOPBACK_TYPE_PROTOCOL_VERSION		0x01
-#define	GB_LOOPBACK_TYPE_PING				0x02
-#define	GB_LOOPBACK_TYPE_TRANSFER			0x03
-#define	GB_LOOPBACK_TYPE_SINK				0x04
-
-/* version request has no payload */
-struct gb_loopback_proto_version_response {
-	__u8	major;
-	__u8	minor;
-};
-
-struct gb_loopback_transfer_request {
-	__le32	len;
-	__u8    data[0];
-};
-
-struct gb_loopback_transfer_response {
-	__u8    data[0];
-};
-
-struct gb_loopback_sync_transfer {
-	__le32	len;
-	__le32	chksum;
-	__u8    data[0];
-};
-
+#if defined(CONFIG_GB_LOG_ERROR)
+#define GB_LOG_LEVEL (GB_LOG_ERROR)
+#elif defined(CONFIG_GB_LOG_WARNING)
+#define GB_LOG_LEVEL (GB_LOG_ERROR | GB_LOG_WARNING)
+#elif defined(CONFIG_GB_LOG_DEBUG)
+#define GB_LOG_LEVEL (GB_LOG_ERROR | GB_LOG_WARNING | GB_LOG_DEBUG)
+#elif defined(CONFIG_GB_LOG_DUMP)
+#define GB_LOG_LEVEL (GB_LOG_ERROR | GB_LOG_WARNING | GB_LOG_DEBUG | \
+                      GB_LOG_DUMP)
+#else
+#define GB_LOG_LEVEL (GB_LOG_INFO)
 #endif
 
+int gb_log_level = GB_LOG_LEVEL;
+
+void _gb_log(const char *fmt, ...)
+{
+    irqstate_t flags;
+    va_list ap;
+
+    va_start(ap, fmt);
+    flags = irqsave();
+    lowvsyslog(fmt, ap);
+    irqrestore(flags);
+    va_end(ap);
+}
+
+void _gb_dump(const char *func, __u8 *buf, size_t size)
+{
+    int i;
+    irqstate_t flags;
+
+    flags = irqsave();
+    lowsyslog("%s:\n", func);
+    for (i = 0; i < size; i++) {
+        lowsyslog( "%02x ", buf[i]);
+    }
+    lowsyslog("\n");
+    irqrestore(flags);
+}
