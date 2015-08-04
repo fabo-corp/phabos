@@ -16,5 +16,7 @@ struct shell_command {
     int (*entry)(int argc, char **argv);
 };
 
+int shell_main(int argc, char **argv);
+
 #endif /* __SHELL_H__ */
 
