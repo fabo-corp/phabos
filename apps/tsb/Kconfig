@@ -1,0 +1,5 @@
+config APP_TSB_ETM
+    bool "TSB ETM"
+
+config APP_TSB_PINSHARE
+    bool "TSB Pinshare"

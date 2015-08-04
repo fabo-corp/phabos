@@ -1,0 +1,36 @@
+menu "Applications"
+
+config APP_GREYBUS_UTILS
+    bool
+
+config APP_APBRIDGEA
+    bool "APBridge-A"
+    select APP_GREYBUS_UTILS
+
+config APP_SVC
+    bool "SVC"
+    depends on BOARD_ARA_SVC
+    select APP_GREYBUS_UTILS
+
+config APP_GPIO
+    bool "GPIO"
+    select GPIO
+
+config APP_GB_LOOPBACK
+    bool "Greybus Loopback exerciser"
+    select GREYBUS
+    select GREYBUS_LOOPBACK
+
+config APP_I2S
+    bool "I2S"
+    select ARA_BACKPORT
+
+config APP_UNIPRO
+    bool "UniPro"
+    select UNIPRO
+
+if MACH_TSB
+source apps/tsb/Kconfig
+endif
+
+endmenu

@@ -1,9 +1,9 @@
 subdirs-$(CONFIG_MACH_TSB) += tsb
-subdirs-$(CONFIG_TSB_APB1) += apbridgea
-subdirs-$(CONFIG_BOARD_ARA_SVC) += svc
-subdirs-y += greybus-utils
+subdirs-$(CONFIG_APP_APBRIDGEA) += apbridgea
+subdirs-$(CONFIG_APP_SVC) += svc
+subdirs-$(CONFIG_APP_GREYBUS_UTILS) += greybus-utils
 
-obj-$(CONFIG_UNIPRO) += unipro.o
-obj-$(CONFIG_GPIO) += gpio.o
-obj-$(CONFIG_ARA_BACKPORT) += i2s.o
-obj-$(CONFIG_GREYBUS_LOOPBACK) += gb-loopback.o
+obj-$(CONFIG_APP_UNIPRO) += unipro.o
+obj-$(CONFIG_APP_GPIO) += gpio.o
+obj-$(CONFIG_APP_I2S) += i2s.o
+obj-$(CONFIG_APP_GREYBUS_LOOPBACK) += gb-loopback.o
