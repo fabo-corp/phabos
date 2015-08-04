@@ -36,6 +36,7 @@
 #include <asm/delay.h>
 #include <phabos/greybus/unipro.h>
 #include <phabos/scheduler.h>
+#include <phabos/shell.h>
 
 #include <apps/apbridgea/utils.h>
 
@@ -473,8 +474,6 @@ int svcd_start(void) {
 }
 
 void svcd_stop(void) {
-    int status;
-    int rc;
     pid_t pid_tmp;
 
     mutex_lock(&svc->lock);
