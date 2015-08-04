@@ -119,6 +119,18 @@ void watchdog_start(struct watchdog *wd, unsigned long ticks)
     spinlock_unlock(&wdog_lock);
 }
 
+bool watchdog_is_active(struct watchdog *wd)
+{
+    bool is_active;
+    struct watchdog_priv *wdog = to_watchdog_priv(wd);
+
+    spinlock_lock(&wdog_lock);
+    is_active = !list_is_empty(&wdog->list);
+    spinlock_unlock(&wdog_lock);
+
+    return is_active;
+}
+
 void watchdog_cancel(struct watchdog *wd)
 {
     RET_IF_FAIL(wd,);
