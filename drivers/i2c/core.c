@@ -2,6 +2,7 @@
 #include <phabos/driver.h>
 #include <phabos/hashtable.h>
 #include <phabos/i2c.h>
+#include <phabos/char.h>
 
 #include <errno.h>
 #include <stdlib.h>
