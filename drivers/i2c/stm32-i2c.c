@@ -55,7 +55,7 @@ struct stm32_adapter_priv {
     struct semaphore xfer_semaphore;
 };
 
-static void i2c_dump(struct device *device)
+__attribute__((unused)) static void i2c_dump(struct device *device)
 {
     kprintf("\tCR1: %#X\n", read32(device->reg_base + I2C_CR1));
     kprintf("\tCR2: %#X\n", read32(device->reg_base + I2C_CR2));
