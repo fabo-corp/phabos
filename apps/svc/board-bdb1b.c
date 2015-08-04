@@ -32,6 +32,7 @@
 
 #define DBG_COMP DBG_SVC     /* DBG_COMP macro of the component */
 
+#include <asm/hwio.h>
 #include <asm/delay.h>
 #include <asm/gpio.h>
 #include <phabos/gpio.h>
@@ -300,8 +301,14 @@ void interfaces_por_update(struct interface **ints, size_t nr_ints)
     int i, j;
     struct vreg *vreg;
 
-    por = getreg32(STM32_RCC_CSR) & RCC_CSR_PORRSTF;
-    modifyreg32(STM32_RCC_CSR, 0, RCC_CSR_RMVF);
+// FIXME port to phabos
+#define STM32_RCC_BASE          0x40023800
+#define STM32_RCC_CSR           (STM32_RCC_BASE + 0x74)
+#define RCC_CSR_PORRSTF         (1 << 27)
+#define RCC_CSR_RMVF            (1 << 24)
+
+    por = read32(STM32_RCC_CSR) & RCC_CSR_PORRSTF;
+    read32(STM32_RCC_CSR) |= RCC_CSR_RMVF;
     if (!por) {
         /* Firmware reset was not cause by POR,
          * let SVC power off and power on bridges
@@ -325,9 +332,8 @@ void interfaces_por_update(struct interface **ints, size_t nr_ints)
     }
 }
 
-struct ara_board_info *board_init(void) {
-    int i;
-
+struct ara_board_info *board_init(void)
+{
     /* Pretty lights */
     stm32_configgpio(SVC_LED_RED);
     stm32_gpiowrite(SVC_LED_RED, true);
@@ -364,7 +370,7 @@ struct ara_board_info *board_init(void) {
 
 #if 0 // FIXME
     /* Register the TCA64xx I/O Expanders GPIOs to Gpio Chip */
-    for (i = 0; i < bdb1b_board_info.nr_io_expanders; i++) {
+    for (int i = 0; i < bdb1b_board_info.nr_io_expanders; i++) {
         struct io_expander_info *io_exp = &bdb1b_board_info.io_expanders[i];
 
         io_exp->i2c_dev = open("/dev/i2c-0", 0);
@@ -393,16 +399,15 @@ struct ara_board_info *board_init(void) {
     return &bdb1b_board_info;
 }
 
-void board_exit(void) {
-    int i;
-
+void board_exit(void)
+{
 #if 0 // FIXME
     /*
      * First unregister the TCA64xx I/O Expanders and associated I2C bus(ses).
      * Done in reverse order from registration to account for IRQ chaining
      * between I/O Expander chips.
      */
-    for (i = bdb1b_board_info.nr_io_expanders - 1; i >= 0; i--) {
+    for (int i = bdb1b_board_info.nr_io_expanders - 1; i >= 0; i--) {
         struct io_expander_info *io_exp = &bdb1b_board_info.io_expanders[i];
 
         if (io_exp->io_exp_driver_data)

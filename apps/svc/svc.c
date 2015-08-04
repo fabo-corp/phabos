@@ -517,7 +517,7 @@ int svc_connect_interfaces(struct interface *iface1, uint16_t cportid1,
         return -EINVAL;
     }
 
-    pthread_mutex_lock(&svc->lock);
+    mutex_lock(&svc->lock);
 
     /* Retrieve the interface structures and device IDs for the interfaces. */
     rc = switch_if_dev_id_get(sw, iface1->switch_portid, &devids[0]);
@@ -558,6 +558,6 @@ int svc_connect_interfaces(struct interface *iface1, uint16_t cportid1,
     }
 
  error_exit:
-    pthread_mutex_unlock(&svc->lock);
+    mutex_unlock(&svc->lock);
     return rc;
 }
