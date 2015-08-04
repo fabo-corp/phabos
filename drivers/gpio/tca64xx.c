@@ -160,10 +160,7 @@ get_platform_data(struct gpio_device *dev)
  * Since the Nuttx IRQ handlers do not allow to pass private data,
  * store the platform_data pointer in a list
  */
-struct list_head tca64xx_irq_pdata_list = {
-    .prev = &tca64xx_irq_pdata_list,
-    .next = &tca64xx_irq_pdata_list,
-};
+LIST_DECLARE(tca64xx_irq_pdata_list);
 
 static uint8_t get_nr_gpios(tca64xx_part part)
 {
@@ -607,7 +604,15 @@ static void intstat_update(void *driver_data, uint32_t in)
     int pin;
     uint32_t diff, nr_gpios = get_nr_gpios(tca64xx->part);
 
+    irq_disable();
+
     diff = tca64xx->in ^ in;
+
+    if (!diff) {
+        irq_enable();
+        return;
+    }
+
     tca64xx->in = in;
 
     /*
@@ -634,6 +639,8 @@ static void intstat_update(void *driver_data, uint32_t in)
         }
         diff >>= 1, in >>= 1;
     }
+
+    irq_enable();
 }
 
 static void tca64xx_registers_update(void *driver_data)
@@ -701,7 +708,10 @@ uint8_t tca64xx_line_count(struct gpio_device *dev)
 int tca64xx_gpio_mask_irq(struct gpio_device *dev, unsigned int which)
 {
     struct tca64xx_platform_data *tca64xx = get_platform_data(dev);
+
+    irq_disable();
     tca64xx->mask |= (1 << which);
+    irq_enable();
 
     return 0;
 }
@@ -709,7 +719,10 @@ int tca64xx_gpio_mask_irq(struct gpio_device *dev, unsigned int which)
 int tca64xx_gpio_unmask_irq(struct gpio_device *dev, unsigned int which)
 {
     struct tca64xx_platform_data *tca64xx = get_platform_data(dev);
+
+    irq_disable();
     tca64xx->mask &= ~(1 << which);
+    irq_enable();
 
     return 0;
 }
@@ -717,7 +730,10 @@ int tca64xx_gpio_unmask_irq(struct gpio_device *dev, unsigned int which)
 int tca64xx_gpio_clear_interrupt(struct gpio_device *dev, unsigned int which)
 {
     struct tca64xx_platform_data *tca64xx = get_platform_data(dev);
+
+    irq_disable();
     tca64xx->intstat &= ~(1 << which);
+    irq_enable();
 
     return 0;
 }
@@ -725,8 +741,13 @@ int tca64xx_gpio_clear_interrupt(struct gpio_device *dev, unsigned int which)
 uint32_t tca64xx_gpio_get_interrupt(void *driver_data)
 {
     struct tca64xx_platform_data *tca64xx = driver_data;
-    uint32_t mask = ~tca64xx->mask;
-    uint32_t intstat = tca64xx->intstat & mask;
+    uint32_t mask;
+    uint32_t intstat;
+
+    irq_disable();
+    mask = ~tca64xx->mask;
+    intstat = tca64xx->intstat & mask;
+    irq_enable();
 
     return intstat;
 }
@@ -735,11 +756,13 @@ static void tca64xx_set_gpio_trigger(void *driver_data, uint8_t which, int trigg
 {
     struct tca64xx_platform_data *tca64xx = driver_data;
 
+    irq_disable();
     if (trigger) {
         tca64xx->trigger |= TCA64XX_IRQ_TYPE_LEVEL << which;
     } else {
         tca64xx->trigger &= ~(TCA64XX_IRQ_TYPE_LEVEL << which);
     }
+    irq_enable();
 }
 
 static void tca64xx_set_gpio_level(void *driver_data, uint8_t which, int level)
@@ -747,8 +770,10 @@ static void tca64xx_set_gpio_level(void *driver_data, uint8_t which, int level)
     struct tca64xx_platform_data *tca64xx = driver_data;
     int shift = which << 1;
 
+    irq_disable();
     tca64xx->level &= ~(0x03 << shift);
     tca64xx->level |= level << shift;
+    irq_enable();
 }
 
 static int tca64xx_set_gpio_triggering(struct gpio_device *dev,

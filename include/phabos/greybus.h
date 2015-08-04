@@ -112,11 +112,11 @@ struct gb_driver {
 };
 
 struct gb_operation_hdr {
-    uint16_t size;
-    uint16_t id;
-    uint8_t type;
-    uint8_t result; /* present in response only */
-    uint8_t pad[2];
+    __le16 size;
+    __le16 id;
+    __u8 type;
+    __u8 result; /* present in response only */
+    __u8 pad[2];
 };
 
 enum gb_operation_result {
@@ -167,6 +167,9 @@ struct gb_operation *gb_operation_create(unsigned int cport, uint8_t type,
 void gb_operation_ref(struct gb_operation *operation);
 void gb_operation_unref(struct gb_operation *operation);
 size_t gb_operation_get_request_payload_size(struct gb_operation *operation);
+uint8_t gb_operation_get_request_result(struct gb_operation *operation);
 int greybus_rx_handler(unsigned int, void*, size_t);
+
+uint8_t gb_errno_to_op_result(int err);
 
 #endif /* _GREYBUS_H_ */
