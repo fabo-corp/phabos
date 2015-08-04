@@ -15,12 +15,6 @@
 #define STM32_USART1_BRR    (STM32_USART1_BASE + 0x08)
 #define STM32_USART1_CR1    (STM32_USART1_BASE + 0x0c)
 
-#define MAINPLL_FREQ    168000000 // 168 MHz
-#define SYSCLOCK_FREQ   MAINPLL_FREQ
-#define AHB_FREQ        MAINPLL_FREQ
-#define APB1_FREQ       42000000 // 42 MHz
-#define APB2_FREQ       84000000 // 84 MHz
-
 #define STM32_USART1_CR1_UE (1 << 13)
 #define STM32_USART1_CR1_TE (1 << 3)
 
@@ -29,6 +23,31 @@
 #define STM32_USART1_BRR_APB2_84MHZ_B115200 \
     (STM32_USART1_BRR_APB2_84MHZ_B115200_MANTISSA | \
      STM32_USART1_BRR_APB2_84MHZ_B115200_FRACTION)
+
+#define STM32_USART1_BRR_APB2_80MHZ_B115200_MANTISSA (43 << 4)
+#define STM32_USART1_BRR_APB2_80MHZ_B115200_FRACTION 7
+#define STM32_USART1_BRR_APB2_80MHZ_B115200 \
+    (STM32_USART1_BRR_APB2_80MHZ_B115200_MANTISSA | \
+     STM32_USART1_BRR_APB2_80MHZ_B115200_FRACTION)
+
+#if defined(CONFIG_BOOT_FLASH)
+#   define PLLCFGR RCC_PLLCFGR_PLLSRC_HSI | (320 << RCC_PLLCFGR_PLLN_OFFSET) | \
+                   RCC_PLLCFGR_PLLP4 | (8 << RCC_PLLCFGR_PLLM_OFFSET)
+#   define MAINPLL_FREQ     160000000 // 160 MHz
+#   define APB1_FREQ        40000000 // 40 MHz
+#   define APB2_FREQ        80000000 // 80 MHz
+#   define USART1_B115200   STM32_USART1_BRR_APB2_80MHZ_B115200
+#else
+#   define PLLCFGR RCC_PLLCFGR_PLLSRC_HSI | (336 << RCC_PLLCFGR_PLLN_OFFSET) | \
+                   RCC_PLLCFGR_PLLP4 | (8 << RCC_PLLCFGR_PLLM_OFFSET)
+#   define MAINPLL_FREQ     168000000 // 168 MHz
+#   define APB1_FREQ        42000000 // 42 MHz
+#   define APB2_FREQ        84000000 // 84 MHz
+#   define USART1_B115200   STM32_USART1_BRR_APB2_84MHZ_B115200
+#endif
+
+#define SYSCLOCK_FREQ   MAINPLL_FREQ
+#define AHB_FREQ        MAINPLL_FREQ
 
 #define FLASH_ACR (STM32_FLASH_BASE + 0x00)
 
@@ -225,7 +244,7 @@ static void uart_init(void)
                      GPIO_PULLUP);
 
     write32(STM32_USART1_CR1, STM32_USART1_CR1_UE);
-    write32(STM32_USART1_BRR, STM32_USART1_BRR_APB2_84MHZ_B115200);
+    write32(STM32_USART1_BRR, USART1_B115200);
     write32(STM32_USART1_CR1, STM32_USART1_CR1_UE | STM32_USART1_CR1_TE);
 }
 
@@ -292,14 +311,23 @@ void machine_init(void)
 {
     /*
      * Configure clocks to the following:
-     *     PLL: 168MHz
-     *     AHB: 168MHz
+     *
+     * Boot from flash:
+     *     PLL: 160MHz
+     *     AHB: 160MHz
+     *     APB1: 40MHz
+     *     APB2: 80Mhz
+     *
+     * Warning: we cannot go up to 168Mhz when running from flash when
+     *          VDD = 1.8V.
+     *
+     * Boot from flash and copy to ram or boot from ram:
+     *     PLL: 164MHz
+     *     AHB: 164MHz
      *     APB1: 42MHz
      *     APB2: 84Mhz
      */
-    write32(RCC_PLLCFGR, RCC_PLLCFGR_PLLSRC_HSI |
-                         (336 << RCC_PLLCFGR_PLLN_OFFSET) | RCC_PLLCFGR_PLLP4 |
-                         (8 << RCC_PLLCFGR_PLLM_OFFSET));
+    write32(RCC_PLLCFGR, PLLCFGR);
     write32(RCC_CFGR, RCC_CFGR_SW_PLL | RCC_CFGR_PPRE1_DIV4 |
                       RCC_CFGR_PPRE2_DIV2);
     read32(RCC_CR) |= RCC_CR_PLLON;
