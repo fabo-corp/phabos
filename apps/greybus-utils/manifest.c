@@ -50,7 +50,7 @@ struct greybus {
 };
 
 struct greybus g_greybus = {
-    .cports = { &g_greybus.cports, &g_greybus.cports}
+    .cports = LIST_INIT(g_greybus.cports),
 };
 
 static unsigned char all_modules_manifest[] = {
@@ -292,11 +292,12 @@ void release_manifest_blob(void *manifest)
     manifest_release(mh, le16toh(mh->size));
 }
 
-void enable_manifest(char *name, void *priv, int device_id)
+void enable_manifest(char *name, void *manifest, int device_id)
 {
-    void *manifest;
+    if (!manifest) {
+        manifest = get_manifest_blob();
+    }
 
-    manifest = get_manifest_blob();
     if (manifest) {
         g_device_id = device_id;
         parse_manifest_blob(manifest);
