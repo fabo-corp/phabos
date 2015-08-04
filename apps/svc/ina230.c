@@ -40,6 +40,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 
 #define INA230_CONFIG               0x00
 #define INA230_SHUNT_VOLTAGE        0x01
