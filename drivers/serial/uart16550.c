@@ -257,9 +257,8 @@ static int uart16550_tcsetattr(struct uart16550_device *dev, int action,
     return 0;
 }
 
-static int uart16550_ioctl(struct file *file, unsigned long cmd, ...)
+static int uart16550_ioctl(struct file *file, unsigned long cmd, va_list vl)
 {
-    va_list vl;
     struct device *device = devnum_get_device(file->inode->dev);
     struct uart16550_device *dev =
         containerof(device, struct uart16550_device, device);
@@ -268,9 +267,7 @@ static int uart16550_ioctl(struct file *file, unsigned long cmd, ...)
 
     switch (cmd) {
     case TCSETS:
-        va_start(vl, cmd);
         uart16550_tcsetattr(dev, TCSANOW, va_arg(vl, struct termios*));
-        va_end(vl);
         break;
 
     default:
