@@ -33,6 +33,7 @@
 #include <phabos/semaphore.h>
 
 #include "svc-emu.h"
+#include "manifest.h"
 
 // XXX phabos porting
 #define gb_debug kprintf
