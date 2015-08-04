@@ -241,6 +241,174 @@ int switch_dump_routing_table(struct tsb_switch *sw) {
     return sw->ops->dump_routing_table(sw);
 }
 
+int switch_enable_test_traffic(struct tsb_switch *sw,
+                               uint8_t src_portid, uint8_t dst_portid,
+                               const struct unipro_test_feature_cfg *cfg) {
+    int i, rc;
+    uint16_t src_cportid = cfg->tf_src_cportid;
+    uint16_t dst_cportid = cfg->tf_dst_cportid;
+    struct pasv {
+        uint8_t  p; /* port */
+        uint16_t a; /* attribute */
+        uint16_t s; /* selector index */
+        uint32_t v; /* value */
+    } test_src_enable[] = {
+        /*
+         * First, disable the CPorts and configure them for test
+         * feature use.
+         */
+        {.p = src_portid,
+         .a = T_CONNECTIONSTATE,
+         .s = src_cportid,
+         .v = 0},
+        {.p = dst_portid,
+         .a = T_CONNECTIONSTATE,
+         .s = dst_cportid,
+         .v = 0},
+
+        {.p = src_portid,
+         .a = T_CPORTMODE,
+         .s = src_cportid,
+         .v = CPORT_MODE_UNDER_TEST},
+        {.p = dst_portid,
+         .a = T_CPORTMODE,
+         .s = dst_cportid,
+         .v = CPORT_MODE_UNDER_TEST},
+
+        /*
+         * Next, configure the test feature at the source.
+         */
+        {.p = src_portid,
+         .a = T_TSTCPORTID,
+         .s = cfg->tf_src,
+         .v = src_cportid},
+        {.p = src_portid,
+         .a = T_TSTSRCINCREMENT,
+         .s = cfg->tf_src,
+         .v = cfg->tf_src_inc},
+        {.p = src_portid,
+         .a = T_TSTSRCMESSAGESIZE,
+         .s = cfg->tf_src,
+         .v = cfg->tf_src_size},
+        {.p = src_portid,
+         .a = T_TSTSRCMESSAGECOUNT,
+         .s = cfg->tf_src,
+         .v = cfg->tf_src_count},
+        {.p = src_portid,
+         .a = T_TSTSRCINTERMESSAGEGAP,
+         .s = cfg->tf_src,
+         .v = cfg->tf_src_gap_us},
+
+        /*
+         * Then configure the test feature at the destination.
+         */
+        {.p = dst_portid,
+         .a = T_TSTCPORTID,
+         .s = cfg->tf_dst,
+         .v = dst_cportid},
+
+        /*
+         * Finally, connect the CPorts again, and turn on the source.
+         */
+        {.p = src_portid,
+         .a = T_CONNECTIONSTATE,
+         .s = src_cportid,
+         .v = 1},
+        {.p = dst_portid,
+         .a = T_CONNECTIONSTATE,
+         .s = dst_cportid,
+         .v = 1},
+        {.p = src_portid,
+         .a = T_TSTSRCON,
+         .s = cfg->tf_src,
+         .v = 1},
+    };
+
+    if (!sw ||
+        src_portid >= SWITCH_PORT_MAX || dst_portid >= SWITCH_PORT_MAX) {
+        return -EINVAL;
+    }
+
+    dbg_info("Enabling UniPro test feature: port=%u,src=%u->port=%u,dst=%u\n",
+             src_portid, cfg->tf_src, dst_portid, cfg->tf_dst);
+    dbg_info("Test source: cport=%u, inc=%u, size=%u, count=%u, gap=%u\n",
+             src_cportid, cfg->tf_src_inc, cfg->tf_src_size, cfg->tf_src_count,
+             cfg->tf_src_gap_us);
+    dbg_info("Test destination: cport=%u, traffic analyzer not enabled.\n",
+             dst_cportid);
+
+    for (i = 0; i < ARRAY_SIZE(test_src_enable); i++) {
+        struct pasv *s = &test_src_enable[i];
+        rc = switch_dme_peer_set(sw, s->p, s->a, s->s, s->v);
+        if (rc) {
+            return rc;
+        }
+    }
+
+    return 0;
+}
+
+int switch_disable_test_traffic(struct tsb_switch *sw,
+                                uint8_t src_portid, uint8_t dst_portid,
+                                const struct unipro_test_feature_cfg *cfg) {
+    int rc, i;
+    uint16_t src_cportid = cfg->tf_src_cportid;
+    uint16_t dst_cportid = cfg->tf_dst_cportid;
+    struct pasv {
+        uint8_t  p; /* port */
+        uint16_t a; /* attribute */
+        uint16_t s; /* selector index */
+        uint32_t v; /* value */
+    } test_src_disable[] = {
+        /*
+         * Stop test feature traffic generation.
+         */
+        {.p = src_portid,
+         .a = T_TSTSRCON,
+         .s = cfg->tf_src,
+         .v = 0},
+
+        /*
+         * Clean up by disconnecting the CPorts and returning them to
+         * the application.
+         */
+        {.p = src_portid,
+         .a = T_CONNECTIONSTATE,
+         .s = src_cportid,
+         .v = 0},
+        {.p = dst_portid,
+         .a = T_CONNECTIONSTATE,
+         .s = dst_cportid,
+         .v = 0},
+
+        {.p = src_portid,
+         .a = T_CPORTMODE,
+         .s = src_cportid,
+         .v = CPORT_MODE_APPLICATION},
+        {.p = dst_portid,
+         .a = T_CPORTMODE,
+         .s = dst_cportid,
+         .v = CPORT_MODE_APPLICATION},
+    };
+
+    if (!sw ||
+        src_portid >= SWITCH_PORT_MAX || dst_portid >= SWITCH_PORT_MAX) {
+        return -EINVAL;
+    }
+
+    dbg_info("Disabling UniPro test feature: port=%u,src=%u->port=%u,dst=%u\n",
+             src_portid, cfg->tf_src, dst_portid, cfg->tf_dst);
+    for (i = 0; i < ARRAY_SIZE(test_src_disable); i++) {
+        struct pasv *s = &test_src_disable[i];
+        rc = switch_dme_peer_set(sw, s->p, s->a, s->s, s->v);
+        if (rc) {
+            return rc;
+        }
+    }
+
+    return 0;
+}
+
 int switch_sys_ctrl_set(struct tsb_switch *sw,
                         uint16_t sc_addr,
                         uint32_t val) {
@@ -564,7 +732,7 @@ static int switch_cport_disconnect(struct tsb_switch *sw,
     return rc0 || rc1;
 }
 
-#if !CONFIG_ARCH_BOARD_ARA_BDB2A_SVC
+#if !(CONFIG_ARCH_BOARD_ARA_BDB2A_SVC || CONFIG_ARCH_BOARD_ARA_SDB_SVC)
 static int switch_link_power_set_default(struct tsb_switch *sw,
                                          uint8_t port_id) {
     int rc;
@@ -586,6 +754,28 @@ static int switch_link_power_set_default(struct tsb_switch *sw,
     return rc;
 }
 #endif
+
+/**
+ * @brief Retrieve a device id for a given port id
+ */
+int switch_if_dev_id_get(struct tsb_switch *sw,
+                         uint8_t port_id,
+                         uint8_t *dev_id) {
+    int dev;
+
+    if (!dev_id) {
+        return -EINVAL;
+    }
+
+    dev = dev_ids_port_to_dev(sw, port_id);
+    *dev_id = dev;
+
+    if (dev == INVALID_PORT) {
+        return -EINVAL;
+    }
+
+    return 0;
+}
 
 /**
  * @brief Assign a device id to a given port id
@@ -729,7 +919,7 @@ int switch_connection_create(struct tsb_switch *sw,
      * in for ES1 targets (e.g., the display tunnel on ES1 demos needs
      * the default setting of HS-G1 to work properly).
      */
-#if !CONFIG_ARCH_BOARD_ARA_BDB2A_SVC
+#if !(CONFIG_ARCH_BOARD_ARA_BDB2A_SVC || CONFIG_ARCH_BOARD_ARA_SDB_SVC)
     rc = switch_link_power_set_default(sw, c->port_id0);
     if (rc) {
         goto err1;
@@ -754,7 +944,7 @@ int switch_connection_create(struct tsb_switch *sw,
 
     return 0;
 
-#if !CONFIG_ARCH_BOARD_ARA_BDB2A_SVC
+#if !(CONFIG_ARCH_BOARD_ARA_BDB2A_SVC || CONFIG_ARCH_BOARD_ARA_SDB_SVC)
 err1:
     dbg_error("%s: couldn't set link power mode to default state.\n",
               __func__);
