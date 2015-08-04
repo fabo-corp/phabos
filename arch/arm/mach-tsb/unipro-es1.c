@@ -522,7 +522,7 @@ int unipro_send(unsigned int cportid, const void *buf, size_t len) {
     DBG_UNIPRO("Sending %u bytes to CP%d peer_rx_buf=0x%08x\n",
                len,
                cport->cportid,
-               cport->peer_rx_buf);
+               (unsigned int)cport->peer_rx_buf);
     write32(&cport->tx_buf[0], (uint32_t)cport->peer_rx_buf);
     write32(&cport->tx_buf[4], 0xDEADBEEF); // Reserved header, unused
 

@@ -32,6 +32,7 @@
 #include <nuttx/util.h>
 #include <nuttx/irq.h>
 #include <nuttx/arch.h>
+#include <nuttx/list.h>
 
 #include <nuttx/greybus/unipro.h>
 #include <nuttx/greybus/tsb_unipro.h>
@@ -68,6 +69,25 @@ struct cport {
     uint8_t *rx_buf;                // RX region for this CPort
     unsigned int cportid;
     int connected;
+
+    struct list_head tx_fifo;
+};
+
+struct worker {
+    pthread_t thread;
+    sem_t tx_fifo_lock;
+};
+
+static struct worker worker;
+
+struct unipro_buffer {
+    struct list_head list;
+    unipro_send_completion_t callback;
+    void *priv;
+    bool som;
+    int byte_sent;
+    int len;
+    const void *data;
 };
 
 #define CPORT_RX_BUF_BASE         (0x20000000U)
@@ -89,6 +109,9 @@ struct cport {
 
 #define CPORTID_CDSI0    (16)
 #define CPORTID_CDSI1    (17)
+
+#define CPB_TX_BUFFER_SPACE_MASK        ((uint32_t) 0x0000007F)
+#define CPB_TX_BUFFER_SPACE_OFFSET_MASK CPB_TX_BUFFER_SPACE_MASK
 
 /*
  * FIXME: We could allocate and size this array at runtime, based on the type
@@ -136,6 +159,10 @@ static uint32_t cport_get_status(struct cport*);
 static inline void clear_rx_interrupt(struct cport*);
 static inline void enable_rx_interrupt(struct cport*);
 static void configure_transfer_mode(int);
+static uint16_t unipro_get_tx_free_buffer_space(struct cport *cport);
+static inline void unipro_set_eom_flag(struct cport *cport);
+static int unipro_send_sync(unsigned int cportid,
+                            const void *buf, size_t len, bool som);
 static void dump_regs(void);
 
 /* irq handlers */
@@ -277,7 +304,7 @@ static int configure_connected_cport(unsigned int cportid) {
         ret = -ENOTCONN;
         break;
     default:
-        lldbg("Unexpected status: CP%d: status: 0x%u\n", cportid, rc);
+        lldbg("Unexpected status: CP%u: status: 0x%u\n", cportid, rc);
         ret = -EIO;
     }
     return ret;
@@ -362,7 +389,14 @@ static int irq_rx_eom(int irq, void *context) {
     uint32_t transferred_size;
     (void)context;
 
-    DEBUGASSERT(cport->driver);
+    clear_rx_interrupt(cport);
+
+    if (!cport->driver) {
+        lldbg("dropping message on cport %hu where no driver is registered\n",
+              cport->cportid);
+        return -ENODEV;
+    }
+
     transferred_size = unipro_read(CPB_RX_TRANSFERRED_DATA_SIZE_00 +
                                    (cport->cportid * sizeof(uint32_t)));
     DBG_UNIPRO("cport: %u driver: %s size=%u payload=0x%x\n",
@@ -374,7 +408,18 @@ static int irq_rx_eom(int irq, void *context) {
         cport->driver->rx_handler(cport->cportid, data,
                                   (size_t)transferred_size);
     }
-    clear_rx_interrupt(cport);
+
+    return 0;
+}
+
+int unipro_unpause_rx(unsigned int cportid)
+{
+    struct cport *cport;
+
+    cport = cport_handle(cportid);
+    if (!cport || !cport->connected) {
+        return -EINVAL;
+    }
 
     /* Restart the flow of received data */
     unipro_write(REG_RX_PAUSE_SIZE_00 + (cport->cportid * sizeof(uint32_t)),
@@ -444,6 +489,33 @@ static void configure_transfer_mode(int mode) {
         lldbg("Unsupported transfer mode: %u\n", mode);
         break;
     }
+}
+
+/**
+ * @brief           Return the free space in Unipro TX FIFO (in bytes)
+ * @return          free space in Unipro TX FIFO (in bytes)
+ * @param[in]       cport: CPort handle
+ */
+static uint16_t unipro_get_tx_free_buffer_space(struct cport *cport)
+{
+    unsigned int cportid = cport->cportid;
+    uint32_t tx_space;
+
+    tx_space = 8 * (unipro_read(CPB_TX_BUFFER_SPACE_REG(cportid)) &
+                    CPB_TX_BUFFER_SPACE_MASK);
+    tx_space -= 8 * (unipro_read(REG_TX_BUFFER_SPACE_OFFSET_REG(cportid)) &
+                     CPB_TX_BUFFER_SPACE_OFFSET_MASK);
+
+    return tx_space;
+}
+
+/**
+ * @brief           Set EOM (End Of Message) flag
+ * @param[in]       cport: CPort handle
+ */
+static inline void unipro_set_eom_flag(struct cport *cport)
+{
+    putreg8(1, CPORT_EOM_BIT(cport));
 }
 
 /**
@@ -588,8 +660,9 @@ int unipro_init_cport(unsigned int cportid)
     irqstate_t flags;
     struct cport *cport = cport_handle(cportid);
 
-    if (!cport)
+    if (!cport) {
         return -EINVAL;
+    }
 
     if (cport->connected)
         return 0;
@@ -629,14 +702,134 @@ int unipro_init_cport(unsigned int cportid)
     return 0;
 }
 
+static void unipro_dequeue_tx_buffer(struct unipro_buffer *buffer, int status)
+{
+    irqstate_t flags;
+
+    DEBUGASSERT(buffer);
+
+    flags = irqsave();
+    list_del(&buffer->list);
+    irqrestore(flags);
+
+    if (buffer->callback) {
+        buffer->callback(status, buffer->data, buffer->priv);
+    }
+
+    free(buffer);
+}
+
+/**
+ * @brief           send data over given UniPro CPort
+ * @return          0 on success, -EINVAL on invalid parameter,
+ *                  -EBUSY when buffer could not be completely transferred
+ *                  (unipro_send_tx_buffer() shall be called again until
+ *                  buffer is enterily sent (return value == 0)).
+ * @param[in]       operation: greybus loopback operation
+ */
+static int unipro_send_tx_buffer(struct cport *cport)
+{
+    irqstate_t flags;
+    struct unipro_buffer *buffer;
+    int retval;
+
+    if (!cport) {
+        return -EINVAL;
+    }
+
+    flags = irqsave();
+
+    if (list_is_empty(&cport->tx_fifo)) {
+        irqrestore(flags);
+        return 0;
+    }
+
+    buffer = list_entry(cport->tx_fifo.next, struct unipro_buffer, list);
+
+    irqrestore(flags);
+
+    retval = unipro_send_sync(cport->cportid,
+                              buffer->data + buffer->byte_sent,
+                              buffer->len - buffer->byte_sent, buffer->som);
+    if (retval < 0) {
+        unipro_dequeue_tx_buffer(buffer, retval);
+        lldbg("unipro_send_sync failed. Dropping message...\n");
+        return -EINVAL;
+    }
+
+    buffer->som = false;
+    buffer->byte_sent += retval;
+
+    if (buffer->byte_sent >= buffer->len) {
+        unipro_set_eom_flag(cport);
+        unipro_dequeue_tx_buffer(buffer, 0);
+        return 0;
+    }
+
+    return -EBUSY;
+}
+
+/**
+ * @brief           Send data buffer(s) on CPort whenever ready.
+ *                  Ensure that TX queues are reinspected until
+ *                  all CPorts have no work available.
+ *                  Then suspend again until new data is available.
+ */
+static void *unipro_tx_worker(void *data)
+{
+    int i;
+    bool is_busy;
+    int retval;
+
+    while (1) {
+        /* Block until a buffer is pending on any CPort */
+        sem_wait(&worker.tx_fifo_lock);
+
+        do {
+            is_busy = false;
+
+            for (i = 0; i < cport_max(); i++) {
+                /* Browse all CPorts sending any pending buffers */
+                retval = unipro_send_tx_buffer(cport_handle(i));
+                if (retval == -EBUSY) {
+                    /*
+                     * Buffer only partially sent, have to try again for
+                     * remaining part.
+                     */
+                    is_busy = true;
+                }
+            }
+        } while (is_busy); /* exit when CPort(s) current pending buffer sent */
+    }
+
+    return NULL;
+}
+
 /**
  * @brief Initialize the UniPro core
  */
 void unipro_init(void)
 {
     unsigned int i;
+    int retval;
+    struct cport *cport;
 
     DEBUGASSERT(ARRAY_SIZE(cporttable) <= 44);
+
+    sem_init(&worker.tx_fifo_lock, 0, 0);
+
+    retval = pthread_create(&worker.thread, NULL, unipro_tx_worker, NULL);
+    if (retval) {
+        lldbg("Failed to create worker thread: %s.\n", strerror(errno));
+        return;
+    }
+
+    for (i = 0; i < cport_max(); i++) {
+        cport = cport_handle(i);
+        if (cport) {
+            list_init(&cport->tx_fifo);
+        }
+    }
 
     if (es2_fixup_mphy()) {
         lldbg("Failed to apply M-PHY fixups (results in link instability at HS-G1).\n");
@@ -667,6 +860,57 @@ void unipro_init(void)
 }
 
 /**
+ * @brief           send data over UniPro asynchronously (not blocking)
+ * @return          0 on success, <0 otherwise
+ * @param[in]       cportid: target CPort ID
+ * @param[in]       buf: data buffer
+ * @param[in]       len: data buffer length (in bytes)
+ * @param[in]       callback: function called upon Tx completion
+ * @param[in]       priv: optional argument passed to callback
+ */
+int unipro_send_async(unsigned int cportid, const void *buf, size_t len,
+                      unipro_send_completion_t callback, void *priv)
+{
+    struct cport *cport;
+    struct unipro_buffer *buffer;
+    irqstate_t flags;
+
+    if (len > CPORT_BUF_SIZE) {
+        return -EINVAL;
+    }
+
+    cport = cport_handle(cportid);
+    if (!cport) {
+        return -EINVAL;
+    }
+
+    if (!cport->connected) {
+        lldbg("CP%u unconnected\n", cport->cportid);
+        return -EPIPE;
+    }
+
+    DEBUGASSERT(TRANSFER_MODE == 2);
+
+    buffer = zalloc(sizeof(*buffer));
+    if (!buffer) {
+        return -ENOMEM;
+    }
+    list_init(&buffer->list);
+    buffer->som = true;
+    buffer->len = len;
+    buffer->callback = callback;
+    buffer->priv = priv;
+    buffer->data = buf;
+
+    flags = irqsave();
+    list_add(&cport->tx_fifo, &buffer->list);
+    irqrestore(flags);
+
+    sem_post(&worker.tx_fifo_lock);
+    return 0;
+}
+
+/**
  * @brief send data down a CPort
  * @param cportid cport to send down
  * @param buf data buffer
@@ -675,7 +919,48 @@ void unipro_init(void)
  */
 int unipro_send(unsigned int cportid, const void *buf, size_t len)
 {
+    int ret, sent;
+    bool som;
     struct cport *cport;
+
+    if (len > CPORT_BUF_SIZE) {
+        return -EINVAL;
+    }
+
+    cport = cport_handle(cportid);
+    if (!cport) {
+        return -EINVAL;
+    }
+
+    for (som = true, sent = 0; sent < len;) {
+        ret = unipro_send_sync(cportid, buf + sent, len - sent, som);
+        if (ret < 0) {
+            return ret;
+        } else if (ret == 0) {
+            continue;
+        }
+        sent += ret;
+        som = false;
+    }
+    unipro_set_eom_flag(cport);
+
+    return 0;
+}
+
+/**
+ * @brief           Send data down to a CPort
+ * @return          number of bytes effectively sent (>= 0), or error code (< 0)
+ * @param[in]       cportid: cport to send down
+ * @param[in]       buf: data buffer
+ * @param[in]       len: size of data to send
+ * @param[in]       som: "start of message" flag
+ */
+static int unipro_send_sync(unsigned int cportid,
+                            const void *buf, size_t len, bool som)
+{
+    struct cport *cport;
+    uint16_t count;
+    uint8_t *tx_buf;
 
     if (len > CPORT_BUF_SIZE) {
         return -EINVAL;
@@ -694,28 +979,28 @@ int unipro_send(unsigned int cportid, const void *buf, size_t len)
     DEBUGASSERT(TRANSFER_MODE == 2);
 
     /*
-     * FIXME: In the future, when this driver enables E2EFC, we will need to
-     *        keep in mind the ES2 Bridge Silicon limiation that a minimum of
-     *        8 bytes must be transmitted while E2EFC is active.
+     * If this is not the start of a new message,
+     * message data must be written to first address of CPort Tx Buffer + 1.
      */
+    if (!som) {
+        tx_buf = cport->tx_buf + sizeof(uint32_t);
+    } else {
+        tx_buf = cport->tx_buf;
+    }
 
-    DBG_UNIPRO("Sending %u bytes to CP%d\n", len, cport->cportid);
+    count = unipro_get_tx_free_buffer_space(cport);
+    if (!count) {
+        /* No free space in TX FIFO, cannot send anything. */
+        DBG_UNIPRO("No free space in CP%d Tx Buffer\n", cportid);
+        return 0;
+    } else if (count > len) {
+        count = len;
+    }
+    /* Copy message data in CPort Tx FIFO */
+    DBG_UNIPRO("Sending %u bytes to CP%d\n", count, cportid);
+    memcpy(tx_buf, buf, count);
 
-    /*
-     * Copy buf into the TX_BUF region for this CPort
-     *
-     * Note 1: For ES2 Transfer Mode 2, the 8 byte "header" is carried across
-     * unchanged, and we use it to hold (up to) the first 8 payload bytes.
-     *
-     * Note 2: We are only permitted to write to &cport->tx_buf[0] once per
-     *         transfer.
-     */
-    memcpy(cport->tx_buf, buf, len);
-
-    /* Hit EOM */
-    putreg8(1, CPORT_EOM_BIT(cport));
-
-    return 0;
+    return (int) count;
 }
 
 /**
