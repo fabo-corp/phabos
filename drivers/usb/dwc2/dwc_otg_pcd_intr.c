@@ -144,9 +144,9 @@ static inline void print_ep0_state(dwc_otg_pcd_t * pcd)
  * for out endpoints and prints size for debug purposes(used in 
  * 2.93a DevOutNak feature).
  */
+#ifdef DEBUG
 static inline void print_memory_payload(dwc_otg_pcd_t * pcd,  dwc_ep_t * ep)
 {
-#ifdef DEBUG
 	deptsiz_data_t deptsiz_init = {.d32 = 0 };
 	deptsiz_data_t deptsiz_updt = {.d32 = 0 };
 	int pack_num;
@@ -169,9 +169,8 @@ static inline void print_memory_payload(dwc_otg_pcd_t * pcd,  dwc_ep_t * ep)
 		"Number of transfered bytes = 0x%08x\n", payload);
 	DWC_DEBUGPL(DBG_PCDV,
 		"Number of transfered packets = %d\n", pack_num);	
-#endif	
 }
-
+#endif
 
 #ifdef DWC_UTE_CFI
 static inline void print_desc(struct dwc_otg_dma_desc *ddesc,
@@ -3865,31 +3864,6 @@ static inline void handle_in_ep_timeout_intr(dwc_otg_pcd_t * pcd,
 	ep->disabling = 1;
 	ep->stopped = 1;
 #endif
-}
-
-/**
- * Handler for the IN EP NAK interrupt.
- */
-static inline int32_t handle_in_ep_nak_intr(dwc_otg_pcd_t * pcd,
-					    const uint32_t epnum)
-{
-	/** @todo implement ISR */
-	dwc_otg_core_if_t *core_if;
-	diepmsk_data_t intr_mask = {.d32 = 0 };
-
-	DWC_PRINTF("INTERRUPT Handler not implemented for %s\n", "IN EP NAK");
-	core_if = GET_CORE_IF(pcd);
-	intr_mask.b.nak = 1;
-
-	if (core_if->multiproc_int_enable) {
-		DWC_MODIFY_REG32(&core_if->dev_if->dev_global_regs->
-				 diepeachintmsk[epnum], intr_mask.d32, 0);
-	} else {
-		DWC_MODIFY_REG32(&core_if->dev_if->dev_global_regs->diepmsk,
-				 intr_mask.d32, 0);
-	}
-
-	return 1;
 }
 
 /**
