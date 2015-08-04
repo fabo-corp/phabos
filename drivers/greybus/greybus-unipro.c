@@ -32,6 +32,7 @@
 #include <asm/delay.h>
 #include <asm/unipro.h>
 #include <phabos/greybus.h>
+#include <phabos/greybus/debug.h>
 
 static int gb_unipro_rx_handler(unsigned int cport, void *data, size_t size)
 {

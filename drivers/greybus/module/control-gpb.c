@@ -32,8 +32,10 @@
 #include <errno.h>
 
 #include <asm/byteordering.h>
-#include <phabos/greybus.h>
+
 #include <phabos/assert.h>
+#include <phabos/greybus.h>
+#include <phabos/greybus/debug.h>
 
 #include "control-gb.h"
 

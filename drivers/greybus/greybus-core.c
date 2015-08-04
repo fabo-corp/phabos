@@ -33,10 +33,12 @@
 #include <phabos/scheduler.h>
 #include <phabos/time.h>
 #include <phabos/watchdog.h>
+#include <phabos/greybus/debug.h>
 
 #include <asm/unipro.h>
 #include <asm/atomic.h>
 #include <asm/spinlock.h>
+#include <asm/byteordering.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -50,8 +52,6 @@
 
 #define ONE_SEC_IN_MSEC         1000
 #define ONE_MSEC_IN_NSEC        1000000
-
-#define TIMEOUT_WD_DELAY    (TIMEOUT_IN_MS * CLOCKS_PER_SEC) / ONE_SEC_IN_MSEC
 
 struct gb_cport_driver {
     struct gb_driver *driver;
@@ -74,7 +74,7 @@ static struct gb_operation_hdr timedout_hdr = {
     .type = TYPE_RESPONSE_FLAG,
 };
 
-static void gb_operation_timeout(int argc, uint32_t cport, ...);
+static void gb_operation_timeout(struct watchdog *wdog);
 
 uint8_t gb_errno_to_op_result(int err)
 {
@@ -205,36 +205,31 @@ static bool gb_operation_has_timedout(struct gb_operation *operation)
  */
 static void gb_watchdog_update(unsigned int cport)
 {
-    irqstate_t flags;
-
-    flags = irqsave();
+    irq_disable();
 
     if (list_is_empty(&g_cport[cport].tx_fifo)) {
-        wd_cancel(&g_cport[cport].timeout_wd);
+        watchdog_cancel(&g_cport[cport].timeout_wd);
     } else {
-        wd_start(&g_cport[cport].timeout_wd, TIMEOUT_WD_DELAY,
-                 gb_operation_timeout, 1, cport);
+        watchdog_start_usec(&g_cport[cport].timeout_wd, TIMEOUT_IN_MS);
     }
 
-    irqrestore(flags);
+    irq_enable();
 }
 
 static void gb_clean_timedout_operation(unsigned int cport)
 {
-    irqstate_t flags;
-    struct list_head *iter, *iter_next;
     struct gb_operation *op;
 
-    list_foreach_safe(&g_cport[cport].tx_fifo, iter, iter_next) {
+    list_foreach_safe(&g_cport[cport].tx_fifo, iter) {
         op = list_entry(iter, struct gb_operation, list);
 
         if (!gb_operation_has_timedout(op)) {
             continue;
         }
 
-        flags = irqsave();
+        irq_disable();
         list_del(iter);
-        irqrestore(flags);
+        irq_enable();
 
         if (op->callback) {
             op->callback(op);
@@ -416,11 +411,11 @@ int gb_stop_listening(unsigned int cport)
     return transport_backend->stop_listening(cport);
 }
 
-static void gb_operation_timeout(int argc, uint32_t cport, ...)
+static void gb_operation_timeout(struct watchdog *wdog)
 {
-    irqstate_t flags;
+    unsigned int cport = (unsigned int) wdog->user_priv;
 
-    flags = irqsave();
+    irq_disable();
 
     /* timedout operation could potentially already been queued */
     if (list_is_empty(&g_cport[cport].timedout_operation.list)) {
@@ -428,8 +423,9 @@ static void gb_operation_timeout(int argc, uint32_t cport, ...)
     }
 
     list_add(&g_cport[cport].rx_fifo, &g_cport[cport].timedout_operation.list);
-    sem_post(&g_cport[cport].rx_fifo_lock);
-    irqrestore(flags);
+    semaphore_up(&g_cport[cport].rx_fifo_semaphore);
+
+    irq_enable();
 }
 
 int gb_operation_send_request(struct gb_operation *operation,
@@ -455,9 +451,9 @@ int gb_operation_send_request(struct gb_operation *operation,
         operation->callback = callback;
         gb_operation_ref(operation);
         list_add(&g_cport[operation->cport].tx_fifo, &operation->list);
-        if (!WDOG_ISACTIVE(&g_cport[operation->cport].timeout_wd)) {
-            wd_start(&g_cport[operation->cport].timeout_wd, TIMEOUT_WD_DELAY,
-                     gb_operation_timeout, 1, operation->cport);
+        if (!watchdog_is_active(&g_cport[operation->cport].timeout_wd)) {
+            watchdog_start_usec(&g_cport[operation->cport].timeout_wd,
+                                TIMEOUT_IN_MS);
         }
     }
 
@@ -675,6 +671,10 @@ int gb_init(struct gb_transport_backend *transport)
         list_init(&g_cport[i].tx_fifo);
         spinlock_init(&g_cport[i].rx_fifo_lock);
         spinlock_init(&g_cport[i].tx_fifo_lock);
+
+        watchdog_init(&g_cport[i].timeout_wd);
+        g_cport[i].timeout_wd.timeout = gb_operation_timeout;
+        g_cport[i].timeout_wd.user_priv = (void*) i;
     }
 
     atomic_init(&request_id, (uint32_t) 0);

@@ -32,6 +32,7 @@
 
 #include <asm/byteordering.h>
 #include <phabos/greybus.h>
+#include <phabos/greybus/debug.h>
 
 #include "battery-gb.h"
 

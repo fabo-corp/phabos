@@ -26,8 +26,12 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <nuttx/greybus/debug.h>
-#include <arch/irq.h>
+#include <asm/irq.h>
+
+#include <phabos/greybus/debug.h>
+#include <phabos/kprintf.h>
+
+#include <stdarg.h>
 
 #if defined(CONFIG_GB_LOG_ERROR)
 #define GB_LOG_LEVEL (GB_LOG_ERROR)
@@ -46,26 +50,26 @@ int gb_log_level = GB_LOG_LEVEL;
 
 void _gb_log(const char *fmt, ...)
 {
-    irqstate_t flags;
     va_list ap;
 
     va_start(ap, fmt);
-    flags = irqsave();
-    lowvsyslog(fmt, ap);
-    irqrestore(flags);
+
+    irq_disable();
+    kvprintf(fmt, ap);
+    irq_enable();
+
     va_end(ap);
 }
 
 void _gb_dump(const char *func, __u8 *buf, size_t size)
 {
     int i;
-    irqstate_t flags;
 
-    flags = irqsave();
-    lowsyslog("%s:\n", func);
+    irq_disable();
+    kprintf("%s:\n", func);
     for (i = 0; i < size; i++) {
-        lowsyslog( "%02x ", buf[i]);
+        kprintf( "%02x ", buf[i]);
     }
-    lowsyslog("\n");
-    irqrestore(flags);
+    kprintf("\n");
+    irq_enable();
 }
