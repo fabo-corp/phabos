@@ -96,10 +96,17 @@ void watchdog_start(struct watchdog *wd, unsigned long ticks)
     uint64_t current_ticks = get_ticks();
     struct watchdog_priv *wdog = to_watchdog_priv(wd);
 
+    spinlock_lock(&wdog_lock);
+
+    if (!list_is_empty(&wdog->list)) {
+        spinlock_unlock(&wdog_lock);
+        watchdog_cancel(wd);
+        spinlock_lock(&wdog_lock);
+    }
+
     wdog->start = current_ticks;
     wdog->end = current_ticks + ticks;
 
-    spinlock_lock(&wdog_lock);
     list_sorted_add(&wdog_head, &wdog->list, watchdog_expiration_comparator);
 
 #if defined(CONFIG_TICKLESS)
