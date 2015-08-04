@@ -40,6 +40,7 @@
 #include <phabos/list.h>
 #include <phabos/utils.h>
 #include <phabos/semaphore.h>
+#include <phabos/greybus-types.h>
 
 struct gb_operation;
 
