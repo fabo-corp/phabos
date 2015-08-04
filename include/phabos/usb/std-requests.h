@@ -42,6 +42,11 @@ enum usb_device_class_request {
     USB_DEVICE_SYNCH_FRAME          = 0x8200 | USB_SYNCH_FRAME,
 };
 
+struct usb_descriptor_header {
+    uint8_t bLength;
+    uint8_t bDescriptorType;
+};
+
 struct usb_device_descriptor {
     uint8_t bLength;
     uint8_t bDescriptorType;

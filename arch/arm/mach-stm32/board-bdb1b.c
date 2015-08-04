@@ -279,13 +279,11 @@ static void display_temperature(void)
 
     for (int i = 0;; i++) {
         uint16_t temperature = read32(STM32_ADC_BASE + ADC_DR);
-        int32_t vsense = (temperature * 1800) / 4096;
-        vsense = (vsense * 10 - 7600) / 250 + 25;
+        int32_t vsense = (temperature * 1800) >> 12;
+        vsense = ((vsense - 760) * 10) / 25 + 25;
 
         kprintf("Vsense = %u\n", temperature);
         kprintf("Temperature = %d°C\n", vsense);
-        if (vsense != 25)
-            while(1);
         mdelay(2500);
     }
 }
@@ -317,6 +315,8 @@ void machine_init(void)
     gpio_init(); // XXX: Enable all GPIOs for now
     uart_init(); // XXX: Enable USART1
     i2c_init();  // XXX: Enable I2C2
+
+    display_temperature();
 
     for (int i = 0; i < ARRAY_SIZE(gpio_port); i++)
         device_register(&gpio_port[i].device);

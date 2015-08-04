@@ -94,8 +94,9 @@ static void usb_control_msg_callback(struct urb *urb)
     semaphore_up(&urb->semaphore);
 }
 
-int usb_control_msg(struct usb_device *dev, uint16_t typeReq, uint16_t wValue,
-                    uint16_t wIndex, uint16_t wLength, void *buffer)
+ssize_t usb_control_msg(struct usb_device *dev, uint16_t typeReq,
+                        uint16_t wValue, uint16_t wIndex, uint16_t wLength,
+                        void *buffer)
 {
     int retval;
     struct urb *urb;
@@ -131,6 +132,7 @@ int usb_control_msg(struct usb_device *dev, uint16_t typeReq, uint16_t wValue,
         goto out;
 
     semaphore_down(&urb->semaphore);
+    retval = urb->actual_length;
 
 out:
     urb_destroy(urb);
@@ -146,7 +148,7 @@ static int enumerate_hub(struct usb_device *hub)
 
     retval = usb_control_msg(hub, USB_DEVICE_SET_CONFIGURATION, 1,
                              0, 0, NULL);
-    if (retval)
+    if (retval < 0)
         return retval; // FIXME: unpower device port
 
     desc = kmalloc(sizeof(*desc), 0);
@@ -154,7 +156,7 @@ static int enumerate_hub(struct usb_device *hub)
 
     retval = usb_control_msg(hub, USB_GET_HUB_DESCRIPTOR, 0, 0, sizeof(*desc),
                              desc);
-    if (retval)
+    if (retval < 0)
         return retval;
 
     kprintf("%s: found new hub with %u ports.\n", hub->hcd->device.name,
@@ -220,7 +222,7 @@ int enumerate_device(struct usb_device *dev)
     retval = usb_control_msg(dev, USB_DEVICE_GET_DESCRIPTOR,
                              USB_DESCRIPTOR_DEVICE << 8, 0, sizeof(*desc),
                              desc);
-    if (retval)
+    if (retval < 0)
         goto out; // FIXME: unpower device port
 
     klass = find_class_driver(desc->bDeviceClass, desc->bDeviceSubClass,
@@ -233,7 +235,7 @@ int enumerate_device(struct usb_device *dev)
     address = atomic_inc(&dev_id);
 
     retval = usb_control_msg(dev, USB_DEVICE_SET_ADDRESS, address, 0, 0, NULL);
-    if (retval)
+    if (retval < 0)
         goto out; // FIXME: unpower device port
 
     dev->address = address;

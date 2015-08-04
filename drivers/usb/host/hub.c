@@ -138,7 +138,7 @@ static int enumerate_hub(struct usb_device *hub)
 
     retval = usb_control_msg(hub, USB_DEVICE_SET_CONFIGURATION, 1,
                              0, 0, NULL);
-    if (retval)
+    if (retval < 0)
         return retval; // FIXME: unpower device port
 
     desc = kmalloc(sizeof(*desc), 0);
@@ -146,7 +146,7 @@ static int enumerate_hub(struct usb_device *hub)
 
     retval = usb_control_msg(hub, USB_GET_HUB_DESCRIPTOR, 0, 0, sizeof(*desc),
                              desc);
-    if (retval)
+    if (retval < 0)
         return retval;
 
     kprintf("%s: found new hub with %u ports.\n", hub->hcd->device.name,
