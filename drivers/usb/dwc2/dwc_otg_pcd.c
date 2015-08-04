@@ -30,6 +30,34 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
  * DAMAGE.
  * ========================================================================== */
+/*
+ * Copyright (c) 2014-2015 Google, Inc.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * 3. Neither the name of the copyright holder nor the names of its
+ * * may be used to endorse or promote products derived from this
+ * software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #ifndef DWC_HOST_ONLY
 
 /** @file
@@ -953,7 +981,7 @@ static void dwc_otg_pcd_reinit(dwc_otg_pcd_t * pcd)
 	hwcfg1 = (GET_CORE_IF(pcd))->hwcfg1.d32 >> 3;
 	for (i = 1; in_ep_cntr < num_in_eps; i++) {
 		if ((hwcfg1 & 0x1) == 0) {
-			dwc_otg_pcd_ep_t *ep = &pcd->in_ep[in_ep_cntr];
+			ep = &pcd->in_ep[in_ep_cntr];
 			in_ep_cntr++;
 			/**
 			 * @todo NGS: Add direction to EP, based on contents
@@ -971,7 +999,7 @@ static void dwc_otg_pcd_reinit(dwc_otg_pcd_t * pcd)
 	hwcfg1 = (GET_CORE_IF(pcd))->hwcfg1.d32 >> 2;
 	for (i = 1; out_ep_cntr < num_out_eps; i++) {
 		if ((hwcfg1 & 0x1) == 0) {
-			dwc_otg_pcd_ep_t *ep = &pcd->out_ep[out_ep_cntr];
+			ep = &pcd->out_ep[out_ep_cntr];
 			out_ep_cntr++;
 			/**
 			 * @todo NGS: Add direction to EP, based on contents
@@ -1074,11 +1102,8 @@ static void start_xfer_tasklet_func(void *data)
 	dwc_otg_core_if_t *core_if = GET_CORE_IF(pcd);
 
 	int i;
-	depctl_data_t diepctl;
 
 	DWC_DEBUGPL(DBG_PCDV, "Start xfer tasklet\n");
-
-	diepctl.d32 = DWC_READ_REG32(&core_if->dev_if->in_ep_regs[0]->diepctl);
 
 	if (pcd->ep0.queue_sof) {
 		pcd->ep0.queue_sof = 0;
@@ -1087,10 +1112,6 @@ static void start_xfer_tasklet_func(void *data)
 	}
 
 	for (i = 0; i < core_if->dev_if->num_in_eps; i++) {
-		depctl_data_t diepctl;
-		diepctl.d32 =
-		    DWC_READ_REG32(&core_if->dev_if->in_ep_regs[i]->diepctl);
-
 		if (pcd->in_ep[i].queue_sof) {
 			pcd->in_ep[i].queue_sof = 0;
 			start_next_request(&pcd->in_ep[i]);
@@ -1485,7 +1506,7 @@ int dwc_otg_pcd_ep_enable(dwc_otg_pcd_t * pcd,
 	num = UE_GET_ADDR(desc->bEndpointAddress);
 	dir = UE_GET_DIR(desc->bEndpointAddress);
 
-	if (!(*(uint32_t*) &desc->wMaxPacketSize)) {
+	if (!desc->wMaxPacketSize) {
 		DWC_WARN("bad maxpacketsize\n");
 		retval = -DWC_E_INVALID;
 		goto out;
@@ -1858,7 +1879,6 @@ void dwc_otg_pcd_start_iso_ddma(dwc_otg_core_if_t * core_if, dwc_otg_pcd_ep_t * 
 static void program_next_iso_request_ddma (dwc_otg_pcd_ep_t * ep, dwc_otg_pcd_request_t * req)
 {
 	dwc_otg_dev_dma_desc_t *dma_desc;
-	dwc_dma_t dma_desc_addr;
 	uint32_t frame_num = 0;
 	uint32_t nat;
 	uint32_t index;
@@ -1878,11 +1898,9 @@ static void program_next_iso_request_ddma (dwc_otg_pcd_ep_t * ep, dwc_otg_pcd_re
 
 	if (ep->dwc_ep.use_add_buf) {
 		dma_desc = &ep->dwc_ep.desc_addr1[ep->dwc_ep.iso_desc_second];
-		dma_desc_addr = ep->dwc_ep.dma_desc_addr1;
 		ep->dwc_ep.iso_desc_second += 1;
 	}  else {
 		dma_desc = &ep->dwc_ep.desc_addr[ep->dwc_ep.iso_desc_first];
-		dma_desc_addr = ep->dwc_ep.dma_desc_addr;
 		ep->dwc_ep.iso_desc_first += 1;
 	}
 	nat = UGETW(ep->desc->wMaxPacketSize);

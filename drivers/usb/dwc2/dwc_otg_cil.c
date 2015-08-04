@@ -30,6 +30,33 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
  * DAMAGE.
  * ========================================================================== */
+/*
+ * Copyright (c) 2014-2015 Google, Inc.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * 3. Neither the name of the copyright holder nor the names of its
+ * * may be used to endorse or promote products derived from this
+ * software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 /** @file
  *
@@ -1492,6 +1519,7 @@ void dwc_otg_core_init(dwc_otg_core_if_t * core_if)
 
 	}
 #endif
+
 	if (core_if->core_params->ic_usb_cap) {
 		gusbcfg_data_t gusbcfg = {.d32 = 0 };
 		gusbcfg.b.ic_usb_cap = 1;
@@ -1642,7 +1670,6 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * core_if)
 	fifosize_data_t ptxfifosize;
 	uint16_t rxfsiz, nptxfsiz;
 	gdfifocfg_data_t gdfifocfg = {.d32 = 0 };
-	hwcfg3_data_t hwcfg3 = {.d32 = 0 };
 	gotgctl_data_t gotgctl = {.d32 = 0 };
 
 	/* Restart the Phy Clock */
@@ -1810,7 +1837,6 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * core_if)
 			 * allocated FIFO space here due to ep 0 OUT always keeping enabled
 			 */
 			gdfifocfg.d32 = DWC_READ_REG32(&global_regs->gdfifocfg);
-			hwcfg3.d32 = DWC_READ_REG32(&global_regs->ghwcfg3);
 			gdfifocfg.b.gdfifocfg = (DWC_READ_REG32(&global_regs->ghwcfg3) >> 16);
 			DWC_WRITE_REG32(&global_regs->gdfifocfg, gdfifocfg.d32);
 			if (core_if->snpsid <= OTG_CORE_REV_2_94a) {
@@ -2699,7 +2725,7 @@ void hc_xfer_timeout(void *ptr)
 void ep_xfer_timeout(void *ptr)
 {
 	ep_xfer_info_t *xfer_info = NULL;
-	int ep_num = 0;
+	__attribute__((unused)) int ep_num = 0;
 	dctl_data_t dctl = {.d32 = 0 };
 	gintsts_data_t gintsts = {.d32 = 0 };
 	gintmsk_data_t gintmsk = {.d32 = 0 };
@@ -3238,7 +3264,7 @@ uint32_t calc_frame_interval(dwc_otg_core_if_t * core_if)
  */
 void dwc_otg_read_setup_packet(dwc_otg_core_if_t * core_if, uint32_t * dest)
 {
-	device_grxsts_data_t status;
+	__attribute__((unused)) device_grxsts_data_t status;
 	/* Get the 8 bytes of a setup transaction data */
 
 	/* Pop 2 DWORDS off the receive data FIFO into memory */
@@ -3533,7 +3559,7 @@ void dwc_otg_ep_deactivate(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 	depctl.d32 = DWC_READ_REG32(addr);
 	if (core_if->dma_enable && ep->type == DWC_OTG_EP_TYPE_ISOC
 	    && depctl.b.epena) {
-		depctl_data_t depctl = {.d32 = 0 };
+		depctl.d32 = 0;
 		if (ep->is_in) {
 			diepint_data_t diepint = {.d32 = 0 };
 
@@ -3708,15 +3734,12 @@ static void init_dma_desc_chain(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 static int32_t write_isoc_tx_fifo(dwc_otg_core_if_t * core_if, dwc_ep_t * dwc_ep)
 {
 	dwc_otg_dev_if_t *dev_if = core_if->dev_if;
-	dwc_otg_dev_in_ep_regs_t *ep_regs;
 	dtxfsts_data_t txstatus = {.d32 = 0 };
 	uint32_t len = 0;
 	int epnum = dwc_ep->num;
 	int dwords;
 
 	DWC_DEBUGPL(DBG_PCD, "Dedicated TxFifo Empty: %d \n", epnum);
-
-	ep_regs = core_if->dev_if->in_ep_regs[epnum];
 
 	len = dwc_ep->xfer_len - dwc_ep->xfer_count;
 
@@ -4372,12 +4395,9 @@ void dwc_otg_ep0_continue_transfer(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 	if (ep->is_in == 1) {
 		dwc_otg_dev_in_ep_regs_t *in_regs =
 		    core_if->dev_if->in_ep_regs[0];
-		gnptxsts_data_t tx_status = {.d32 = 0 };
 
-		tx_status.d32 =
-		    DWC_READ_REG32(&core_if->core_global_regs->gnptxsts);
 		/** @todo Should there be check for room in the Tx
-		 * Status Queue.  If not remove the code above this comment. */
+		 * Status Queue. */
 
 		depctl.d32 = DWC_READ_REG32(&in_regs->diepctl);
 		deptsiz.d32 = DWC_READ_REG32(&in_regs->dieptsiz);
@@ -4545,6 +4565,10 @@ void dump_msg(const u8 * buf, unsigned int length)
 		length -= num;
 	}
 }
+#else
+static inline void dump_msg(const u8 * buf, unsigned int length)
+{
+}
 #endif
 
 /**
@@ -4599,7 +4623,7 @@ void dwc_otg_ep_write_packet(dwc_otg_core_if_t * core_if, dwc_ep_t * ep,
 	 * is not a multiple of DWORD */
 	dword_count = (byte_count + 3) / 4;
 
-#ifdef DEBUG
+#ifdef VERBOSE
 	dump_msg(ep->xfer_buff, byte_count);
 #endif
 
@@ -4742,7 +4766,7 @@ void dwc_otg_read_packet(dwc_otg_core_if_t * core_if,
 void dwc_otg_dump_dev_registers(dwc_otg_core_if_t * core_if)
 {
 	int i;
-	volatile uint32_t *addr;
+	__attribute__((unused)) volatile uint32_t *addr;
 
 	DWC_PRINTF("Device Global Registers\n");
 	addr = &core_if->dev_if->dev_global_regs->dcfg;
@@ -4906,7 +4930,7 @@ void dwc_otg_dump_spram(dwc_otg_core_if_t * core_if)
 void dwc_otg_dump_host_registers(dwc_otg_core_if_t * core_if)
 {
 	int i;
-	volatile uint32_t *addr;
+	__attribute__((unused)) volatile uint32_t *addr;
 
 	DWC_PRINTF("Host Global Registers\n");
 	addr = &core_if->host_if->host_global_regs->hcfg;
@@ -4975,8 +4999,8 @@ void dwc_otg_dump_host_registers(dwc_otg_core_if_t * core_if)
 void dwc_otg_dump_global_registers(dwc_otg_core_if_t * core_if)
 {
 	int i, ep_num;
-	volatile uint32_t *addr;
-	char *txfsiz;
+	__attribute__((unused)) volatile uint32_t *addr;
+	__attribute__((unused)) char *txfsiz;
 
 	DWC_PRINTF("Core Global Registers\n");
 	addr = &core_if->core_global_regs->gotgctl;
@@ -6236,8 +6260,6 @@ int dwc_otg_set_param_dev_perio_tx_fifo_size(dwc_otg_core_if_t * core_if,
 					     int32_t val, int fifo_num)
 {
 	int retval = 0;
-	gintsts_data_t gintsts;
-	gintsts.d32 = DWC_READ_REG32(&core_if->core_global_regs->gintsts);
 
 	if (DWC_OTG_PARAM_TEST(val, 4, 768)) {
 		DWC_WARN("Wrong value for dev_perio_tx_fifo_size\n");

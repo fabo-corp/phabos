@@ -30,6 +30,33 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
  * DAMAGE.
  * ========================================================================== */
+/*
+ * Copyright (c) 2014-2015 Google, Inc.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * 3. Neither the name of the copyright holder nor the names of its
+ * * may be used to endorse or promote products derived from this
+ * software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 /** @file
  *
@@ -906,7 +933,7 @@ static int32_t dwc_otg_handle_pwrdn_session_change(dwc_otg_core_if_t * core_if)
  */
 static uint32_t dwc_otg_handle_pwrdn_stschng_intr(dwc_otg_device_t * otg_dev)
 {
-	int retval = 0;
+	int retval;
 	gpwrdn_data_t gpwrdn = {.d32 = 0 };
 	gpwrdn_data_t gpwrdn_temp = {.d32 = 0 };
 	dwc_otg_core_if_t *core_if = otg_dev->core_if;
@@ -1147,7 +1174,7 @@ int32_t dwc_otg_handle_disconnect_intr(dwc_otg_core_if_t * core_if)
  */
 int32_t dwc_otg_handle_usb_suspend_intr(dwc_otg_core_if_t * core_if)
 {
-	dsts_data_t dsts;
+	__attribute__((unused)) dsts_data_t dsts;
 	gintsts_data_t gintsts;
 	dcfg_data_t dcfg;
 
@@ -1332,7 +1359,7 @@ int32_t dwc_otg_handle_usb_suspend_intr(dwc_otg_core_if_t * core_if)
 			gotgctl_data_t gotgctl = {.d32 = 0 };
 			gotgctl.d32 = DWC_READ_REG32(&core_if->core_global_regs->gotgctl);
 			if (gotgctl.b.devhnpen && core_if->otg_ver == 1){
-				gotgctl_data_t gotgctl = {.d32 = 0 };
+				gotgctl.d32 = 0;
 				dwc_mdelay(5);
 				/**@todo Is the gotgctl.devhnpen cleared
 				 * by a USB Reset? */
@@ -1527,10 +1554,10 @@ static inline uint32_t dwc_otg_read_common_intr(dwc_otg_core_if_t * core_if)
 /* MACRO for clearing interupt bits in GPWRDN register */
 #define CLEAR_GPWRDN_INTR(__core_if,__intr) \
 do { \
-		gpwrdn_data_t gpwrdn = {.d32=0}; \
-		gpwrdn.b.__intr = 1; \
+		gpwrdn_data_t __gpwrdn = {.d32=0}; \
+		__gpwrdn.b.__intr = 1; \
 		DWC_MODIFY_REG32(&__core_if->core_global_regs->gpwrdn, \
-		0, gpwrdn.d32); \
+		0, __gpwrdn.d32); \
 } while (0)
 
 /**
@@ -1613,7 +1640,7 @@ int32_t dwc_otg_handle_common_intr(void *dev)
 			if (core_if->power_down == 2)
 				core_if->hibernation_suspend = -1;
 			else if (core_if->power_down == 3 && core_if->xhib == 2) {
-				gpwrdn_data_t gpwrdn = {.d32 = 0 };
+				gpwrdn_data_t gpwrdn_temp = {.d32 = 0 };
 				pcgcctl_data_t pcgcctl = {.d32 = 0 };
 				dctl_data_t dctl = {.d32 = 0 };
 
@@ -1623,8 +1650,8 @@ int32_t dwc_otg_handle_common_intr(void *dev)
 				DWC_DEBUGPL(DBG_ANY,
 					    "RESTORE DONE generated\n");
 
-				gpwrdn.b.restore = 1;
-				DWC_MODIFY_REG32(&core_if->core_global_regs->gpwrdn, gpwrdn.d32, 0);
+				gpwrdn_temp.b.restore = 1;
+				DWC_MODIFY_REG32(&core_if->core_global_regs->gpwrdn, gpwrdn_temp.d32, 0);
 				dwc_udelay(10);
 
 				pcgcctl.b.rstpdwnmodule = 1;
