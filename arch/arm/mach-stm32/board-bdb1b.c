@@ -248,7 +248,7 @@ static void gpio_init(void)
     }
 }
 
-static void display_temperature(void)
+__attribute__((unused)) static void display_temperature(void)
 {
     stm32_clk_enable(STM32_CLK_ADC);
     stm32_reset(STM32_RST_ADC);
@@ -316,7 +316,7 @@ void machine_init(void)
     uart_init(); // XXX: Enable USART1
     i2c_init();  // XXX: Enable I2C2
 
-    display_temperature();
+    //display_temperature();
 
     for (int i = 0; i < ARRAY_SIZE(gpio_port); i++)
         device_register(&gpio_port[i].device);
