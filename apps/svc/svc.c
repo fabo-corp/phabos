@@ -36,8 +36,8 @@
 #include <asm/delay.h>
 #include <phabos/greybus/unipro.h>
 #include <phabos/scheduler.h>
-#include <phabos/shell.h>
 
+#include <apps/shell.h>
 #include <apps/apbridgea/utils.h>
 
 #include <sys/wait.h>

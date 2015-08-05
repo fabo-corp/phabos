@@ -7,7 +7,6 @@ obj-y := main.o
 obj-y += mm.o
 obj-y += spawn.o
 obj-y += libc-support.o
-obj-y += shell.o
 obj-y += scheduler.o
 obj-$(CONFIG_SCHED_RR) += scheduler-rr.o
 obj-$(CONFIG_SCHED_FIFO) += scheduler-fifo.o

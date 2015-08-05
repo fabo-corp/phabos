@@ -40,7 +40,7 @@
 #include <stdint.h>
 
 #include <phabos/gpio.h>
-#include <phabos/shell.h>
+#include <apps/shell.h>
 
 /*
  * These commands mirror the Greybus GPIO protocol ops as of version

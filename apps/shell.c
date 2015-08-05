@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
-#include <phabos/shell.h>
+#include <apps/shell.h>
 #include <phabos/list.h>
 #include <phabos/mm.h>
 #include <phabos/scheduler.h>

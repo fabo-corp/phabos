@@ -28,7 +28,7 @@
 
 #include <config.h>
 #include <asm/unipro.h>
-#include <phabos/shell.h>
+#include <apps/shell.h>
 #include <phabos/unipro/tsb.h>
 
 #include <stdio.h>
