@@ -12,7 +12,8 @@
 
 static inline void udelay(unsigned long usecs)
 {
-    for (int i = 0; i < LOOP_PER_USEC * usecs; i++)
+    const unsigned long loop = usecs / USEC_PER_LOOP + 1;
+    for (int i = 0; i < loop; i++)
         asm volatile("nop");
 }
 

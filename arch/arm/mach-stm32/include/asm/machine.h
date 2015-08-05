@@ -14,7 +14,7 @@
 #define CPU_FREQ        168000000
 #define HZ              100
 
-#define LOOP_PER_USEC 21 /* FIXME: configure using oscilloscope */
+#define USEC_PER_LOOP 47
 
 #endif /* __MACHINE_H__ */
 
