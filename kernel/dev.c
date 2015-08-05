@@ -12,11 +12,11 @@
 #include <phabos/fs.h>
 #include <phabos/utils.h>
 #include <phabos/driver.h>
-#include <phabos/shell.h>
 #include <phabos/mm.h>
-
-#include <asm/delay.h>
 #include <phabos/i2c.h>
+
+#include <apps/shell.h>
+#include <asm/delay.h>
 
 __attribute__((unused)) static void ls(const char *path)
 {
