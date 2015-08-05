@@ -11,10 +11,15 @@
 #define CPU_NUM_IRQ    82
 #define VTOR_ALIGNMENT 256
 
-#define CPU_FREQ        168000000
 #define HZ              100
 
-#define USEC_PER_LOOP 47
+#if defined(CONFIG_BOOT_FLASH)
+#define USEC_PER_LOOP   25
+#define CPU_FREQ        160000000
+#else
+#define USEC_PER_LOOP   47
+#define CPU_FREQ        168000000
+#endif
 
 #endif /* __MACHINE_H__ */
 
