@@ -59,4 +59,11 @@ endif
 config ARA_BACKPORT
     bool "ARA Device Drivers API"
 
+menuconfig SPI
+    bool "SPI"
+
+if SPI
+source drivers/spi/Kconfig
+endif
+
 endmenu

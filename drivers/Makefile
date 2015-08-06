@@ -10,6 +10,7 @@ subdirs-$(CONFIG_USB) += usb
 subdirs-$(CONFIG_GPIO) += gpio
 subdirs-$(CONFIG_GREYBUS) += greybus
 subdirs-$(CONFIG_ARA_BACKPORT) += ara
+subdirs-$(CONFIG_SPI) += spi
 
 obj-y += core.o
 obj-y += log.o
