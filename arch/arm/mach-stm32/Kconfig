@@ -21,12 +21,20 @@ config STM32F417XX
     bool
     select STM32F4
 
+config BOARD_ARA_SVC
+    bool
+    select STM32F417XX
+
 choice
     prompt "Board"
 
-    config BOARD_ARA_SVC
-        bool "ARA SVC"
-        select STM32F417XX
+    config BOARD_ARA_SVC_BDB1B
+        bool "BDB1B - ARA SVC"
+        select BOARD_ARA_SVC
+
+    config BOARD_ARA_SVC_BDB2
+        bool "BDB2 - ARA SVC"
+        select BOARD_ARA_SVC
 endchoice
 
 config MACH_LINKER_SCRIPT
