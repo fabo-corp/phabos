@@ -288,6 +288,13 @@ static void spi_init(void)
 {
     stm32_clk_enable(STM32_CLK_SPI1);
     stm32_reset(STM32_RST_SPI1);
+
+    stm32_configgpio(GPIO_PORTA | GPIO_PIN5 | GPIO_AF5 | GPIO_ALT_FCT |
+                     GPIO_SPEED_HIGH);
+    stm32_configgpio(GPIO_PORTA | GPIO_PIN6 | GPIO_AF5 | GPIO_ALT_FCT |
+                     GPIO_SPEED_HIGH);
+    stm32_configgpio(GPIO_PORTA | GPIO_PIN7 | GPIO_AF5 | GPIO_ALT_FCT |
+                     GPIO_SPEED_HIGH);
 }
 
 __attribute__((unused)) static void display_temperature(void)
