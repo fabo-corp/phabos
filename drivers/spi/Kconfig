@@ -1,0 +1,2 @@
+config STM32_SPI
+    bool "STM32 SPI"
