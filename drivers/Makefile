@@ -12,3 +12,4 @@ subdirs-$(CONFIG_GREYBUS) += greybus
 subdirs-$(CONFIG_ARA_BACKPORT) += ara
 
 obj-y += core.o
+obj-y += log.o
