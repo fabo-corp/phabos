@@ -24,6 +24,8 @@
 #define SPI_CR1_BR_DIV256   (7 << 3)
 #define SPI_CR1_SPE         (1 << 6)
 #define SPI_CR1_LSBFIRST    (1 << 7)
+#define SPI_CR1_SSI         (1 << 8)
+#define SPI_CR1_SSM         (1 << 9)
 #define SPI_CR1_DFF         (1 << 11)
 #define SPI_CR1_BIDIMODE    (1 << 15)
 
@@ -135,7 +137,7 @@ static void stm32_spi_send_word(struct spi_master *spi, uint16_t word)
 static int stm32_spi_transfer_one8(struct spi_master *spi, struct spi_msg *msg)
 {
     uint8_t *rx_buf = msg->rx_buffer;
-    uint8_t *tx_buf = msg->tx_buffer;
+    const uint8_t *tx_buf = msg->tx_buffer;
 
     for (unsigned i = 0; i < msg->length; i++) {
         if (msg->tx_buffer)
@@ -151,7 +153,7 @@ static int stm32_spi_transfer_one8(struct spi_master *spi, struct spi_msg *msg)
 static int stm32_spi_transfer_one16(struct spi_master *spi, struct spi_msg *msg)
 {
     uint16_t *rx_buf = msg->rx_buffer;
-    uint16_t *tx_buf = msg->tx_buffer;
+    const uint16_t *tx_buf = msg->tx_buffer;
 
     if (msg->length & 1)
         dev_warn(&spi->device, "odd buffer length, skipping last byte\n");
@@ -188,9 +190,7 @@ static ssize_t stm32_spi_transfer(struct spi_master *spi, struct spi_msg *msg,
     if (spi->bpw == 16)
         transfer_one = stm32_spi_transfer_one16;
 
-    kprintf("CR1: %x\n", read32(spi->device.reg_base + SPI_CR1));
     stm32_spi_enable(spi);
-    kprintf("CR1: %x\n", read32(spi->device.reg_base + SPI_CR1));
 
     for (unsigned i = 0; i < count; i++)
         transfer_one(spi, &msg[i]);
@@ -212,7 +212,8 @@ static int stm32_spi_probe(struct device *device)
     struct spi_master *spi = containerof(device, struct spi_master, device);
     spi->ops = &stm32_spi_master_ops;
 
-    write32(device->reg_base + SPI_CR1, SPI_CR1_BIDIMODE | SPI_CR1_MSTR);
+    write32(device->reg_base + SPI_CR1, SPI_CR1_MSTR | SPI_CR1_SSI |
+                                        SPI_CR1_SSM);
     return 0;
 }
 
