@@ -6,20 +6,19 @@ obj-y += up_debug.o
 obj-y += tsb_switch.o
 obj-y += svc.o
 obj-y += tsb_switch_es1.o
-obj-y += board-bdb1b.o
+obj-y += tsb_switch_es2.o
 obj-y += up_bdb_pm.o
 
-CFLAGS += -Iapps/greybus-utils
+obj-$(CONFIG_BOARD_ARA_SVC_BDB1B) += board-bdb1b.o
+obj-$(CONFIG_BOARD_ARA_SVC_BDB2) += board-bdb2a.o
 
-#CSRCS		+= tsb_switch_es2.c
+CFLAGS += -Iapps/greybus-utils
 
 #ifeq ($(CONFIG_ARCH_BOARD_ARA_BDB1B_SVC),y)
 #CSRCS       += up_adc.c up_spring_pm.c
 #endif
 
 #ifeq ($(CONFIG_ARCH_BOARD_ARA_BDB2A_SVC),y)
-#CSRCS		+= board-bdb2a.c
-#CSRCS		+= up_bdb_pm.c
 #CSRCS       += up_adc.c up_spring_pm.c
 #endif
 

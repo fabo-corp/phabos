@@ -33,20 +33,17 @@
 
 #define DBG_COMP DBG_SVC     /* DBG_COMP macro of the component */
 
-#include <nuttx/config.h>
-#include <nuttx/arch.h>
-#include <nuttx/util.h>
-#include <nuttx/i2c.h>
-
-#include "nuttx/gpio/stm32_gpio_chip.h"
-#include "nuttx/gpio/tca64xx.h"
+#include <asm/hwio.h>
+#include <asm/delay.h>
+#include <asm/gpio.h>
+#include <phabos/gpio.h>
+#include <phabos/gpio/tca64xx.h>
+#include <phabos/utils.h>
 
 #include "up_debug.h"
 #include "ara_board.h"
 #include "interface.h"
 #include "tsb_switch_driver_es2.h"
-#include "stm32.h"
-#include <up_adc.h>
 
 #define SVC_LED_GREEN       (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_PORTB | \
                              GPIO_OUTPUT_SET | GPIO_PIN0)
@@ -108,6 +105,7 @@
 /* ADC Channels and GPIOs used for Spring Current Measurements */
 #define SPRING_COUNT            8
 
+#if 0
 #define SPRING1_ADC             ADC1
 #define SPRING2_ADC             ADC1
 #define SPRING3_ADC             ADC1
@@ -134,6 +132,7 @@
 #define SPRING6_SIGN_PIN (GPIO_INPUT | GPIO_PORTF | GPIO_PIN2)  /* PF2 */
 #define SPRING7_SIGN_PIN (GPIO_INPUT | GPIO_PORTF | GPIO_PIN13) /* PF13 */
 #define SPRING8_SIGN_PIN (GPIO_INPUT | GPIO_PORTA | GPIO_PIN8)  /* PA8 */
+#endif
 
 /*
  * Built-in bridge voltage regulator list
@@ -202,6 +201,7 @@ DECLARE_INTERFACE(gpb1, gpb1_vreg_data, 3, WAKEOUT_GPB1);
 DECLARE_INTERFACE(gpb2, gpb2_vreg_data, 4, WAKEOUT_GPB2);
 
 #define SPRING_INTERFACES_COUNT     8
+#if 0
 DECLARE_SPRING_INTERFACE(1, STM32_GPIO_PIN(GPIO_PORTI | GPIO_PIN2), 9,
                          SPRING1_ADC, SPRING1_SENSE_CHANNEL, SPRING1_SIGN_PIN);
 DECLARE_SPRING_INTERFACE(2, STM32_GPIO_PIN(GPIO_PORTF | GPIO_PIN14), 10,
@@ -218,6 +218,7 @@ DECLARE_SPRING_INTERFACE(7, STM32_GPIO_PIN(GPIO_PORTG | GPIO_PIN13), 5,
                          SPRING7_ADC, SPRING7_SENSE_CHANNEL, SPRING7_SIGN_PIN);
 DECLARE_SPRING_INTERFACE(8, STM32_GPIO_PIN(GPIO_PORTG | GPIO_PIN15), 13,
                          SPRING8_ADC, SPRING8_SENSE_CHANNEL, SPRING8_SIGN_PIN);
+#endif
 
 /*
  * NB: always declare first the interfaces, then the spring interfaces.
@@ -229,6 +230,7 @@ static struct interface *bdb2a_interfaces[] = {
     &apb3_interface,
     &gpb1_interface,
     &gpb2_interface,
+#if 0
     &bb1_interface,
     &bb2_interface,
     &bb3_interface,
@@ -237,6 +239,7 @@ static struct interface *bdb2a_interfaces[] = {
     &bb6_interface,
     &bb7_interface,
     &bb8_interface,
+#endif
 };
 
 /*
@@ -289,7 +292,7 @@ static struct ara_board_info bdb2a_board_info = {
         .vreg = &sw_vreg,
         .gpio_reset = (GPIO_OUTPUT | GPIO_OPENDRAIN | GPIO_PULLUP |
                        GPIO_OUTPUT_CLEAR | GPIO_PORTE | GPIO_PIN14),
-        .gpio_irq   = (GPIO_INPUT | GPIO_FLOAT | GPIO_EXTI | GPIO_PORTI | GPIO_PIN9),
+        .gpio_irq   = (GPIO_INPUT | GPIO_FLOAT | /*GPIO_EXTI | XXX phabos */ GPIO_PORTI | GPIO_PIN9),
         .rev        = SWITCH_REV_ES2,
         .bus        = SW_SPI_PORT,
         .spi_cs     = (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_OUTPUT_SET | \
@@ -300,9 +303,8 @@ static struct ara_board_info bdb2a_board_info = {
     .nr_io_expanders = ARRAY_SIZE(bdb2a_io_expanders),
 };
 
-struct ara_board_info *board_init(void) {
-    int i;
-
+struct ara_board_info *board_init(void)
+{
     /* Pretty lights */
     stm32_configgpio(SVC_LED_GREEN);
     stm32_gpiowrite(SVC_LED_GREEN, true);
@@ -314,20 +316,12 @@ struct ara_board_info *board_init(void) {
     stm32_gpiowrite(IO_RESET1, false);
 
     /*
-     * Register the STM32 GPIOs to Gpio Chip
-     *
-     * This needs to happen before the I/O Expanders registration, which
-     * uses some STM32 pins
-     */
-    stm32_gpio_init();
-
-    /*
      * Configure the switch reset and power supply lines.
      * Hold all the lines low while we turn on the power rails.
      */
     vreg_config(&sw_vreg);
     stm32_configgpio(bdb2a_board_info.sw_data.gpio_reset);
-    up_udelay(POWER_SWITCH_OFF_STAB_TIME_US);
+    udelay(POWER_SWITCH_OFF_STAB_TIME_US);
 
     /*
      * Enable 1P1 and 1P8, used by the I/O Expanders.
@@ -335,8 +329,9 @@ struct ara_board_info *board_init(void) {
      */
     vreg_get(&sw_vreg);
 
+#if 0
     /* Register the TCA64xx I/O Expanders GPIOs to Gpio Chip */
-    for (i = 0; i < bdb2a_board_info.nr_io_expanders; i++) {
+    for (int i = 0; i < bdb2a_board_info.nr_io_expanders; i++) {
         struct io_expander_info *io_exp = &bdb2a_board_info.io_expanders[i];
 
         io_exp->i2c_dev = up_i2cinitialize(io_exp->i2c_bus);
@@ -357,11 +352,13 @@ struct ara_board_info *board_init(void) {
             }
         }
     }
+#endif
 
     return &bdb2a_board_info;
 }
 
 void board_exit(void) {
+#if 0
     int i;
     /*
      * First unregister the TCA64xx I/O Expanders and associated I2C bus(ses).
@@ -377,10 +374,8 @@ void board_exit(void) {
         if (io_exp->i2c_dev)
             up_i2cuninitialize(io_exp->i2c_dev);
     }
+#endif
 
     /* Disable 1V1 and 1V8, used by the I/O Expanders and the Switch */
     vreg_put(&sw_vreg);
-
-    /* Lastly unregister the GPIO Chip driver */
-    stm32_gpio_deinit();
 }

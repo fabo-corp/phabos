@@ -33,22 +33,25 @@
 
 #define DBG_COMP    DBG_SWITCH
 
-#include <nuttx/config.h>
-#include <nuttx/arch.h>
-#include <nuttx/spi/spi.h>
+#include <phabos/spi.h>
+#include <phabos/panic.h>
+#include <phabos/utils.h>
 
-#include <pthread.h>
 #include <errno.h>
 #include <string.h>
 
-#include <arch/byteorder.h>
+#include <asm/gpio.h>
+#include <asm/delay.h>
+#include <asm/byteordering.h>
 
-#include "stm32.h"
-#include "up_debug.h"
 #include "tsb_switch.h"
 #include "tsb_switch_driver_es2.h"
 #include "tsb_switch_event.h"
 #include "tsb_es2_mphy_fixups.h"
+#include "up_debug.h"
+
+// XXX: porting phabos
+extern struct spi_master stm32_spi_master;
 
 #define SWITCH_SPI_INIT_DELAY   (700)   // us
 
@@ -64,15 +67,15 @@
 #define ES2_CPORT_DATA_MAX_PAYLOAD   (272)
 
 struct es2_cport {
-    pthread_mutex_t lock;
+    struct mutex lock;
     uint8_t rxbuf[ES2_CPORT_RX_MAX_SIZE];
 };
 
 struct sw_es2_priv {
-    struct spi_dev_s    *spi_dev;
-    struct es2_cport ncp_cport;
-    struct es2_cport data_cport4;
-    struct es2_cport data_cport5;
+    struct spi_master   *spi_master;
+    struct es2_cport    ncp_cport;
+    struct es2_cport    data_cport4;
+    struct es2_cport    data_cport5;
 };
 
 #define LNUL        (0x00)
@@ -158,14 +161,13 @@ static int es2_transfer_check_write_status(uint8_t *status_block,
                                            size_t size)
 {
     size_t i;
-    __attribute__((packed))
     struct write_status {
         uint8_t strw;
         uint8_t cport;
         uint16_t len;
         uint8_t status[4];
         uint8_t endp;
-    };
+    } __attribute__((packed));
     struct write_status *w_status;
     uint16_t tx_ent_remain;
     uint8_t tx_data_remain;
@@ -262,7 +264,7 @@ static int es2_read_status(struct tsb_switch *sw,
                            unsigned int cport,
                            struct srpt_read_status_report *status) {
     struct sw_es2_priv *priv = sw->priv;
-    struct spi_dev_s *spi_dev = priv->spi_dev;
+    struct spi_master *spi_master = priv->spi_master;
     unsigned int offset;
     struct srpt_read_status_report *rpt = NULL;
     uint8_t *rxbuf = cport_to_rxbuf(priv, cport);
@@ -270,9 +272,19 @@ static int es2_read_status(struct tsb_switch *sw,
     const char srpt_cmd[] = {HNUL, SRPT, cport, 0, 0, ENDP, HNUL};
     const char srpt_report_header[] = {HNUL, SRPT, cport, 0x00, 0xC};
 
+    struct spi_msg xfer[] = {
+        {
+            .tx_buffer = srpt_cmd,
+            .length = sizeof(srpt_cmd),
+        },
+        {
+            .rx_buffer = rxbuf,
+            .length = SRPT_SIZE,
+        },
+    };
+
     es2_spi_select(sw, true);
-    SPI_SNDBLOCK(spi_dev, srpt_cmd, sizeof srpt_cmd);
-    SPI_EXCHANGE(spi_dev, NULL, rxbuf, SRPT_SIZE);
+    spi_transfer(spi_master, xfer, ARRAY_SIZE(xfer));
     es2_spi_select(sw, false);
 
     /* find the header */
@@ -307,11 +319,11 @@ static int es2_write(struct tsb_switch *sw,
                      uint8_t *tx_buf,
                      size_t tx_size) {
     struct sw_es2_priv *priv = sw->priv;
-    struct spi_dev_s *spi_dev = priv->spi_dev;
+    struct spi_master *spi_master = priv->spi_master;
     struct srpt_read_status_report rpt;
     uint8_t *rxbuf = cport_to_rxbuf(priv, cportid);
     unsigned int size;
-    int ret = OK;
+    int ret = 0;
 
     uint8_t write_header[] = {
         LNUL,
@@ -355,25 +367,40 @@ static int es2_write(struct tsb_switch *sw,
         return -EINVAL;
     }
 
+    // Make sure we use 16-bit frames
+    size = sizeof write_header + tx_size + sizeof write_trailer
+           + SWITCH_WRITE_STATUS_NNULL;
+    const uint8_t lnul = LNUL;
+    struct spi_msg xfer[] = {
+        {
+            .tx_buffer = write_header,
+            .length = sizeof(write_header),
+        },
+        {
+            .tx_buffer = tx_buf,
+            .length = tx_size,
+        },
+        {
+            .tx_buffer = write_trailer,
+            .length = sizeof(write_trailer),
+        },
+        {
+            .rx_buffer = rxbuf,
+            .length = SWITCH_WRITE_STATUS_NNULL,
+        },
+        {
+            .tx_buffer = &lnul,
+            .length = size & 0x1,
+        },
+    };
+
     es2_spi_select(sw, true);
-    /* Write */
-    SPI_SNDBLOCK(spi_dev, write_header, sizeof write_header);
-    SPI_SNDBLOCK(spi_dev, tx_buf, tx_size);
-    SPI_SNDBLOCK(spi_dev, write_trailer, sizeof write_trailer);
-    // Wait write status, send NULL frames while waiting
-    SPI_EXCHANGE(spi_dev, NULL, rxbuf, SWITCH_WRITE_STATUS_NNULL);
+    spi_transfer(spi_master, xfer, ARRAY_SIZE(xfer));
 
     dbg_insane("Write payload:\n");
     dbg_print_buf(DBG_INSANE, tx_buf, tx_size);
     dbg_insane("Write status:\n");
     dbg_print_buf(DBG_INSANE, rxbuf, SWITCH_WRITE_STATUS_NNULL);
-
-    // Make sure we use 16-bit frames
-    size = sizeof write_header + tx_size + sizeof write_trailer
-           + SWITCH_WRITE_STATUS_NNULL;
-    if (size % 2) {
-        SPI_SEND(spi_dev, LNUL);
-    }
 
     // Parse the write status and bail on error.
     ret = es2_transfer_check_write_status(rxbuf,
@@ -392,7 +419,7 @@ static int es2_read(struct tsb_switch *sw,
                     uint8_t *rx_buf,
                     size_t rx_size) {
     struct sw_es2_priv *priv = sw->priv;
-    struct spi_dev_s *spi_dev = priv->spi_dev;
+    struct spi_master *spi_master = priv->spi_master;
     uint8_t *rxbuf = cport_to_rxbuf(priv, cportid);
     size_t size;
     int rcv_done = 0;
@@ -414,13 +441,24 @@ static int es2_read(struct tsb_switch *sw,
     // Read CNF and retry if NACK received
     do {
         // Read the CNF
+        const char lnul = LNUL;
         size = SWITCH_WAIT_REPLY_LEN + rx_size + sizeof read_header;
-        SPI_SNDBLOCK(spi_dev, read_header, sizeof read_header);
-        SPI_EXCHANGE(spi_dev, NULL, rxbuf, size - sizeof read_header);
-        /* Make sure we use 16-bit frames */
-        if (size & 0x1) {
-            SPI_SEND(spi_dev, LNUL);
-        }
+        struct spi_msg msgs[] = {
+            {
+                .tx_buffer = read_header,
+                .length = sizeof(read_header),
+            },
+            {
+                .rx_buffer = rxbuf,
+                .length = size - sizeof(read_header),
+            },
+            {
+                .tx_buffer = &lnul,
+                .length = size & 0x1,
+            },
+        };
+
+        spi_transfer(spi_master, msgs, ARRAY_SIZE(msgs));
 
         dbg_insane("RX Data:\n");
         dbg_print_buf(DBG_INSANE, rxbuf, size);
@@ -481,7 +519,7 @@ static int es2_ncp_transfer(struct tsb_switch *sw,
     struct sw_es2_priv *priv = sw->priv;
     int rc;
 
-    pthread_mutex_lock(&priv->ncp_cport.lock);
+    mutex_lock(&priv->ncp_cport.lock);
 
     /* Send the request */
     rc = es2_write(sw, CPORT_NCP, tx_buf, tx_size);
@@ -498,7 +536,7 @@ static int es2_ncp_transfer(struct tsb_switch *sw,
     }
 
 done:
-    pthread_mutex_unlock(&priv->ncp_cport.lock);
+    mutex_unlock(&priv->ncp_cport.lock);
 
     return rc;
 }
@@ -535,7 +573,7 @@ static uint32_t es2_mphy_trim_fixup_value(uint32_t mphy_trim[4], uint8_t port)
     case 13:
         return (mphy_trim[3] >> 9) & 0x1f;
     default:                    /* can't happen */
-        DEBUGASSERT(0);
+        panic("switch: es2: reached unreacheable\n");
         return 0xdeadbeef;
     }
 }
@@ -655,21 +693,30 @@ static int es2_fixup_mphy(struct tsb_switch *sw)
 int es2_init_seq(struct tsb_switch *sw)
 {
     struct sw_es2_priv *priv = sw->priv;
-    struct spi_dev_s *spi_dev = priv->spi_dev;
+    struct spi_master *spi_master = priv->spi_master;
     const char init_reply[] = { INIT, LNUL };
     uint8_t *rxbuf = cport_to_rxbuf(priv, CPORT_NCP);
     int i, rc = -1;
 
 
-    SPI_LOCK(spi_dev, true);
     es2_spi_select(sw, true);
 
     // Delay needed before the switch is ready on the SPI bus
-    up_udelay(SWITCH_SPI_INIT_DELAY);
+    udelay(SWITCH_SPI_INIT_DELAY);
 
-    SPI_SEND(spi_dev, INIT);
-    SPI_SEND(spi_dev, INIT);
-    SPI_EXCHANGE(spi_dev, NULL, rxbuf, SWITCH_WAIT_REPLY_LEN);
+    const char txbuf[] = {INIT, INIT};
+    struct spi_msg msgs[] = {
+        {
+            .tx_buffer = txbuf,
+            .length = sizeof(txbuf),
+        },
+        {
+            .rx_buffer = rxbuf,
+            .length = SWITCH_WAIT_REPLY_LEN,
+        },
+    };
+
+    spi_transfer(spi_master, msgs, ARRAY_SIZE(msgs));
 
     dbg_insane("Init RX Data:\n");
     dbg_print_buf(DBG_INSANE, rxbuf, SWITCH_WAIT_REPLY_LEN);
@@ -681,7 +728,6 @@ int es2_init_seq(struct tsb_switch *sw)
     }
 
     es2_spi_select(sw, false);
-    SPI_LOCK(spi_dev, false);
 
     if (rc) {
         dbg_error("%s: Failed to init the SPI link with the switch\n",
@@ -843,8 +889,8 @@ static int es2_switch_irq_enable(struct tsb_switch *sw, bool enable)
          * Configure switch IRQ line: rising edge; install handler
          * and pass the tsb_switch struct to the handler
          */
-        stm32_gpiosetevent_priv(sw->pdata->gpio_irq, true, false, true,
-                                switch_irq_handler, sw);
+        //stm32_gpiosetevent_priv(sw->pdata->gpio_irq, true, false, true,
+        //                        switch_irq_handler, sw); XXX phabos
 
         // Enable the switch internal interrupt sources
         if (switch_internal_setattr(sw, SWINE, SWINE_ENABLE_ALL)) {
@@ -882,10 +928,10 @@ static int es2_switch_irq_enable(struct tsb_switch *sw, bool enable)
         }
     } else {
         // Disable switch interrupt
-        stm32_gpiosetevent_priv(sw->pdata->gpio_irq, false, false, false, NULL, NULL);
+        //stm32_gpiosetevent_priv(sw->pdata->gpio_irq, false, false, false, NULL, NULL); XXX phabos
     }
 
-    return OK;
+    return 0;
 }
 
 /* Enable/disable the interrupts for the port */
@@ -898,7 +944,7 @@ static int es2_port_irq_enable(struct tsb_switch *sw, uint8_t port_id,
         return -EIO;
     }
 
-    return OK;
+    return 0;
 }
 
 /* NCP commands */
@@ -1175,7 +1221,7 @@ static int es2_lut_get(struct tsb_switch *sw,
                           sizeof(struct cnf));
     if (rc) {
         dbg_error("%s(): unipro_portid=%d, destPortId=%d failed: rc=%d\n",
-                  __func__, unipro_portid, dest_portid, rc);
+                  __func__, unipro_portid, *dest_portid, rc);
         return rc;
     }
 
@@ -1265,7 +1311,7 @@ static int es2_sys_ctrl_set(struct tsb_switch *sw,
         return -EPROTO;
     }
 
-    dbg_verbose("%s(): fid=0x%02x, rc=%u", cnf.function_id, cnf.rc);
+    dbg_verbose("%s(): fid=0x%02x, rc=%u", __func__, cnf.function_id, cnf.rc);
     return cnf.rc;
 }
 
@@ -1292,7 +1338,7 @@ static int es2_sys_ctrl_get(struct tsb_switch *sw,
     rc = es2_ncp_transfer(sw, req, sizeof(req), (uint8_t *)&cnf,
                           sizeof(struct cnf));
     if (rc) {
-        dbg_error("%s(): sc_addr=0x%x failed: %d\n", __func__, rc);
+        dbg_error("%s(): sc_addr=0x%x failed: %d\n", __func__, sc_addr, rc);
         return rc;
     }
 
@@ -1304,7 +1350,7 @@ static int es2_sys_ctrl_get(struct tsb_switch *sw,
     if (cnf.rc == 0) {
         *val = be32_to_cpu(cnf.rc);
     }
-    dbg_verbose("%s(): fid=0x%02x, rc=%u", cnf.function_id, cnf.rc);
+    dbg_verbose("%s(): fid=0x%02x, rc=%u", __func__, cnf.function_id, cnf.rc);
 
     return cnf.rc;
 }
@@ -1567,7 +1613,7 @@ static struct tsb_switch_ops es2_ops = {
 
 int tsb_switch_es2_init(struct tsb_switch *sw, unsigned int spi_bus)
 {
-    struct spi_dev_s *spi_dev;
+    struct spi_master *spi_master;
     struct sw_es2_priv *priv;
     int rc = 0;
 
@@ -1576,8 +1622,8 @@ int tsb_switch_es2_init(struct tsb_switch *sw, unsigned int spi_bus)
     stm32_configgpio(sw->pdata->spi_cs);
     stm32_gpiowrite(sw->pdata->spi_cs, true);
 
-    spi_dev = up_spiinitialize(spi_bus);
-    if (!spi_dev) {
+    spi_master = &stm32_spi_master;
+    if (!spi_master) {
         dbg_error("%s: Failed to initialize spi device\n", __func__);
         return -ENODEV;
     }
@@ -1589,18 +1635,18 @@ int tsb_switch_es2_init(struct tsb_switch *sw, unsigned int spi_bus)
         goto error;
     }
 
-    priv->spi_dev = spi_dev;
-    pthread_mutex_init(&priv->ncp_cport.lock, NULL);
-    pthread_mutex_init(&priv->data_cport4.lock, NULL);
-    pthread_mutex_init(&priv->data_cport5.lock, NULL);
+    priv->spi_master = spi_master;
+    mutex_init(&priv->ncp_cport.lock);
+    mutex_init(&priv->data_cport4.lock);
+    mutex_init(&priv->data_cport5.lock);
 
     sw->priv = priv;
     sw->ops = &es2_ops;
 
     /* Configure the SPI1 bus in Mode0, 8bits, 13MHz clock */
-    SPI_SETMODE(spi_dev, SPIDEV_MODE0);
-    SPI_SETBITS(spi_dev, 8);
-    SPI_SETFREQUENCY(spi_dev, SWITCH_SPI_FREQUENCY);
+    spi_set_mode(spi_master, SPI_MODE_0);
+    spi_set_bpw(spi_master, 8);
+    spi_set_max_freq(spi_master, SWITCH_SPI_FREQUENCY);
 
     dbg_info("... Done!\n");
 
@@ -1623,17 +1669,6 @@ void tsb_switch_es2_exit(struct tsb_switch *sw) {
     sw->ops = NULL;
 }
 
-
-/*
- * Required callbacks for NuttX SPI1. unused.
- */
-void stm32_spi1select(struct spi_dev_s *dev, enum spi_dev_e devid, bool selected) {
-}
-
-uint8_t stm32_spi1status(struct spi_dev_s *dev, enum spi_dev_e devid) {
-    return SPI_STATUS_PRESENT;
-}
-
 static void es2_spi_select(struct tsb_switch *sw, int select) {
     /*
      * SW-472: The STM32 SPI peripheral does not delay until the last
@@ -1642,7 +1677,7 @@ static void es2_spi_select(struct tsb_switch *sw, int select) {
      * Manually add a hacked delay in these cases...
      */
     if ((!select) && (SWITCH_SPI_FREQUENCY < 8000000))
-        up_udelay(2);
+        udelay(2);
 
     /* Set the GPIO low to select and high to de-select */
     stm32_gpiowrite(sw->pdata->spi_cs, !select);

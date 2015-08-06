@@ -1617,14 +1617,14 @@ struct tsb_switch *switch_init(struct tsb_switch_data *pdata) {
             goto error;
         }
         break;
-#if 0 // FIXME phabos
+
     case SWITCH_REV_ES2:
         // Initialize the SPI port
         if (tsb_switch_es2_init(sw, sw->pdata->bus)) {
             goto error;
         }
         break;
-#endif
+
     default:
         dbg_error("Unsupported switch revision: %u\n", sw->pdata->rev);
         goto error;
