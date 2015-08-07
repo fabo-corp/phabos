@@ -719,7 +719,7 @@ static int switch_cport_disconnect(struct tsb_switch *sw,
     return rc0 || rc1;
 }
 
-#if !(CONFIG_ARCH_BOARD_ARA_BDB2A_SVC || CONFIG_ARCH_BOARD_ARA_SDB_SVC)
+#if !(CONFIG_BOARD_ARA_SVC_BDB2 || CONFIG_BOARD_ARA_SVC_SDB)
 static int switch_link_power_set_default(struct tsb_switch *sw,
                                          uint8_t port_id) {
     int rc;
@@ -906,7 +906,7 @@ int switch_connection_create(struct tsb_switch *sw,
      * in for ES1 targets (e.g., the display tunnel on ES1 demos needs
      * the default setting of HS-G1 to work properly).
      */
-#if !(CONFIG_ARCH_BOARD_ARA_BDB2A_SVC || CONFIG_ARCH_BOARD_ARA_SDB_SVC)
+#if !(CONFIG_BOARD_ARA_SVC_BDB2 || CONFIG_BOARD_ARA_SVC_SDB)
     rc = switch_link_power_set_default(sw, c->port_id0);
     if (rc) {
         goto err1;
@@ -931,7 +931,7 @@ int switch_connection_create(struct tsb_switch *sw,
 
     return 0;
 
-#if !(CONFIG_ARCH_BOARD_ARA_BDB2A_SVC || CONFIG_ARCH_BOARD_ARA_SDB_SVC)
+#if !(CONFIG_BOARD_ARA_SVC_BDB2 || CONFIG_BOARD_ARA_SVC_SDB)
 err1:
     dbg_error("%s: couldn't set link power mode to default state.\n",
               __func__);
