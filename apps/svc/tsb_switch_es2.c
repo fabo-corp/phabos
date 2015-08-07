@@ -1263,7 +1263,7 @@ static int es2_dump_routing_table(struct tsb_switch *sw) {
                 devid = i * 16 + j;
                 if (CHECK_VALID_ENTRY(devid)) {
                     switch_lut_get(sw, unipro_portid, devid, &p);
-                    dbg_info(" [%2u,%2u] -> %2u\n", unipro_portid, devid, p);
+                    dbg_info(" [%u,%u] -> %u\n", unipro_portid, devid, p);
                }
             }
         }
