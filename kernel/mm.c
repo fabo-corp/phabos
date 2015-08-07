@@ -27,6 +27,18 @@ static size_t order_to_size(int order)
     return 1 << order;
 }
 
+static size_t count_bit_set(unsigned long val)
+{
+    size_t bit_set_count = 0;
+
+    for (; val; val >>= 1) {
+        if (val & 1)
+            bit_set_count++;
+    }
+
+    return bit_set_count;
+}
+
 int size_to_order(size_t size)
 {
     int order = -1;
@@ -52,6 +64,12 @@ int mm_add_region(struct mm_region *region)
     RET_IF_FAIL(!(addr & 0x3), -EINVAL);
     RET_IF_FAIL(order < MAX_ADDRESSABLE_MEM_ORDER, -EINVAL);
 #endif
+
+    if (count_bit_set(region->size)) {
+        kprintf("mm: rejecting memory region with size that is not a power of 2, size: %u",
+                region->size);
+        return -EINVAL;
+    }
 
     spinlock_lock(&mm_lock);
 
