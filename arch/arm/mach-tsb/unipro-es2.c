@@ -29,26 +29,28 @@
  */
 
 #include <string.h>
-#include <nuttx/util.h>
-#include <nuttx/irq.h>
-#include <nuttx/arch.h>
-#include <nuttx/list.h>
-
-#include <nuttx/greybus/unipro.h>
-#include <nuttx/greybus/tsb_unipro.h>
-
-#include <arch/tsb/unipro.h>
-#include <arch/tsb/irq.h>
 #include <errno.h>
 
-#include "debug.h"
-#include "up_arch.h"
-#include "tsb_scm.h"
-#include "tsb_unipro_es2.h"
-#include "tsb_es2_mphy_fixups.h"
+#include <phabos/list.h>
+#include <phabos/greybus/unipro.h>
+#include <phabos/greybus/tsb_unipro.h>
+#include <phabos/semaphore.h>
+#include <phabos/scheduler.h>
+#include <phabos/kprintf.h>
+#include <phabos/utils.h>
+
+#include <asm/hwio.h>
+#include <asm/unipro.h>
+#include <asm/tsb-irq.h>
+#include <asm/irq.h>
+
+#include "chip.h"
+#include "scm.h"
+#include "unipro-es2.h"
+#include "es2-mphy-fixups.h"
 
 #ifdef UNIPRO_DEBUG
-#define DBG_UNIPRO(fmt, ...) lldbg(fmt, __VA_ARGS__)
+#define DBG_UNIPRO(fmt, ...) kprintf(fmt, __VA_ARGS__)
 #else
 #define DBG_UNIPRO(fmt, ...) ((void)0)
 #endif
@@ -74,8 +76,8 @@ struct cport {
 };
 
 struct worker {
-    pthread_t thread;
-    sem_t tx_fifo_lock;
+    struct task *thread;
+    struct semaphore tx_fifo_lock;
 };
 
 static struct worker worker;
@@ -166,7 +168,7 @@ static int unipro_send_sync(unsigned int cportid,
 static void dump_regs(void);
 
 /* irq handlers */
-static int irq_rx_eom(int, void*);
+static void irq_rx_eom(int, void*);
 
 /*
  * "Map" constants for M-PHY fixups.
@@ -176,12 +178,14 @@ static int irq_rx_eom(int, void*);
     #define TSB_MPHY_MAP_NORMAL         (0x00)
     #define TSB_MPHY_MAP_TSB_REGISTER_2 (0x81)
 
-static uint32_t unipro_read(uint32_t offset) {
-    return getreg32((volatile unsigned int*)(AIO_UNIPRO_BASE + offset));
+static uint32_t unipro_read(uint32_t offset)
+{
+    return read32(AIO_UNIPRO_BASE + offset);
 }
 
-static void unipro_write(uint32_t offset, uint32_t v) {
-    putreg32(v, (volatile unsigned int*)(AIO_UNIPRO_BASE + offset));
+static void unipro_write(uint32_t offset, uint32_t v)
+{
+    write32(AIO_UNIPRO_BASE + offset, v);
 }
 
 static int es2_fixup_mphy(void)
@@ -196,8 +200,7 @@ static int es2_fixup_mphy(void)
     unipro_attr_local_write(TSB_MPHY_MAP, TSB_MPHY_MAP_TSB_REGISTER_2, 0,
                             &urc);
     if (urc) {
-        lldbg("%s: failed to switch to register 2 map: %u\n",
-              __func__, urc);
+        kprintf("%s: failed to switch to register 2 map: %u\n", __func__, urc);
         return urc;
     }
     fu = tsb_register_2_map_mphy_fixups;
@@ -205,8 +208,8 @@ static int es2_fixup_mphy(void)
         unipro_attr_local_write(fu->attrid, fu->value, fu->select_index,
                                 &urc);
         if (urc) {
-            lldbg("%s: failed to apply register 1 map fixup: %u\n",
-                  __func__, urc);
+            kprintf("%s: failed to apply register 1 map fixup: %u\n",
+                    __func__, urc);
             return urc;
         }
     } while (!tsb_mphy_fixup_is_last(fu++));
@@ -217,8 +220,8 @@ static int es2_fixup_mphy(void)
     unipro_attr_local_write(TSB_MPHY_MAP, TSB_MPHY_MAP_NORMAL, 0,
                             &urc);
     if (urc) {
-        lldbg("%s: failed to switch to normal map: %u\n",
-              __func__, urc);
+        kprintf("%s: failed to switch to normal map: %u\n",
+                __func__, urc);
         return urc;
     }
 
@@ -228,8 +231,7 @@ static int es2_fixup_mphy(void)
     unipro_attr_local_write(TSB_MPHY_MAP, TSB_MPHY_MAP_TSB_REGISTER_1, 0,
                             &urc);
     if (urc) {
-        lldbg("%s: failed to switch to register 1 map: %u\n",
-              __func__, urc);
+        kprintf("%s: failed to switch to register 1 map: %u\n", __func__, urc);
         return urc;
     }
     fu = tsb_register_1_map_mphy_fixups;
@@ -243,7 +245,7 @@ static int es2_fixup_mphy(void)
                                     &urc);
         }
         if (urc) {
-            lldbg("%s: failed to apply register 1 map fixup: %u\n",
+            kprintf("%s: failed to apply register 1 map fixup: %u\n",
                   __func__, urc);
             return urc;
         }
@@ -255,7 +257,7 @@ static int es2_fixup_mphy(void)
     unipro_attr_local_write(TSB_MPHY_MAP, TSB_MPHY_MAP_NORMAL, 0,
                             &urc);
     if (urc) {
-        lldbg("%s: failed to switch to normal map: %u\n",
+        kprintf("%s: failed to switch to normal map: %u\n",
               __func__, urc);
         return urc;
     }
@@ -304,7 +306,7 @@ static int configure_connected_cport(unsigned int cportid) {
         ret = -ENOTCONN;
         break;
     default:
-        lldbg("Unexpected status: CP%u: status: 0x%u\n", cportid, rc);
+        kprintf("Unexpected status: CP%u: status: 0x%u\n", cportid, rc);
         ret = -EIO;
     }
     return ret;
@@ -383,18 +385,18 @@ static inline void enable_rx_interrupt(struct cport *cport) {
  * @param irq irq number
  * @param context register context (unused)
  */
-static int irq_rx_eom(int irq, void *context) {
+static void irq_rx_eom(int irq, void *priv)
+{
     struct cport *cport = irqn_to_cport(irq);
     void *data = cport->rx_buf;
     uint32_t transferred_size;
-    (void)context;
 
     clear_rx_interrupt(cport);
 
     if (!cport->driver) {
-        lldbg("dropping message on cport %hu where no driver is registered\n",
+        kprintf("dropping message on cport %u where no driver is registered\n",
               cport->cportid);
-        return -ENODEV;
+        return;
     }
 
     transferred_size = unipro_read(CPB_RX_TRANSFERRED_DATA_SIZE_00 +
@@ -408,8 +410,6 @@ static int irq_rx_eom(int irq, void *context) {
         cport->driver->rx_handler(cport->cportid, data,
                                   (size_t)transferred_size);
     }
-
-    return 0;
 }
 
 int unipro_unpause_rx(unsigned int cportid)
@@ -469,8 +469,8 @@ static void enable_int(unsigned int cportid) {
 
     irqn = cportid_to_irqn(cportid);
     enable_rx_interrupt(cport);
-    irq_attach(irqn, irq_rx_eom);
-    up_enable_irq(irqn);
+    irq_attach(irqn, irq_rx_eom, NULL);
+    irq_enable_line(irqn);
 }
 
 static void configure_transfer_mode(int mode) {
@@ -486,7 +486,7 @@ static void configure_transfer_mode(int mode) {
         }
         break;
     default:
-        lldbg("Unsupported transfer mode: %u\n", mode);
+        kprintf("Unsupported transfer mode: %u\n", mode);
         break;
     }
 }
@@ -515,7 +515,7 @@ static uint16_t unipro_get_tx_free_buffer_space(struct cport *cport)
  */
 static inline void unipro_set_eom_flag(struct cport *cport)
 {
-    putreg8(1, CPORT_EOM_BIT(cport));
+    write8(CPORT_EOM_BIT(cport), 1);
 }
 
 /**
@@ -528,21 +528,21 @@ static void dump_regs(void) {
 
 #define DBG_ATTR(attr) do {                  \
     unipro_attr_local_read(attr, &val, 0, &rc); \
-    lldbg("    [%s]: 0x%x\n", #attr, val);   \
+    kprintf("    [%s]: 0x%x\n", #attr, val);   \
 } while (0);
 
 #define DBG_CPORT_ATTR(attr, cportid) do {         \
     unipro_attr_local_read(attr, &val, cportid, &rc); \
-    lldbg("    [%s]: 0x%x\n", #attr, val);         \
+    kprintf("    [%s]: 0x%x\n", #attr, val);         \
 } while (0);
 
 #define REG_DBG(reg) do {                 \
     val = unipro_read(reg);               \
-    lldbg("    [%s]: 0x%x\n", #reg, val); \
+    kprintf("    [%s]: 0x%x\n", #reg, val); \
 } while (0)
 
-    lldbg("DME Attributes\n");
-    lldbg("========================================\n");
+    kprintf("DME Attributes\n");
+    kprintf("========================================\n");
     DBG_ATTR(PA_ACTIVETXDATALANES);
     DBG_ATTR(PA_ACTIVERXDATALANES);
     DBG_ATTR(PA_TXGEAR);
@@ -567,8 +567,8 @@ static void dump_regs(void) {
     DBG_ATTR(TSB_MAXSEGMENTCONFIG);
     DBG_ATTR(TSB_DME_POWERMODEIND);
 
-    lldbg("Unipro Interrupt Info:\n");
-    lldbg("========================================\n");
+    kprintf("Unipro Interrupt Info:\n");
+    kprintf("========================================\n");
     REG_DBG(UNIPRO_INT_EN);
     REG_DBG(AHM_RX_EOM_INT_EN_0);
     REG_DBG(AHM_RX_EOM_INT_EN_1);
@@ -592,8 +592,8 @@ static void dump_regs(void) {
     REG_DBG(AHM_RX_EOT_INT_BEF_0);
     REG_DBG(AHM_RX_EOT_INT_BEF_1);
 
-    lldbg("Unipro Registers:\n");
-    lldbg("========================================\n");
+    kprintf("Unipro Registers:\n");
+    kprintf("========================================\n");
     REG_DBG(AHM_MODE_CTRL_0);
     if (tsb_get_product_id() == tsb_pid_apbridge) {
         REG_DBG(AHM_MODE_CTRL_1);
@@ -614,13 +614,13 @@ static void dump_regs(void) {
     REG_DBG(CPORT_STATUS_1);
     REG_DBG(CPORT_STATUS_2);
 
-    lldbg("Connected CPorts:\n");
-    lldbg("========================================\n");
+    kprintf("Connected CPorts:\n");
+    kprintf("========================================\n");
     for (i = 0; i < cport_max(); i++) {
         val = cport_get_status(cport_handle(i));
 
         if (val == CPORT_STATUS_CONNECTED) {
-            lldbg("CPORT %u:\n", i);
+            kprintf("CPORT %u:\n", i);
             DBG_CPORT_ATTR(T_PEERDEVICEID, i);
             DBG_CPORT_ATTR(T_PEERCPORTID, i);
             DBG_CPORT_ATTR(T_TRAFFICCLASS, i);
@@ -634,8 +634,8 @@ static void dump_regs(void) {
         }
     }
 
-    lldbg("NVIC:\n");
-    lldbg("========================================\n");
+    kprintf("NVIC:\n");
+    kprintf("========================================\n");
     tsb_dumpnvic();
 }
 
@@ -657,7 +657,6 @@ void unipro_info(void)
 int unipro_init_cport(unsigned int cportid)
 {
     int ret;
-    irqstate_t flags;
     struct cport *cport = cport_handle(cportid);
 
     if (!cport) {
@@ -690,10 +689,10 @@ int unipro_init_cport(unsigned int cportid)
      * Clear any pending EOM interrupts, then enable them.
      * TODO: Defer interrupt enable until driver registration?
      */
-    flags = irqsave();
+    irq_disable();
     clear_int(cportid);
     enable_int(cportid);
-    irqrestore(flags);
+    irq_enable();
 
 #ifdef UNIPRO_DEBUG
     unipro_info();
@@ -704,13 +703,11 @@ int unipro_init_cport(unsigned int cportid)
 
 static void unipro_dequeue_tx_buffer(struct unipro_buffer *buffer, int status)
 {
-    irqstate_t flags;
+    RET_IF_FAIL(buffer,);
 
-    DEBUGASSERT(buffer);
-
-    flags = irqsave();
+    irq_disable();
     list_del(&buffer->list);
-    irqrestore(flags);
+    irq_enable();
 
     if (buffer->callback) {
         buffer->callback(status, buffer->data, buffer->priv);
@@ -729,7 +726,6 @@ static void unipro_dequeue_tx_buffer(struct unipro_buffer *buffer, int status)
  */
 static int unipro_send_tx_buffer(struct cport *cport)
 {
-    irqstate_t flags;
     struct unipro_buffer *buffer;
     int retval;
 
@@ -737,23 +733,23 @@ static int unipro_send_tx_buffer(struct cport *cport)
         return -EINVAL;
     }
 
-    flags = irqsave();
+    irq_disable();
 
     if (list_is_empty(&cport->tx_fifo)) {
-        irqrestore(flags);
+        irq_enable();
         return 0;
     }
 
     buffer = list_entry(cport->tx_fifo.next, struct unipro_buffer, list);
 
-    irqrestore(flags);
+    irq_enable();
 
     retval = unipro_send_sync(cport->cportid,
                               buffer->data + buffer->byte_sent,
                               buffer->len - buffer->byte_sent, buffer->som);
     if (retval < 0) {
         unipro_dequeue_tx_buffer(buffer, retval);
-        lldbg("unipro_send_sync failed. Dropping message...\n");
+        kprintf("unipro_send_sync failed. Dropping message...\n");
         return -EINVAL;
     }
 
@@ -775,7 +771,7 @@ static int unipro_send_tx_buffer(struct cport *cport)
  *                  all CPorts have no work available.
  *                  Then suspend again until new data is available.
  */
-static void *unipro_tx_worker(void *data)
+static void unipro_tx_worker(void *data)
 {
     int i;
     bool is_busy;
@@ -783,7 +779,7 @@ static void *unipro_tx_worker(void *data)
 
     while (1) {
         /* Block until a buffer is pending on any CPort */
-        sem_wait(&worker.tx_fifo_lock);
+        semaphore_down(&worker.tx_fifo_lock);
 
         do {
             is_busy = false;
@@ -801,8 +797,6 @@ static void *unipro_tx_worker(void *data)
             }
         } while (is_busy); /* exit when CPort(s) current pending buffer sent */
     }
-
-    return NULL;
 }
 
 /**
@@ -811,16 +805,15 @@ static void *unipro_tx_worker(void *data)
 void unipro_init(void)
 {
     unsigned int i;
-    int retval;
     struct cport *cport;
 
-    DEBUGASSERT(ARRAY_SIZE(cporttable) <= 44);
+    RET_IF_FAIL(ARRAY_SIZE(cporttable) <= 44,);
 
-    sem_init(&worker.tx_fifo_lock, 0, 0);
+    semaphore_init(&worker.tx_fifo_lock, 0);
 
-    retval = pthread_create(&worker.thread, NULL, unipro_tx_worker, NULL);
-    if (retval) {
-        lldbg("Failed to create worker thread: %s.\n", strerror(errno));
+    worker.thread = task_run(unipro_tx_worker, NULL, 0);
+    if (!worker.thread) {
+        kprintf("Failed to create worker thread: %s.\n", strerror(errno));
         return;
     }
 
@@ -832,7 +825,7 @@ void unipro_init(void)
     }
 
     if (es2_fixup_mphy()) {
-        lldbg("Failed to apply M-PHY fixups (results in link instability at HS-G1).\n");
+        kprintf("Failed to apply M-PHY fixups (results in link instability at HS-G1).\n");
     }
 
     /*
@@ -841,7 +834,7 @@ void unipro_init(void)
      * Header is delivered transparently to receiver (and used to carry the first eight
      * L4 payload bytes)
      */
-    DEBUGASSERT(TRANSFER_MODE == 2);
+    RET_IF_FAIL(TRANSFER_MODE == 2,);
     configure_transfer_mode(TRANSFER_MODE);
 
     /*
@@ -856,7 +849,7 @@ void unipro_init(void)
 #ifdef UNIPRO_DEBUG
     unipro_info();
 #endif
-    lldbg("UniPro enabled\n");
+    kprintf("UniPro enabled\n");
 }
 
 /**
@@ -873,7 +866,6 @@ int unipro_send_async(unsigned int cportid, const void *buf, size_t len,
 {
     struct cport *cport;
     struct unipro_buffer *buffer;
-    irqstate_t flags;
 
     if (len > CPORT_BUF_SIZE) {
         return -EINVAL;
@@ -885,11 +877,11 @@ int unipro_send_async(unsigned int cportid, const void *buf, size_t len,
     }
 
     if (!cport->connected) {
-        lldbg("CP%u unconnected\n", cport->cportid);
+        kprintf("CP%u unconnected\n", cport->cportid);
         return -EPIPE;
     }
 
-    DEBUGASSERT(TRANSFER_MODE == 2);
+    RET_IF_FAIL(TRANSFER_MODE == 2, -EINVAL);
 
     buffer = zalloc(sizeof(*buffer));
     if (!buffer) {
@@ -902,11 +894,11 @@ int unipro_send_async(unsigned int cportid, const void *buf, size_t len,
     buffer->priv = priv;
     buffer->data = buf;
 
-    flags = irqsave();
+    irq_disable();
     list_add(&cport->tx_fifo, &buffer->list);
-    irqrestore(flags);
+    irq_enable();
 
-    sem_post(&worker.tx_fifo_lock);
+    semaphore_up(&worker.tx_fifo_lock);
     return 0;
 }
 
@@ -972,11 +964,11 @@ static int unipro_send_sync(unsigned int cportid,
     }
 
     if (!cport->connected) {
-        lldbg("CP%d unconnected\n", cport->cportid);
+        kprintf("CP%d unconnected\n", cport->cportid);
         return -EPIPE;
     }
 
-    DEBUGASSERT(TRANSFER_MODE == 2);
+    RET_IF_FAIL(TRANSFER_MODE == 2, -EINVAL);
 
     /*
      * If this is not the start of a new message,
@@ -1053,14 +1045,14 @@ int unipro_driver_register(struct unipro_driver *driver, unsigned int cportid)
     }
 
     if (cport->driver) {
-        lldbg("ERROR: Already registered by: %s\n",
+        kprintf("ERROR: Already registered by: %s\n",
               cport->driver->name);
         return -EEXIST;
     }
 
     cport->driver = driver;
 
-    lldbg("Registered driver %s on %sconnected CP%u\n",
+    kprintf("Registered driver %s on %sconnected CP%u\n",
           cport->driver->name, cport->connected ? "" : "un",
           cport->cportid);
     return 0;

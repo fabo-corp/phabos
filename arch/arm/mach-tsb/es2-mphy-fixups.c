@@ -26,7 +26,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "tsb_es2_mphy_fixups.h"
+#include "es2-mphy-fixups.h"
 
 #define __TSB_MPHY_FIXUP(a, s, v, f)                                    \
     { .attrid = (a), .select_index = (s), .value = (v), .flags = (f) }
