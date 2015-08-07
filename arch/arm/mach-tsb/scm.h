@@ -33,6 +33,7 @@
 #define __ARCH_ARM_SRC_TSB_TSB_SCM_H
 
 #include <stdint.h>
+#include <config.h>
 
 #define TSB_SCM_REG0  (0 << 24)
 #define TSB_SCM_REG1  (1 << 24) /* I2S / Unipro / HSIC */
@@ -136,6 +137,21 @@
 #define TSB_PIN_SDCARD          (1 << 8)
 #define TSB_PIN_DBG             (1 << 9)
 
+#if defined(CONFIG_TSB_ES1)
+#define TSB_PIN_SDIO            (1 << 2)
+#define TSB_PIN_SDCARD          (1 << 8)
+#define TSB_PIN_DBG             (1 << 9)
+#elif defined(CONFIG_TSB_ES2)
+#define TSB_PIN_GPIO16          (1 << 10)
+#define TSB_PIN_GPIO18          (1 << 11)
+#define TSB_PIN_GPIO19          (1 << 12)
+#define TSB_PIN_GPIO20          (1 << 13)
+#define TSB_PIN_GPIO21          (1 << 14)
+#define TSB_PIN_GPIO22          (1 << 15)
+#else
+#error "unsupported hardware version"
+#endif
+
 /* IO_DRIVE_STRENGTH: 2 Bits per Output */
 
 enum tsb_drivestrength {
@@ -149,7 +165,7 @@ enum tsb_drivestrength {
 #define DRIVESTRENGTH_SHIFT(driver)  (driver & 0x1f)
 #define DRIVESTRENGTH_MASK(driver)  (0x3 << DRIVESTRENGTH_SHIFT(driver))
 
-#ifdef CONFIG_TSB_CHIP_REV_ES2
+#ifdef CONFIG_TSB_ES2
 #define TSB_TRACE_DRIVESTRENGTH   (TSB_SCM_REG1 | 24)
 #define TSB_SPI_DRIVESTRENGTH     (TSB_SCM_REG1 | 22)
 #define TSB_PWM_DRIVESTRENGTH     (TSB_SCM_REG1 | 20)

@@ -33,11 +33,14 @@
 
 #define BUFRAM_BASE     0x20000000
 
+#if 0
 #ifdef CONFIG_TSB_ES1
 #define BUFRAM_SIZE     0x8000
 #else
 #define BUFRAM_SIZE     0xC000
 #endif
+#endif
+#define BUFRAM_SIZE     0x8000
 
 #define BUFRAM0_BASE    BUFRAM_BASE
 #define BUFRAM1_BASE    (BUFRAM0_BASE + BUFRAM_SIZE)

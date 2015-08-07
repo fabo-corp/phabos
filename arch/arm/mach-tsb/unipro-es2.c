@@ -452,7 +452,7 @@ static void clear_int(unsigned int cportid) {
         int_en &= ~(0x3 << i);
         unipro_write(AHM_RX_EOM_INT_EN_2, int_en);
     }
-    tsb_irq_clear_pending(cportid_to_irqn(cportid));
+    irq_clear(cportid_to_irqn(cportid));
 }
 
 /**
@@ -633,10 +633,6 @@ static void dump_regs(void) {
             DBG_CPORT_ATTR(T_CONNECTIONSTATE, i);
         }
     }
-
-    kprintf("NVIC:\n");
-    kprintf("========================================\n");
-    tsb_dumpnvic();
 }
 
 /*

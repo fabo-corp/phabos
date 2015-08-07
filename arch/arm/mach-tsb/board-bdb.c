@@ -105,9 +105,9 @@ static int tsb_hcd_power_off(struct device *device)
 static int tsb_i2c_power_on(struct device *device)
 {
     /* enable I2C pins */
-#if defined(CONFIG_TSB_CHIP_REV_ES1)
+#if defined(CONFIG_TSB_ES1)
     tsb_clr_pinshare(TSB_PIN_SDIO);
-#elif defined(CONFIG_TSB_CHIP_REV_ES2)
+#elif defined(CONFIG_TSB_ES2)
     tsb_clr_pinshare(TSB_PIN_GPIO21);
     tsb_clr_pinshare(TSB_PIN_GPIO22);
 #endif
