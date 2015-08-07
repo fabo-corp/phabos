@@ -11,9 +11,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <phabos/list.h>
+
 #define MM_DMA          (1 << 0)
 
-int mm_add_region(unsigned long addr, unsigned order, unsigned int flags);
+struct mm_region {
+    uintptr_t start;
+    size_t size;
+    unsigned long flags;
+    struct list_head list;
+};
+
+int mm_add_region(struct mm_region *region);
 
 void *kmalloc(size_t size, unsigned int flags);
 void kfree(void *ptr);
