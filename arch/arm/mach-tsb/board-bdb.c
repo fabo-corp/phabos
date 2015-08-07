@@ -241,6 +241,29 @@ static struct gpio_device gpio_device = {
     },
 };
 
+struct mm_region tsb_mm_regions[] = {
+    {
+        .start = BUFRAM0_BASE,
+        .size = BUFRAM_SIZE,
+        .flags = MM_DMA,
+    },
+    {
+        .start = BUFRAM1_BASE,
+        .size = BUFRAM_SIZE,
+        .flags = MM_DMA,
+    },
+    {
+        .start = BUFRAM2_BASE,
+        .size = BUFRAM_SIZE,
+        .flags = MM_DMA,
+    },
+    {
+        .start = BUFRAM3_BASE,
+        .size = BUFRAM_SIZE,
+        .flags = MM_DMA,
+    },
+};
+
 void tsb_uart_init(void)
 {
     tsb_set_pinshare(TSB_PIN_UART_RXTX);
@@ -264,14 +287,10 @@ void tsb_uart_init(void)
 
 void machine_init(void)
 {
-    int order = size_to_order(BUFRAM_SIZE);
-
     tsb_clk_init();
 
-    mm_add_region(BUFRAM0_BASE, order, MM_DMA);
-    mm_add_region(BUFRAM1_BASE, order, MM_DMA);
-    mm_add_region(BUFRAM2_BASE, order, MM_DMA);
-    mm_add_region(BUFRAM3_BASE, order, MM_DMA);
+    for (int i = 0; i < ARRAY_SIZE(tsb_mm_regions); i++)
+        mm_add_region(&tsb_mm_regions[i]);
 
     tsb_uart_init();
 
