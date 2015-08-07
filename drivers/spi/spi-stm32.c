@@ -36,6 +36,12 @@
 #define SPI_BPW_MASK        SPI_CR1_DFF
 #define SPI_MODE_MASK       (SPI_CR1_CPHA | SPI_CR1_CPOL)
 
+static void spi_dump(void)
+{
+    kprintf("CR1: %X\n", read32(0x40013000));
+    kprintf("SR: %X\n", read32(0x40013008));
+}
+
 static int stm32_spi_set_mode(struct spi_master *spi, unsigned mode)
 {
     uint32_t cr1 = read32(spi->device.reg_base + SPI_CR1);
@@ -140,11 +146,15 @@ static int stm32_spi_transfer_one8(struct spi_master *spi, struct spi_msg *msg)
     const uint8_t *tx_buf = msg->tx_buffer;
 
     for (unsigned i = 0; i < msg->length; i++) {
-        if (msg->tx_buffer)
-            stm32_spi_send_word(spi, tx_buf[i]);
+        uint8_t word = 0xff;
 
+        if (msg->tx_buffer)
+            word = tx_buf[i];
+        stm32_spi_send_word(spi, word);
+
+        word = stm32_spi_receive_word(spi);
         if (msg->rx_buffer)
-            rx_buf[i] = stm32_spi_receive_word(spi);
+            rx_buf[i] = word;
     }
 
     return 0;
@@ -195,7 +205,7 @@ static ssize_t stm32_spi_transfer(struct spi_master *spi, struct spi_msg *msg,
     for (unsigned i = 0; i < count; i++)
         transfer_one(spi, &msg[i]);
 
-    stm32_spi_disable(spi);
+//    stm32_spi_disable(spi);
 
     return 0;
 }

@@ -150,7 +150,7 @@ struct gpio_device gpio_port[] = {
 
 static struct uart_device stm32_usart_device = {
     .device = {
-        .name = "stm32-usart1",
+        .name = "usart-1",
         .description = "STM32 USART-1",
         .driver = "stm32-usart",
 
@@ -167,7 +167,7 @@ static struct stm32_i2c_adapter_platform stm32_i2c_pdata = {
 
 static struct i2c_adapter stm32_i2c_adapter = {
     .device = {
-        .name = "stm32-i2c2",
+        .name = "i2c-2",
         .description = "STM32 I2C-2",
         .driver = "stm32-i2c",
 
@@ -182,7 +182,7 @@ static struct stm32_spi_master_platform stm32_spi_pdata = {
 
 struct spi_master stm32_spi_master = {
     .device = {
-        .name = "stm32-spi-1",
+        .name = "spi-1",
         .description = "STM32 SPI-1",
         .driver = "stm32-spi",
 
@@ -289,6 +289,8 @@ static void spi_init(void)
     stm32_clk_enable(STM32_CLK_SPI1);
     stm32_reset(STM32_RST_SPI1);
 
+    stm32_configgpio(GPIO_PORTA | GPIO_PIN4 | GPIO_AF5 | GPIO_ALT_FCT |
+                     GPIO_SPEED_HIGH);
     stm32_configgpio(GPIO_PORTA | GPIO_PIN5 | GPIO_AF5 | GPIO_ALT_FCT |
                      GPIO_SPEED_HIGH);
     stm32_configgpio(GPIO_PORTA | GPIO_PIN6 | GPIO_AF5 | GPIO_ALT_FCT |

@@ -18,6 +18,9 @@
 #include <apps/shell.h>
 #include <asm/delay.h>
 
+#include <asm/gpio.h>
+#include <phabos/spi.h>
+
 __attribute__((unused)) static void ls(const char *path)
 {
     int fd;
@@ -155,6 +158,11 @@ void __aeabi_memclr4(void *dest, size_t n)
     memset(dest, 0, n);
 }
 
+void __aeabi_memcpy(void *dest, void *src, size_t n)
+{
+    memcpy(dest, src, n);
+}
+
 int dev_main(int argc, char **argv)
 {
 #ifdef CONFIG_BINFS
@@ -212,6 +220,27 @@ int dev_main(int argc, char **argv)
 #endif
 
     ls("/dev");
+
+    extern struct spi_master stm32_spi_master;
+    struct spi_master *spi_master = &stm32_spi_master;
+
+    stm32_configgpio(GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_OUTPUT_SET | \
+                     GPIO_PORTA | GPIO_PIN4);
+    stm32_gpiowrite(GPIO_PORTA | GPIO_PIN4, true);
+
+    spi_set_mode(spi_master, SPI_MODE_0);
+    spi_set_bpw(spi_master, 8);
+    spi_set_max_freq(spi_master, 1000000);
+
+    char buffer[] = {1, 2, 3, 4, 5, 6, 7};
+    struct spi_msg xfer = {
+        .tx_buffer = &buffer,
+        .length = 7,
+    };
+
+    stm32_gpiowrite(GPIO_PORTA | GPIO_PIN4, false);
+    spi_transfer(spi_master, &xfer, 1);
+    stm32_gpiowrite(GPIO_PORTA | GPIO_PIN4, true);
 
 #if defined(CONFIG_TSB_APB1)
     bridge_main(argc, argv);

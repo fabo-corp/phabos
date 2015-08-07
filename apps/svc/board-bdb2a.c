@@ -290,7 +290,7 @@ static struct ara_board_info bdb2a_board_info = {
 
     .sw_data = {
         .vreg = &sw_vreg,
-        .gpio_reset = (GPIO_OUTPUT | GPIO_OPENDRAIN | GPIO_PULLUP |
+        .gpio_reset = (GPIO_OUTPUT |
                        GPIO_OUTPUT_CLEAR | GPIO_PORTE | GPIO_PIN14),
         .gpio_irq   = (GPIO_INPUT | GPIO_FLOAT | /*GPIO_EXTI | XXX phabos */ GPIO_PORTI | GPIO_PIN9),
         .rev        = SWITCH_REV_ES2,
