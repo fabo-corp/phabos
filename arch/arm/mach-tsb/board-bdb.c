@@ -242,6 +242,7 @@ static struct gpio_device gpio_device = {
 };
 
 struct mm_region tsb_mm_regions[] = {
+#if defined(CONFIG_TSB_ES1)
     {
         .start = BUFRAM0_BASE,
         .size = BUFRAM_SIZE,
@@ -262,6 +263,48 @@ struct mm_region tsb_mm_regions[] = {
         .size = BUFRAM_SIZE,
         .flags = MM_DMA,
     },
+#else
+    {
+        .start = BUFRAM0_BASE,
+        .size = 0x8000,
+        .flags = MM_DMA,
+    },
+    {
+        .start = BUFRAM0_BASE + 0x8000,
+        .size = 0x4000,
+        .flags = MM_DMA,
+    },
+    {
+        .start = BUFRAM1_BASE,
+        .size = 0x8000,
+        .flags = MM_DMA,
+    },
+    {
+        .start = BUFRAM1_BASE + 0x8000,
+        .size = 0x4000,
+        .flags = MM_DMA,
+    },
+    {
+        .start = BUFRAM2_BASE,
+        .size = 0x8000,
+        .flags = MM_DMA,
+    },
+    {
+        .start = BUFRAM2_BASE + 0x8000,
+        .size = 0x4000,
+        .flags = MM_DMA,
+    },
+    {
+        .start = BUFRAM3_BASE,
+        .size = 0x8000,
+        .flags = MM_DMA,
+    },
+    {
+        .start = BUFRAM3_BASE + 0x8000,
+        .size = 0x4000,
+        .flags = MM_DMA,
+    },
+#endif
 };
 
 void tsb_uart_init(void)
