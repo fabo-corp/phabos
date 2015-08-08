@@ -26,5 +26,20 @@
     typeof(y) __b = (y); \
     __a < __b ? __a : __b; })
 
+#define barrier() asm volatile("" ::: "memory");
+
+#define DEFINE_LOCK_WITH_BARRIER(fct, ...)  \
+    do {                                    \
+        fct(__VA_ARGS__);                   \
+        barrier();                          \
+    } while (0)
+
+#define DEFINE_TRYLOCK_WITH_BARRIER(fct, ...)   \
+    ({                                          \
+        bool locked = fct(__VA_ARGS__);         \
+        barrier();                              \
+        locked;                                 \
+    })
+
 #endif /* __UTILS_H__ */
 

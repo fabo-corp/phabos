@@ -17,7 +17,7 @@ void spinlock_init(struct spinlock *spinlock)
 {
 }
 
-void spinlock_lock(struct spinlock *spinlock)
+void _spinlock_lock(struct spinlock *spinlock)
 {
     irq_disable();
 }
@@ -31,7 +31,7 @@ void spinlock_destroy(struct spinlock *spinlock)
 {
 }
 
-bool spinlock_trylock(struct spinlock *spinlock)
+bool _spinlock_trylock(struct spinlock *spinlock)
 {
     irq_disable();
     return true;

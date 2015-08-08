@@ -45,7 +45,7 @@ void semaphore_destroy(struct semaphore *semaphore)
     kfree(semaphore);
 }
 
-void semaphore_lock(struct semaphore *semaphore)
+void _semaphore_lock(struct semaphore *semaphore)
 {
     RET_IF_FAIL(semaphore,);
 
@@ -61,7 +61,7 @@ void semaphore_lock(struct semaphore *semaphore)
     irq_enable();
 }
 
-bool semaphore_trylock(struct semaphore *semaphore)
+bool _semaphore_trylock(struct semaphore *semaphore)
 {
     RET_IF_FAIL(semaphore, false);
 

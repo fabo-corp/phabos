@@ -10,6 +10,7 @@
 
 #include <phabos/list.h>
 #include <phabos/semaphore.h>
+#include <phabos/utils.h>
 
 struct mutex {
     struct semaphore semaphore;
@@ -25,9 +26,9 @@ static inline void mutex_init(struct mutex *mutex)
     semaphore_init((struct semaphore*) mutex, 1);
 }
 
-static inline void mutex_lock(struct mutex *mutex)
+static inline void _mutex_lock(struct mutex *mutex)
 {
-    semaphore_lock((struct semaphore*) mutex);
+    _semaphore_lock((struct semaphore*) mutex);
 }
 
 static inline void mutex_unlock(struct mutex *mutex)
@@ -40,10 +41,13 @@ static inline void mutex_destroy(struct mutex *mutex)
     semaphore_destroy((struct semaphore*) mutex);
 }
 
-static inline bool mutex_trylock(struct mutex *mutex)
+static inline bool _mutex_trylock(struct mutex *mutex)
 {
-    return semaphore_trylock((struct semaphore*) mutex);
+    return _semaphore_trylock((struct semaphore*) mutex);
 }
+
+#define mutex_lock(l) DEFINE_LOCK_WITH_BARRIER(_mutex_lock, l)
+#define mutex_trylock(l) DEFINE_TRYLOCK_WITH_BARRIER(_mutex_trylock, l)
 
 #endif /* __MUTEX_H__ */
 
