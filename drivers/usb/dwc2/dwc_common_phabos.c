@@ -258,7 +258,7 @@ void *__DWC_DMA_ALLOC_ATOMIC(void *dma_ctx, uint32_t size, dwc_dma_t *dma_addr)
 void __DWC_DMA_FREE(void *dma_ctx, uint32_t size, void *virt_addr,
                     dwc_dma_t dma_addr)
 {
-    free(virt_addr);
+    kfree(virt_addr);
 }
 
 void *__DWC_ALLOC(void *mem_ctx, uint32_t size)
