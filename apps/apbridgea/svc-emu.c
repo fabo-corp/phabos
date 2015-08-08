@@ -30,15 +30,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <phabos/greybus/debug.h>
 #include <phabos/semaphore.h>
 
 #include "svc-emu.h"
 #include "manifest.h"
-
-// XXX phabos porting
-#define gb_debug kprintf
-#define gb_info kprintf
-#define gb_error kprintf
 
 static int state = GBEMU_IDLE;
 static struct semaphore svc_lock;

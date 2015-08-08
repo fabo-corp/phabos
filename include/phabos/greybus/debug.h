@@ -35,6 +35,9 @@
 
 #include <phabos/greybus-types.h>
 
+#define CONFIG_GREYBUS_DEBUG
+#define CONFIG_GB_LOG_DUMP
+
 #define GB_LOG_INFO     (0)
 #define GB_LOG_ERROR    (1)
 #define GB_LOG_WARNING  (2)

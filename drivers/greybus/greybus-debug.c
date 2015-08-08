@@ -68,7 +68,7 @@ void _gb_dump(const char *func, __u8 *buf, size_t size)
     irq_disable();
     kprintf("%s:\n", func);
     for (i = 0; i < size; i++) {
-        kprintf( "%02x ", buf[i]);
+        kprintf( "%x ", buf[i]);
     }
     kprintf("\n");
     irq_enable();

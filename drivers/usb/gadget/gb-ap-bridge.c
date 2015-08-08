@@ -66,7 +66,6 @@
 #define DEBUGASSERT(x)
 #define CONFIG_APBRIDGE_VENDORID 0xffff
 #define CONFIG_APBRIDGE_PRODUCTID 0x1
-#define CONFIG_TSB_CHIP_REV_ES1
 
 static size_t list_count(struct list_head *head)
 {
@@ -114,7 +113,7 @@ static size_t list_count(struct list_head *head)
 #define APBRIDGE_CONFIGIDNONE        (0)        /* Config ID means to return to address mode */
 #define APBRIDGE_CONFIGID            (1)        /* The only supported configuration ID */
 #define APBRIDGE_NCONFIGS            (1)        /* Number of configurations supported */
-#if defined(CONFIG_TSB_CHIP_REV_ES1)
+#if defined(CONFIG_TSB_ES1)
 #define APBRIDGE_NBULKS              (1)
 #else
 #define APBRIDGE_NBULKS              (7)
@@ -1583,13 +1582,15 @@ static int usbclass_setup(struct usbdevclass_driver_s *driver,
     return ret;
 }
 
+#define CONFIG_HSIC_HUB_RESET
+
 #ifdef CONFIG_HSIC_HUB_RESET
 #define HUB_RESET_GPIO 3
 static void hsic_hub_reset(void)
 {
     gpio_activate(HUB_RESET_GPIO);
     gpio_direction_out(HUB_RESET_GPIO, 0);
-    up_mdelay(10);
+    mdelay(10);
     gpio_set_value(HUB_RESET_GPIO, 1);
     gpio_deactivate(HUB_RESET_GPIO);
 }

@@ -33,15 +33,14 @@
 
 #include <phabos/usb/gadget/gb-ap-bridge.h>
 #include <phabos/greybus.h>
+#include <phabos/greybus/debug.h>
 #include <phabos/scheduler.h>
+#include <apps/shell.h>
 
 #include "apbridge_backend.h"
 #include "utils.h"
 
 #define IID_LENGTH 7
-
-// XXX phabos porting
-#define gb_dump(x...)
 
 static struct apbridge_dev_s *g_usbdev = NULL;
 static struct task *g_svc_thread;
@@ -148,6 +147,8 @@ int bridge_main(int argc, char *argv[])
     svc_register(recv_from_svc);
     apbridge_backend_register(&apbridge_backend);
     usbdev_apbinitialize(&usb_driver);
+
+    shell_main(argc, argv);
 
     return 0;
 }

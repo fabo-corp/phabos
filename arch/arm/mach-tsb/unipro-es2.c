@@ -709,7 +709,7 @@ static void unipro_dequeue_tx_buffer(struct unipro_buffer *buffer, int status)
         buffer->callback(status, buffer->data, buffer->priv);
     }
 
-    free(buffer);
+    kfree(buffer);
 }
 
 /**

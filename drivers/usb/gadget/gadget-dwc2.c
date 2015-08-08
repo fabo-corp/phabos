@@ -65,7 +65,7 @@
 
 #define CONFIG_USBDEV_DMA
 
-#if defined(CONFIG_TSB_CHIP_REV_ES1)
+#if defined(CONFIG_TSB_ES1)
 #define DWC_NENDPOINTS        (5)
 #else
 #define DWC_NENDPOINTS        (16)
