@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include <config.h>
 #include <phabos/usb.h>
 #include <phabos/driver.h>
 
@@ -22,7 +23,14 @@ struct usb_hc_driver {
                        uint16_t wIndex, uint16_t wLength, char *buf);
 };
 
+#if defined(CONFIG_USB_CORE)
 int usb_hcd_register(struct usb_hcd *hcd);
+#else
+static inline int usb_hcd_register(struct usb_hcd *hcd)
+{
+    return 0;
+}
+#endif
 
 #endif /* __USB_HCD_H__ */
 

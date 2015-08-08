@@ -3,6 +3,10 @@
 #
 # Provided under the three clause BSD license found in the LICENSE file.
 
+config USB_CORE
+    bool "USB Core"
+    depends on USB_HOST
+
 config USB_HOST
     bool "Host support"
     default y

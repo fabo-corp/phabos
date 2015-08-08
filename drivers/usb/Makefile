@@ -6,4 +6,4 @@
 subdirs-$(CONFIG_USB_HOST) += host
 subdirs-$(CONFIG_USB_DEVICE) += gadget
 subdirs-$(CONFIG_USB_DWC2) += dwc2
-subdirs-y += class
+subdirs-$(CONFIG_USB_CORE) += class
