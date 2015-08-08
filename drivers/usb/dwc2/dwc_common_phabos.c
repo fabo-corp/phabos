@@ -55,6 +55,12 @@
 #include "dwc_os.h"
 #include "dwc_list.h"
 
+#ifdef CONFIG_USB_DWC2_QUIET
+#undef __DWC_WARN
+#undef __DWC_ERROR
+#undef DWC_PRINTF
+#endif
+
 /* MISC */
 
 void *DWC_MEMSET(void *dest, uint8_t byte, uint32_t size)
