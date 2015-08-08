@@ -65,8 +65,8 @@ int mm_add_region(struct mm_region *region)
     RET_IF_FAIL(order < MAX_ADDRESSABLE_MEM_ORDER, -EINVAL);
 #endif
 
-    if (count_bit_set(region->size)) {
-        kprintf("mm: rejecting memory region with size that is not a power of 2, size: %u",
+    if (count_bit_set(region->size) != 1) {
+        kprintf("mm: rejecting memory region with size that is not a power of 2, size: %u\n",
                 region->size);
         return -EINVAL;
     }
