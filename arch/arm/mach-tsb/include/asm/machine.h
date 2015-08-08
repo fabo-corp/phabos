@@ -35,7 +35,8 @@
 #define CPU_FREQ (96 * 1000 * 1000) // 96 MHz
 #define HZ       1000
 
-#define USEC_PER_LOOP 41
+#define LOOP_PER_USEC   5
+#define LOOP_PER_MSEC   3850
 
 #endif /* __MACHINE_H__ */
 
