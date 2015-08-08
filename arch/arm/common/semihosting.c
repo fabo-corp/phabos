@@ -34,6 +34,7 @@
 #include <assert.h>
 #include <errno.h>
 
+#include <asm/hwio.h>
 #include <asm/semihosting.h>
 #include <phabos/driver.h>
 #include <phabos/serial/tty.h>
@@ -44,6 +45,9 @@
 #else
 #define SEMIHOSTING_SVC "svc 0xAB;"
 #endif
+
+#define NVIC_DHCSR              0xe000edf0
+#define NVIC_DHCSR_C_DEBUGEN    (1 << 0)
 
 __driver__ struct driver semihosting_driver;
 
@@ -143,6 +147,11 @@ ssize_t semihosting_write(struct file *file, const void *buffer, size_t buflen)
 
 void semihosting_putc(char c)
 {
+    if (!(read32(NVIC_DHCSR) & NVIC_DHCSR_C_DEBUGEN)) {
+        kprintf("semihosting: no debugger connected.\n");
+        return;
+    }
+
     uint32_t c32 = c;
     semihosting_syscall(SYSCALL_WRITEC, (uint32_t*) &c32);
 }
@@ -154,6 +163,11 @@ static struct file_operations semihosting_ops = {
 
 static int semihosting_init(struct driver *drv)
 {
+    if (!(read32(NVIC_DHCSR) & NVIC_DHCSR_C_DEBUGEN)) {
+        kprintf("%s: no debugger attached\n", drv->name);
+        return -ENODEV;
+    }
+
     semihosting_device.fd[SEMIHOSTING_READ_STREAM] =
         semihosting_open(":tt", READ_MODE);
     if (semihosting_device.fd[SEMIHOSTING_READ_STREAM] == -1)
