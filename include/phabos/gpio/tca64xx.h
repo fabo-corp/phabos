@@ -45,17 +45,12 @@ typedef enum {
 // Unused IO line for irq, reset.
 #define TCA64XX_IO_UNUSED   (1 << 31)
 
-struct tca64xx_platform_data;
-
-struct tca64xx_device {
-    struct gpio_device device;
-
-    struct i2c_adapter *i2c_adapter;
+struct tca64xx_platform {
+    struct i2c_adapter *adapter;
     tca64xx_part part;
-    unsigned int reset_gpio;
     uint8_t addr;
-
-    struct tca64xx_platform_data *pdata;
+    unsigned reset_gpio;
+    unsigned irq;
 };
 
 #endif

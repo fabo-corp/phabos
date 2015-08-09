@@ -151,9 +151,7 @@ struct tca64xx_platform_data {
 static inline struct tca64xx_platform_data*
 get_platform_data(struct gpio_device *dev)
 {
-    struct tca64xx_device *tca64xx =
-        containerof(dev, struct tca64xx_device, device);
-    return dev ? tca64xx->pdata : NULL;
+    return dev ? dev->device.pdata : NULL;
 }
 
 /*
@@ -894,46 +892,6 @@ static void tca64xx_polling_worker(void *data)
     }
 }
 
-#if 0
-void tca64xx_deinit(void *driver_data)
-{
-    struct tca64xx_platform_data *pdata, *tca64xx = driver_data;
-    int ret, status;
-
-    if (!driver_data) {
-        lldbg_error("%s: NULL driver_data, aborting\n", __func__);
-        return;
-    }
-
-    /* Unregister IRQ */
-    if (tca64xx->irq != TCA64XX_IO_UNUSED) {
-        /* Destroy polling worker */
-        if (tca64xx->worker_id > 0) {
-            tca64xx->worker_exit = true;
-            ret = waitpid(tca64xx->worker_id, &status, 0);
-            if (ret < 0) {
-                lldbg_error("%s: waitpid failed with ret=%d\n", __func__, ret);
-            }
-        }
-        /* Unregister IRQ */
-        gpio_irq_mask(tca64xx->irq);
-        gpio_irq_attach(tca64xx->irq, NULL);
-        list_foreach_safe(&tca64xx_irq_pdata_list, iter) {
-            pdata = list_entry(iter, struct tca64xx_platform_data, list);
-            if (pdata == tca64xx) {
-                list_del(iter);
-            }
-        }
-    }
-
-    /* Unregister gpio_chip */
-    unregister_gpio_chip(driver_data);
-
-    /* Free driver data */
-    free(driver_data);
-}
-#endif
-
 static struct gpio_ops tca64xx_gpio_ops = {
     .get_direction = tca64xx_get_direction,
     .direction_in = tca64xx_set_direction_in,
@@ -951,8 +909,7 @@ static int tca64xx_probe(struct device *device)
 {
     struct gpio_device *gpio_dev =
         containerof(device, struct gpio_device, device);
-    struct tca64xx_device *dev =
-        containerof(gpio_dev, struct tca64xx_device, device);
+    struct tca64xx_platform *pdata = device->pdata;
     struct tca64xx_platform_data *tca64xx;
     struct task *task;
     const char* argv[2];
@@ -962,7 +919,7 @@ static int tca64xx_probe(struct device *device)
 
     RET_IF_FAIL(device, -EINVAL);
 
-    nr_gpios = get_nr_gpios(dev->part);
+    nr_gpios = get_nr_gpios(pdata->part);
     if (nr_gpios < 0) {
         lldbg_error("%s: invalid part=%d\n", __func__, part);
         return -EINVAL;
@@ -973,17 +930,17 @@ static int tca64xx_probe(struct device *device)
         return -ENOMEM;
     }
 
-    tca64xx->adapter = dev->i2c_adapter;
-    tca64xx->addr = dev->addr;
-    tca64xx->irq = device->irq;
-    tca64xx->reset = dev->reset_gpio;
-    tca64xx->part = dev->part;
+    tca64xx->adapter = pdata->adapter;
+    tca64xx->addr = pdata->addr;
+    tca64xx->irq = pdata->irq;
+    tca64xx->reset = pdata->reset_gpio;
+    tca64xx->part = pdata->part;
     tca64xx->mask = (1 << nr_gpios) - 1;
     tca64xx->in = 0;
     tca64xx->intstat = 0;
     spinlock_init(&tca64xx->lock);
 
-    if (dev->reset_gpio != TCA64XX_IO_UNUSED)
+    if (pdata->reset_gpio != TCA64XX_IO_UNUSED)
         tca64xx_reset(tca64xx, 0);
 
     tca64xx_registers_update(tca64xx);
@@ -994,7 +951,7 @@ static int tca64xx_probe(struct device *device)
     if (ret)
         goto error;
 
-    if (device->irq != TCA64XX_IO_UNUSED) {
+    if (pdata->irq != TCA64XX_IO_UNUSED) {
         list_add(&tca64xx_irq_pdata_list, &tca64xx->list);
         gpio_activate(tca64xx->irq);
         gpio_direction_in(tca64xx->irq);
