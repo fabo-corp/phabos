@@ -45,7 +45,7 @@ enum usb_device_class_request {
 struct usb_descriptor_header {
     uint8_t bLength;
     uint8_t bDescriptorType;
-};
+} __attribute__((packed));
 
 struct usb_device_descriptor {
     uint8_t bLength;
@@ -62,7 +62,7 @@ struct usb_device_descriptor {
     uint8_t iProduct;
     uint8_t iSerialNumber;
     uint8_t bNumConfigurations;
-};
+} __attribute__((packed));
 
 struct usb_config_descriptor {
     uint8_t bLength;
@@ -73,13 +73,13 @@ struct usb_config_descriptor {
     uint8_t iConfiguration;
     uint8_t bmAttributes;
     uint8_t bMaxPower;
-};
+} __attribute__((packed));
 
 struct usb_string_descriptor {
     uint8_t bLength;
     uint8_t bDescriptorType;
     uint8_t bString[0];
-};
+} __attribute__((packed));
 
 struct usb_interface_descriptor {
     uint8_t bLength;
@@ -91,14 +91,14 @@ struct usb_interface_descriptor {
     uint8_t bInterfaceSubClass;
     uint8_t bInterfaceProtocol;
     uint8_t iInterface;
-};
+} __attribute__((packed));
 
 struct usb_endpoint_descriptor {
     uint8_t bLength;
     uint8_t bDescriptorType;
     uint8_t bEndpointAddress;
     uint8_t bmAttributes;
-};
+} __attribute__((packed));
 
 #endif /* __USB_STD_REQUESTS_H__ */
 

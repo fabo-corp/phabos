@@ -96,6 +96,7 @@ extern "C" {
 #endif
 
 #ifdef DWC_PHABOS
+#include <config.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdint.h>

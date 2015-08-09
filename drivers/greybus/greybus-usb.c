@@ -6,7 +6,16 @@
 #include <phabos/usb/std-requests.h>
 #include <phabos/usb/driver.h>
 
-static struct usb_device *usbdev;
+static struct usb_device_id greybus_usb_id[] = {
+    {
+        .match = USB_DRIVER_MATCH_VENDOR | USB_DRIVER_MATCH_PRODUCT,
+        .vid = 0xffff,
+        .pid = 0x0001,
+    },
+    {},
+};
+
+static struct usb_device *usbdev; // FIXME
 
 int gb_ap_init(void);
 
@@ -34,9 +43,6 @@ int gb_usb_send(unsigned int cportid, const void *buf, size_t len)
 //        urb->hcpriv_ep = NULL;
     }
 
-    atomic_init(&urb->refcount, 1);
-    semaphore_init(&urb->semaphore, 0);
-    urb->device = usbdev;
     urb->complete = gb_usb_send_complete;
     urb->pipe = (USB_HOST_PIPE_BULK << 30) | (2 << 15) |
                 (usbdev->address << 8) | USB_HOST_DIR_OUT;
@@ -76,26 +82,6 @@ int gb_in(const void *buf, size_t len)
 void gb_usb_dev(void)
 {
     kprintf("%s()\n", __func__);
-
-#if 0
-    void *buffer = malloc(255);
-    struct usb_device_descriptor *desc = buffer;
-
-    usb_control_msg(dev, USB_DEVICE_GET_DESCRIPTOR,
-                    USB_DESCRIPTOR_DEVICE << 8, 0, sizeof(*desc), desc);
-
-    if (desc->idVendor != 0xffff)
-        return -EINVAL;
-
-    usb_control_msg(dev, USB_DEVICE_GET_DESCRIPTOR,
-                    USB_DESCRIPTOR_CONFIGURATION << 8, 0, 255, buffer);
-
-    print_descriptor(buffer);
-#endif
-
-//    uint32_t buffer[255];
-//    kprintf("buffer: %x\n", buffer);
-//    gb_in(buffer, 255);
 }
 
 static struct gb_transport_backend gb_usb_backend = {
@@ -103,49 +89,30 @@ static struct gb_transport_backend gb_usb_backend = {
     .send = gb_usb_send,
 };
 
-void print_descriptor(void *raw_descriptor);
-
-static int gb_usb_init_bus(struct usb_device *dev)
+static int gb_usb_probe(struct usb_device *device, struct usb_device_id *id)
 {
-    void *buffer = malloc(255);
-    struct usb_device_descriptor *desc = buffer;
-
-    usbdev = dev;
-
-    usb_control_msg(dev, USB_DEVICE_SET_CONFIGURATION, 1, 0, 0, NULL);
-
-    usb_control_msg(dev, USB_DEVICE_GET_DESCRIPTOR,
-                    USB_DESCRIPTOR_DEVICE << 8, 0, sizeof(*desc), desc);
-
-    if (desc->idVendor != 0xffff)
-        return -EINVAL;
-
-    usb_control_msg(dev, USB_DEVICE_GET_DESCRIPTOR,
-                    USB_DESCRIPTOR_CONFIGURATION << 8, 0, 255, buffer);
-
-    print_descriptor(buffer);
-
-    return gb_init(&gb_usb_backend);
+    usbdev = device;
+    kprintf("%s()\n", __func__);
+    print_descriptor(usbdev);
+    return gb_ap_init();
 }
 
-static struct usb_class_driver greybus_usb_class_driver = {
-    .class = 0,
-    .init = gb_usb_init_bus,
+static struct usb_driver greybus_usb_driver = {
+    .id_table = greybus_usb_id,
+    .probe = gb_usb_probe,
 };
 
 static int gb_usb_init(struct driver *driver)
 {
     int retval;
 
-    retval = usb_register_class_driver(&greybus_usb_class_driver);
+    retval = usb_register_driver(&greybus_usb_driver);
     if (retval)
         return retval;
 
     retval = gb_init(&gb_usb_backend);
     if (retval)
         return retval;
-
-    gb_ap_init();
 
     return 0;
 }

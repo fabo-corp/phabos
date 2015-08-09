@@ -9,8 +9,13 @@
 #include "hub.h"
 #include "device.h"
 
-#define USB_DESCRIPTOR_HUB 0x29
-#define USB_DEVICE_CLASS_HUB 0x9
+static struct usb_device_id hub_usb_id[] = {
+    {
+        .match = USB_DRIVER_MATCH_DEVICE_CLASS,
+        .class = 0x9,
+    },
+    {},
+};
 
 static struct workqueue *hub_wq;
 
@@ -199,20 +204,20 @@ static int enumerate_hub(struct usb_device *hub)
     return 0;
 }
 
-static int hub_init_device(struct usb_device *dev)
+static int hub_probe_device(struct usb_device *dev, struct usb_device_id *id)
 {
     return enumerate_hub(dev);
 }
 
-static struct usb_class_driver hub_class_driver = {
-    .class = 9,
-    .init = hub_init_device,
+static struct usb_driver hub_device_driver = {
+    .id_table = hub_usb_id,
+    .probe = hub_probe_device,
 };
 
 static int hub_init(struct driver *driver)
 {
     hub_wq = workqueue_create("usb-hubd");
-    return usb_register_class_driver(&hub_class_driver);
+    return usb_register_driver(&hub_device_driver);
 }
 
 __driver__ struct driver usb_hub_driver = {

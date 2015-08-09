@@ -1,3 +1,4 @@
+#include <asm/byteordering.h>
 #include <asm/spinlock.h>
 #include <asm/delay.h>
 #include <phabos/usb/hcd.h>
@@ -14,12 +15,10 @@
 #include <string.h>
 
 static atomic_t dev_id;
-static struct list_head class_driver = LIST_INIT(class_driver);
-static struct spinlock class_driver_lock = SPINLOCK_INIT(spinlock);
+static struct list_head usbdev_driver = LIST_INIT(usbdev_driver);
+static struct spinlock usbdev_driver_lock = SPINLOCK_INIT(spinlock);
 
-static struct usb_class_driver *find_class_driver(unsigned int class,
-                                                  unsigned int subclass,
-                                                  unsigned int protocol);
+static int device_probe(struct usb_device *device);
 
 void print_descriptor(void *raw_descriptor)
 {
@@ -132,7 +131,7 @@ ssize_t usb_control_msg(struct usb_device *dev, uint16_t typeReq,
         goto out;
 
     semaphore_down(&urb->semaphore);
-    retval = urb->actual_length;
+    retval = urb->status ? urb->status : urb->actual_length;
 
 out:
     urb_destroy(urb);
@@ -210,44 +209,34 @@ static int enumerate_hub(struct usb_device *hub)
 int enumerate_device(struct usb_device *dev)
 {
     int retval;
+    ssize_t size;
     int address;
-    struct usb_device_descriptor *desc;
-    struct usb_class_driver *klass;
-
-    desc = kmalloc(sizeof(*desc), 0);
-    RET_IF_FAIL(desc, -ENOMEM);
-
-    kprintf("device %u, speed: %d\n", dev->address, dev->speed);
-
-    retval = usb_control_msg(dev, USB_DEVICE_GET_DESCRIPTOR,
-                             USB_DESCRIPTOR_DEVICE << 8, 0, sizeof(*desc),
-                             desc);
-    if (retval < 0)
-        goto out; // FIXME: unpower device port
-
-    klass = find_class_driver(desc->bDeviceClass, desc->bDeviceSubClass,
-                              desc->bDeviceProtocol);
-    if (!klass) {
-        retval = -ENODEV;
-//        return -ENODEV;
-    }
 
     address = atomic_inc(&dev_id);
+    kprintf("new usb device: %u (speed: %d)\n", dev->address, dev->speed);
 
-    retval = usb_control_msg(dev, USB_DEVICE_SET_ADDRESS, address, 0, 0, NULL);
-    if (retval < 0)
-        goto out; // FIXME: unpower device port
+    size = usb_control_msg(dev, USB_DEVICE_SET_ADDRESS, address, 0, 0, NULL);
+    if (size < 0) {
+        retval = size;
+        goto out; // FIXME: unpower device port, and cleanup everything about
+                  // device
+    }
 
     dev->address = address;
 
-    kprintf("Device ID: %d\n", dev->address);
-    print_descriptor(desc);
+    retval = device_probe(dev);
+    if (retval)
+        goto out; // FIXME: unpower device port, and cleanup everything about
+                  // device
 
-    if (klass)
-        klass->init(dev);
+#if 0
+    if (!retval) {
+        print_descriptor(&dev->desc);
+        print_descriptor(dev->interface);
+    }
+#endif
 
 out:
-    kfree(desc);
     return retval;
 }
 
@@ -337,35 +326,179 @@ int usb_hcd_register(struct usb_hcd *hcd)
     return 0;
 }
 
-static struct usb_class_driver *find_class_driver(unsigned int class,
-                                                  unsigned int subclass,
-                                                  unsigned int protocol)
+static int device_driver_probe(struct usb_device *device)
 {
-    struct usb_class_driver *driver = NULL;
+    ssize_t size;
+    struct usb_driver *driver = NULL;
+    struct usb_device_id *id;
 
-    spinlock_lock(&class_driver_lock);
+    spinlock_lock(&usbdev_driver_lock);
 
-    list_foreach(&class_driver, iter) {
-        struct usb_class_driver *drv =
-            containerof(iter, struct usb_class_driver, list);
+    list_foreach(&usbdev_driver, iter) {
+        struct usb_driver *drv = containerof(iter, struct usb_driver, list);
 
-        if (drv->class != class)
-            continue;
+        for (unsigned i = 0; drv->id_table[i].match; i++) {
+            id = &drv->id_table[i];
 
-        driver = drv;
-        break;
+            if (id->match & USB_DRIVER_MATCH_VENDOR) {
+                if (le16_to_cpu(device->desc.idVendor) != id->vid)
+                    continue;
+            }
+
+            if (id->match & USB_DRIVER_MATCH_PRODUCT) {
+                if (le16_to_cpu(device->desc.idProduct) != id->pid)
+                    continue;
+            }
+
+            if (id->match & USB_DRIVER_MATCH_DEVICE_CLASS) {
+                if (device->desc.bDeviceClass != id->class)
+                    continue;
+            }
+
+            if (id->match & USB_DRIVER_MATCH_DEVICE_SUBCLASS) {
+                if (device->desc.bDeviceSubClass != id->subclass)
+                    continue;
+            }
+
+            if (id->match & USB_DRIVER_MATCH_DEVICE_PROTOCOL) {
+                if (device->desc.bDeviceProtocol != id->protocol)
+                    continue;
+            }
+
+            if (id->match & USB_DRIVER_MATCH_INTERFACE_CLASS) {
+                if (device->interface->bInterfaceClass != id->iclass)
+                    continue;
+            }
+
+            if (id->match & USB_DRIVER_MATCH_INTERFACE_SUBCLASS) {
+                if (device->interface->bInterfaceSubClass != id->isubclass)
+                    continue;
+            }
+
+            if (id->match & USB_DRIVER_MATCH_INTERFACE_PROTOCOL) {
+                if (device->interface->bInterfaceProtocol != id->iprotocol)
+                    continue;
+            }
+
+            driver = drv;
+            break;
+        }
     }
 
-    spinlock_unlock(&class_driver_lock);
+    spinlock_unlock(&usbdev_driver_lock);
 
-    return driver;
+    if (!driver)
+        return -ENODEV;
+
+    size = usb_control_msg(device, USB_DEVICE_SET_CONFIGURATION,
+                           device->config->bConfigurationValue, 0, 0, NULL);
+    if (size < 0)
+        return (int) size;
+
+    size = usb_control_msg(device, USB_DEVICE_SET_INTERFACE,
+                           device->interface->bAlternateSetting, 0, 0, NULL);
+    if (size < 0)
+        return (int) size;
+
+    return driver->probe(device, id);
 }
 
-int usb_register_class_driver(struct usb_class_driver *driver)
+static int device_probe_interface(struct usb_device *device, unsigned id)
 {
-    spinlock_lock(&class_driver_lock);
-    list_add(&class_driver, &driver->list);
-    spinlock_unlock(&class_driver_lock);
+    struct usb_interface_descriptor *desc;
+    uintptr_t ptr = (uintptr_t) device->config;
+    uintptr_t end = ptr + le16_to_cpu(device->config->wTotalLength);
+    struct usb_descriptor_header *hdr = (struct usb_descriptor_header*) ptr;
+
+    do {
+        ptr += hdr->bLength;
+        hdr = (struct usb_descriptor_header*) ptr;
+        if (ptr + hdr->bLength > end)
+            return -EINVAL;
+
+        if (hdr->bDescriptorType != USB_DESCRIPTOR_INTERFACE)
+            continue;
+
+        desc = (struct usb_interface_descriptor*) hdr;
+
+        if (desc->bInterfaceNumber != id)
+            continue;
+
+        device->interface = desc;
+
+        return device_driver_probe(device);
+    } while (ptr + hdr->bLength + sizeof(*hdr) < end);
+
+    return -ENODEV;
+}
+
+static int device_probe_configuration(struct usb_device *device, unsigned id)
+{
+    struct usb_config_descriptor hdr;
+    size_t config_size;
+    ssize_t size;
+    int retval;
+
+    size = usb_control_msg(device, USB_DEVICE_GET_DESCRIPTOR,
+                           USB_DESCRIPTOR_CONFIGURATION << 8 | id, 0,
+                           sizeof(hdr), &hdr);
+    if (size != sizeof(hdr) || size != hdr.bLength)
+        return -EIO;
+
+    config_size = le16_to_cpu(hdr.wTotalLength);
+
+    device->config = kmalloc(config_size, 0);
+    if (!device->config)
+        return -ENOMEM;
+
+    size = usb_control_msg(device, USB_DEVICE_GET_DESCRIPTOR,
+                           USB_DESCRIPTOR_CONFIGURATION << 8 | id, 0,
+                           config_size, device->config);
+    if (size != config_size || size != config_size)
+        return -EIO;
+
+    for (unsigned i = 0; i < device->config->bNumInterfaces; i++) {
+        retval = device_probe_interface(device, i);
+
+        /* found a driver, return */
+        if (!retval)
+            break;
+    }
+
+    /* Free config only if no driver support this config */
+    if (retval) {
+        kfree(device->config);
+        device->config = NULL;
+    }
+
+    return retval;
+}
+
+static int device_probe(struct usb_device *device)
+{
+    ssize_t size;
+    int retval;
+
+    size = usb_control_msg(device, USB_DEVICE_GET_DESCRIPTOR,
+                           USB_DESCRIPTOR_DEVICE << 8, 0,
+                           sizeof(device->desc), &device->desc);
+    if (size != sizeof(device->desc) || size != device->desc.bLength)
+        return -EIO;
+
+    for (unsigned i = 0; i < device->desc.bNumConfigurations; i++) {
+        retval = device_probe_configuration(device, i);
+        if (!retval)
+            break;
+    }
+
+    return retval;
+}
+
+int usb_register_driver(struct usb_driver *driver)
+{
+    spinlock_lock(&usbdev_driver_lock);
+    list_add(&usbdev_driver, &driver->list);
+    spinlock_unlock(&usbdev_driver_lock);
 
     return 0;
 }

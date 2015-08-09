@@ -40,6 +40,7 @@
 #include <asm/atomic.h>
 #include <phabos/utils.h>
 #include <phabos/semaphore.h>
+#include <phabos/usb/std-requests.h>
 
 #define USB_SPEED_LOW                   1
 #define USB_SPEED_FULL                  2
@@ -90,6 +91,10 @@ struct usb_device {
     int speed;
     int ttport;
     int port;
+
+    struct usb_device_descriptor desc;
+    struct usb_config_descriptor *config;
+    struct usb_interface_descriptor *interface;
 
     struct usb_hcd *hcd;
     struct usb_device *hub;

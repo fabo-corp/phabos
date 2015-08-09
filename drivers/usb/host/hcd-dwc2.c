@@ -90,7 +90,7 @@ static int _complete(dwc_otg_hcd_t *hcd, void *urb_handle,
     urb->actual_length = dwc_otg_hcd_urb_get_actual_length(dwc_urb);
     urb->status = status;
 
-    free(dwc_urb);
+    kfree(dwc_urb);
     urb->hcpriv = NULL;
 
     DWC_SPINUNLOCK(hcd->lock);
@@ -217,7 +217,7 @@ error_hcd_init:
 error_set_parameter:
     dwc_otg_cil_remove(g_dev->core_if);
 error_cil_init:
-    free(g_dev);
+    kfree(g_dev);
     g_dev = NULL;
 
     return retval;
@@ -236,7 +236,7 @@ static void hcd_core_deinit(struct usb_hcd *hcd)
     dwc_otg_hcd_remove(g_dev->hcd);
     dwc_otg_cil_remove(g_dev->core_if);
 
-    free(g_dev);
+    kfree(g_dev);
     g_dev = NULL;
 }
 
@@ -336,7 +336,7 @@ static int urb_enqueue(struct usb_hcd *hcd, struct urb *urb)
     return 0;
 
 error_enqueue:
-    free(dwc_urb);
+    kfree(dwc_urb);
 
     return retval;
 }
@@ -344,6 +344,7 @@ error_enqueue:
 int urb_dequeue(struct usb_hcd *hcd, struct urb *urb)
 {
     dwc_otg_hcd_urb_dequeue(g_dev->hcd, urb->hcpriv);
+    return 0;
 }
 
 /**
