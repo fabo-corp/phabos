@@ -383,8 +383,6 @@ static int dwc2_probe(struct device *device)
 
     hcd->driver = &dwc2_hcd_driver;
 
-SET_DEBUG_LEVEL(DBG_ANY);
-
     return usb_hcd_register(hcd);
 }
 

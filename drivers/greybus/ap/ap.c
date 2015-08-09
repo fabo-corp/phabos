@@ -39,7 +39,7 @@ static void toggle_gpio(void)
 int gb_ap_init(void)
 {
     connect_gpio_cport();
-    connect_gpio_cport();
-    toggle_gpio();
+    //connect_gpio_cport();
+    //toggle_gpio();
     return 0;
 }

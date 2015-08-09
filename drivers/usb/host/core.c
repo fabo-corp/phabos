@@ -395,11 +395,6 @@ static int device_driver_probe(struct usb_device *device)
     if (size < 0)
         return (int) size;
 
-    size = usb_control_msg(device, USB_DEVICE_SET_INTERFACE,
-                           device->interface->bAlternateSetting, 0, 0, NULL);
-    if (size < 0)
-        return (int) size;
-
     return driver->probe(device, id);
 }
 

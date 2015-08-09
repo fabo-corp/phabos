@@ -32,16 +32,11 @@ void gb_usb_rx_complete(struct urb *urb)
 
 int gb_usb_send(unsigned int cportid, const void *buf, size_t len)
 {
-    static struct urb *urb = NULL;
+    struct urb *urb;
 
     kprintf("%s()\n", __func__);
 
-    if (!urb) {
-        urb = urb_create(usbdev);
-    } else {
-//        memset(urb, 0, sizeof(*urb));
-//        urb->hcpriv_ep = NULL;
-    }
+    urb = urb_create(usbdev);
 
     urb->complete = gb_usb_send_complete;
     urb->pipe = (USB_HOST_PIPE_BULK << 30) | (2 << 15) |
@@ -93,7 +88,7 @@ static int gb_usb_probe(struct usb_device *device, struct usb_device_id *id)
 {
     usbdev = device;
     kprintf("%s()\n", __func__);
-    print_descriptor(usbdev);
+    print_descriptor(usbdev->config);
     return gb_ap_init();
 }
 
