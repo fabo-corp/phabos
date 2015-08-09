@@ -41,5 +41,10 @@
         locked;                                 \
     })
 
+static inline uint64_t msecs_to_ticks(unsigned long msecs)
+{
+    return (msecs * HZ) / 1000;
+}
+
 #endif /* __UTILS_H__ */
 
