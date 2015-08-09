@@ -10,6 +10,7 @@
 
 #include <stdlib.h>
 
+#include <asm/machine.h>
 #include <phabos/mm.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
