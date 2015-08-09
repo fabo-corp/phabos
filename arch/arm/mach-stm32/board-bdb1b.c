@@ -9,6 +9,7 @@
 #include <phabos/driver.h>
 #include <phabos/serial/uart.h>
 #include <phabos/gpio.h>
+#include <phabos/gpio/tca64xx.h>
 #include <phabos/i2c.h>
 #include <phabos/i2c/stm32-i2c.h>
 
@@ -174,25 +175,23 @@ static struct i2c_adapter stm32_i2c_adapter = {
     },
 };
 
-#if 0
 static struct tca64xx_platform tca64xx_io_expander_pdata[] = {
     {
         .part = TCA6416_PART,
-        .i2c_adapter = &stm32_i2c_adapter,
-        .i2c_addr = 0x21,
-        .reset = IO_RESET,
+        .adapter = &stm32_i2c_adapter,
+        .addr = 0x21,
+        .reset_gpio = GPIO_PORTE | GPIO_PIN1,
     },
     {
         .part = TCA6416_PART,
-        .i2c_adapter = &stm32_i2c_adapter,
-        .i2c_addr = 0x20,
-        .reset = IO_RESET,
+        .adapter = &stm32_i2c_adapter,
+        .addr = 0x20,
+        .reset_gpio = GPIO_PORTE | GPIO_PIN0,
     },
     {
         .part = TCA6416_PART,
-        .i2c_adapter = &stm32_i2c_adapter,
-        .i2c_addr = 0x23,
-        .reset = TCA64XX_IO_UNUSED,
+        .adapter = &stm32_i2c_adapter,
+        .addr = 0x23,
     },
 };
 
@@ -203,8 +202,6 @@ static struct gpio_device tca64xx_io_expander[] = {
             .name = "tca6416",
             .description = "TCA6416 U90",
             .driver = "tca64xx",
-
-            .irq = 
             .pdata = &tca64xx_io_expander_pdata[0],
         },
     },
@@ -214,8 +211,6 @@ static struct gpio_device tca64xx_io_expander[] = {
             .name = "tca6416",
             .description = "TCA6416 U96",
             .driver = "tca64xx",
-
-            .irq = 
             .pdata = &tca64xx_io_expander_pdata[1],
         },
     },
@@ -225,13 +220,10 @@ static struct gpio_device tca64xx_io_expander[] = {
             .name = "tca6416",
             .description = "TCA6416 U135",
             .driver = "tca64xx",
-
-            .irq = 
             .pdata = &tca64xx_io_expander_pdata[2],
         },
     },
 };
-#endif
 
 static void uart_init(void)
 {
