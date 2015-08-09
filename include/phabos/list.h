@@ -43,6 +43,7 @@ void list_sorted_add(struct list_head *head, struct list_head *node,
 #define list_last_entry(head, s, f) list_entry((head)->prev, s, f)
 
 #define LIST_INIT(head) { .prev = &head, .next = &head }
+#define LIST_DECLARE(name) struct list_head name = LIST_INIT(name)
 
 #endif /* __LIST_H__ */
 
