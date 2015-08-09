@@ -446,7 +446,7 @@ void DWC_TIMER_FREE(dwc_timer_t *timer)
 
 void _DWC_TIMER_SCHEDULE(dwc_timer_t *timer, uint32_t time)
 {
-    watchdog_start(&timer->watchdog, time * 1000);
+    watchdog_start_msec(&timer->watchdog, time);
 }
 
 void DWC_TIMER_SCHEDULE(dwc_timer_t *timer, uint32_t time)
@@ -508,7 +508,8 @@ struct dwc_workq {
 
 int DWC_WORKQ_WAIT_WORK_DONE(dwc_workq_t *wq, int timeout)
 {
-    return workqueue_wait_empty((struct workqueue*) wq, timeout);
+    return workqueue_wait_empty((struct workqueue*) wq,
+                                get_ticks() + msecs_to_ticks(timeout));
 }
 
 dwc_workq_t *DWC_WORKQ_ALLOC(char *name)
@@ -530,7 +531,8 @@ void DWC_WORKQ_SCHEDULE(dwc_workq_t *wq, dwc_work_callback_t cb, void *data,
 void DWC_WORKQ_SCHEDULE_DELAYED(dwc_workq_t *wq, dwc_work_callback_t cb,
                 void *data, uint32_t time, char *format, ...)
 {
-    workqueue_schedule((struct workqueue*) wq, cb, data, time);
+    workqueue_schedule((struct workqueue*) wq, cb, data,
+                       get_ticks() + msecs_to_ticks(time));
 }
 
 int DWC_WORKQ_PENDING(dwc_workq_t *wq)
