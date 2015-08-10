@@ -312,8 +312,9 @@ static ssize_t stm32_i2c_transfer(struct i2c_adapter *adapter,
 
     mutex_lock(&priv->lock);
 
-    for (unsigned i = 0; i < count; i++) {
+    write32(adapter->device.reg_base + I2C_SR1, 0);
 
+    for (unsigned i = 0; i < count; i++) {
         retval = stm32_i2c_generate_start_condition(&adapter->device); // repeated start
         if (retval)
             break;
