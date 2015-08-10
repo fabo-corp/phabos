@@ -1,5 +1,6 @@
 #include "stm32f4xx.h"
 #include "rcc.h"
+#include "bdb.h"
 
 #include <asm/hwio.h>
 #include <asm/delay.h>
@@ -190,22 +191,27 @@ static struct tca64xx_platform tca64xx_io_expander_pdata[] = {
         .adapter = &stm32_i2c_adapter,
         .addr = 0x21,
         .reset_gpio = GPIO_PORTE | GPIO_PIN1,
+        .irq = U96_GPIO_CHIP_START + 7,
     },
     {
         .part = TCA6416_PART,
         .adapter = &stm32_i2c_adapter,
         .addr = 0x20,
         .reset_gpio = GPIO_PORTE | GPIO_PIN0,
+        .irq = GPIO_PORTA | GPIO_PIN0,
     },
     {
         .part = TCA6416_PART,
         .adapter = &stm32_i2c_adapter,
         .addr = 0x23,
+        .reset_gpio = TCA64XX_IO_UNUSED,
+        .irq = TCA64XX_IO_UNUSED,
     },
 };
 
 static struct gpio_device tca64xx_io_expander[] = {
     {
+        .base = U90_GPIO_CHIP_START,
         .count = 16,
         .device = {
             .name = "tca6416",
@@ -215,6 +221,7 @@ static struct gpio_device tca64xx_io_expander[] = {
         },
     },
     {
+        .base = U96_GPIO_CHIP_START,
         .count = 16,
         .device = {
             .name = "tca6416",
@@ -224,6 +231,7 @@ static struct gpio_device tca64xx_io_expander[] = {
         },
     },
     {
+        .base = U135_GPIO_CHIP_START,
         .count = 16,
         .device = {
             .name = "tca6416",
