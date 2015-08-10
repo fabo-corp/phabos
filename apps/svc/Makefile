@@ -1,3 +1,5 @@
+subdirs-y += commands
+
 obj-y += ina230.o
 obj-y += tsb_es2_mphy_fixups.o
 obj-y += vreg.o
