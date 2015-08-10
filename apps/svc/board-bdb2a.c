@@ -37,7 +37,6 @@
 #include <asm/delay.h>
 #include <asm/gpio.h>
 #include <phabos/gpio.h>
-#include <phabos/gpio/tca64xx.h>
 #include <phabos/utils.h>
 
 #include "up_debug.h"
@@ -256,33 +255,6 @@ static struct vreg_data sw_vreg_data[] = {
 };
 DECLARE_VREG(sw, sw_vreg_data);
 
-static struct io_expander_info bdb2a_io_expanders[] = {
-        {
-            .part       = TCA6416_PART,
-            .i2c_bus    = IOEXP_I2C_BUS,
-            .i2c_addr   = IOEXP_U96_I2C_ADDR,
-            .reset      = IO_RESET,
-            .irq        = U96_IO_EXP_IRQ,
-            .gpio_base  = U96_GPIO_CHIP_START,
-        },
-        {
-            .part       = TCA6416_PART,
-            .i2c_bus    = IOEXP_I2C_BUS,
-            .i2c_addr   = IOEXP_U90_I2C_ADDR,
-            .reset      = IO_RESET1,
-            .irq        = U90_IO_EXP_IRQ,
-            .gpio_base  = U90_GPIO_CHIP_START,
-        },
-        {
-            .part       = TCA6424_PART,
-            .i2c_bus    = IOEXP_I2C_BUS,
-            .i2c_addr   = IOEXP_U135_I2C_ADDR,
-            .reset      = TCA64XX_IO_UNUSED,
-            .irq        = TCA64XX_IO_UNUSED,
-            .gpio_base  = U135_GPIO_CHIP_START,
-        }
-};
-
 static struct ara_board_info bdb2a_board_info = {
     .interfaces = bdb2a_interfaces,
     .nr_interfaces = ARRAY_SIZE(bdb2a_interfaces),
@@ -298,9 +270,6 @@ static struct ara_board_info bdb2a_board_info = {
         .spi_cs     = (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_OUTPUT_SET | \
                        GPIO_PORTA | GPIO_PIN4)
     },
-
-    .io_expanders = bdb2a_io_expanders,
-    .nr_io_expanders = ARRAY_SIZE(bdb2a_io_expanders),
 };
 
 struct ara_board_info *board_init(void)
@@ -329,53 +298,10 @@ struct ara_board_info *board_init(void)
      */
     vreg_get(&sw_vreg);
 
-#if 0
-    /* Register the TCA64xx I/O Expanders GPIOs to Gpio Chip */
-    for (int i = 0; i < bdb2a_board_info.nr_io_expanders; i++) {
-        struct io_expander_info *io_exp = &bdb2a_board_info.io_expanders[i];
-
-        io_exp->i2c_dev = up_i2cinitialize(io_exp->i2c_bus);
-        if (!io_exp->i2c_dev) {
-            dbg_error("%s(): Failed to get I/O Expander I2C bus %u\n",
-                      __func__, io_exp->i2c_bus);
-        } else {
-            if (tca64xx_init(&io_exp->io_exp_driver_data,
-                             io_exp->part,
-                             io_exp->i2c_dev,
-                             io_exp->i2c_addr,
-                             io_exp->reset,
-                             io_exp->irq,
-                             io_exp->gpio_base) < 0) {
-                dbg_error("%s(): Failed to register I/O Expander(0x%02x)\n",
-                          __func__, io_exp->i2c_addr);
-                up_i2cuninitialize(io_exp->i2c_dev);
-            }
-        }
-    }
-#endif
-
     return &bdb2a_board_info;
 }
 
 void board_exit(void) {
-#if 0
-    int i;
-    /*
-     * First unregister the TCA64xx I/O Expanders and associated I2C bus(ses).
-     * Done in reverse order from registration to account for IRQ chaining
-     * between I/O Expander chips.
-     */
-    for (i = bdb2a_board_info.nr_io_expanders - 1; i >= 0; i--) {
-        struct io_expander_info *io_exp = &bdb2a_board_info.io_expanders[i];
-
-        if (io_exp->io_exp_driver_data)
-            tca64xx_deinit(io_exp->io_exp_driver_data);
-
-        if (io_exp->i2c_dev)
-            up_i2cuninitialize(io_exp->i2c_dev);
-    }
-#endif
-
     /* Disable 1V1 and 1V8, used by the I/O Expanders and the Switch */
     vreg_put(&sw_vreg);
 }
