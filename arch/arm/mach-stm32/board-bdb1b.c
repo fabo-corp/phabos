@@ -13,6 +13,8 @@
 #include <phabos/gpio/tca64xx.h>
 #include <phabos/i2c.h>
 #include <phabos/i2c/stm32-i2c.h>
+#include <phabos/spi.h>
+#include <phabos/spi/spi-stm32.h>
 
 #define STM32_USART1_BRR    (STM32_USART1_BASE + 0x08)
 #define STM32_USART1_CR1    (STM32_USART1_BASE + 0x0c)
@@ -185,14 +187,22 @@ static struct i2c_adapter stm32_i2c_adapter = {
     },
 };
 
-static struct tca64xx_platform tca64xx_io_expander_pdata[] = {
-    {
-        .part = TCA6416_PART,
-        .adapter = &stm32_i2c_adapter,
-        .addr = 0x21,
-        .reset_gpio = GPIO_PORTE | GPIO_PIN1,
-        .irq = U96_GPIO_CHIP_START + 7,
+static struct stm32_spi_master_platform stm32_spi_pdata = {
+    .clk = APB1_FREQ,
+};
+
+struct spi_master stm32_spi_master = {
+    .device = {
+        .name = "spi-1",
+        .description = "STM32 SPI-1",
+        .driver = "stm32-spi",
+
+        .reg_base = STM32_SPI1_BASE,
+        .pdata = &stm32_spi_pdata,
     },
+};
+
+static struct tca64xx_platform tca64xx_io_expander_pdata[] = {
     {
         .part = TCA6416_PART,
         .adapter = &stm32_i2c_adapter,
