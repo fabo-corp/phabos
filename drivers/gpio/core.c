@@ -13,45 +13,91 @@
 
 static struct list_head devices = LIST_INIT(devices);
 static struct spinlock dev_lock = SPINLOCK_INIT(dev_lock);
-static unsigned int next_base;
+static size_t line_count;
 
-int gpio_device_register(struct gpio_device *gpio)
+static struct gpio_device *_gpio_get_device(unsigned int line)
 {
-    RET_IF_FAIL(gpio, -EINVAL);
-
-    list_init(&gpio->list);
-
-    spinlock_lock(&dev_lock);
-    gpio->base = next_base;
-    next_base = gpio->base + gpio->count;
-    list_add(&devices, &gpio->list);
-    spinlock_unlock(&dev_lock);
-
-    return 0;
-}
-
-struct gpio_device *gpio_get_device(unsigned int line)
-{
-    struct gpio_device *device = NULL;
-
-    spinlock_lock(&dev_lock);
-
     list_foreach(&devices, iter) {
         struct gpio_device *dev = list_entry(iter, struct gpio_device, list);
         if (line >= dev->base && line < dev->base + dev->count) {
-            device = dev;
-            break;
+            return dev;
         }
     }
+
+    return NULL;
+}
+
+static struct gpio_device *gpio_get_device(unsigned int line)
+{
+    struct gpio_device *device;
+
+    spinlock_lock(&dev_lock);
+
+    device = _gpio_get_device(line);
 
     spinlock_unlock(&dev_lock);
 
     return device;
 }
 
+static unsigned gpio_find_base(size_t count)
+{
+    unsigned base = 0;
+
+    list_foreach(&devices, iter) {
+        struct gpio_device *dev = list_entry(iter, struct gpio_device, list);
+
+        unsigned last = base + count - 1;
+
+        if ((base >= dev->base && base < dev->base + dev->count) ||
+            (last >= dev->base && last < dev->base + dev->count)) {
+            base = dev->base + dev->count;
+            continue;
+        }
+    }
+
+    return base;
+}
+
+static int gpio_compare(struct list_head *head1, struct list_head *head2)
+{
+    struct gpio_device *dev1 = containerof(head1, struct gpio_device, list);
+    struct gpio_device *dev2 = containerof(head2, struct gpio_device, list);
+    return dev1->base - dev2->base;
+}
+
+int gpio_device_register(struct gpio_device *gpio)
+{
+    int retval = 0;
+
+    RET_IF_FAIL(gpio, -EINVAL);
+
+    list_init(&gpio->list);
+
+    spinlock_lock(&dev_lock);
+
+    if (gpio->base != -1) {
+        if (_gpio_get_device(gpio->base) ||
+            _gpio_get_device(gpio->base + gpio->count - 1)) {
+            retval = -EBUSY;
+            goto out;
+        }
+    } else {
+        gpio->base = gpio_find_base(gpio->count);
+    }
+
+    line_count += gpio->count;
+    list_sorted_add(&devices, &gpio->list, gpio_compare);
+
+out:
+    spinlock_unlock(&dev_lock);
+
+    return retval;
+}
+
 size_t gpio_line_count(void)
 {
-    return next_base;
+    return line_count;
 }
 
 int gpio_get_direction(unsigned int line)
