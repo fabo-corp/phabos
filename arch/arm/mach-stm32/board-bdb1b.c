@@ -213,23 +213,36 @@ static struct tca64xx_platform tca64xx_io_expander_pdata[] = {
     {
         .part = TCA6416_PART,
         .adapter = &stm32_i2c_adapter,
+        .addr = 0x21,
+        .reset_gpio = GPIO_PORTE | GPIO_PIN1,
+        .irq = U96_GPIO_CHIP_START + 7,
+    },
+    {
+        .part = TCA6424_PART,
+        .adapter = &stm32_i2c_adapter,
         .addr = 0x23,
         .reset_gpio = TCA64XX_IO_UNUSED,
         .irq = TCA64XX_IO_UNUSED,
     },
 };
 
+static int tca64xx_power_on(struct device *device)
+{
+    struct tca64xx_platform *pdata = device->pdata;
+
+    if (pdata->reset_gpio == TCA64XX_IO_UNUSED)
+        return 0;
+
+    stm32_configgpio(GPIO_OUTPUT | GPIO_OPENDRAIN | GPIO_PULLUP |
+                     pdata->reset_gpio);
+    stm32_gpiowrite(pdata->reset_gpio, false);
+    udelay(1); // T_reset = 600ns
+    stm32_gpiowrite(pdata->reset_gpio, true);
+
+    return 0;
+}
+
 static struct gpio_device tca64xx_io_expander[] = {
-    {
-        .base = U90_GPIO_CHIP_START,
-        .count = 16,
-        .device = {
-            .name = "tca6416",
-            .description = "TCA6416 U90",
-            .driver = "tca64xx",
-            .pdata = &tca64xx_io_expander_pdata[0],
-        },
-    },
     {
         .base = U96_GPIO_CHIP_START,
         .count = 16,
@@ -237,15 +250,27 @@ static struct gpio_device tca64xx_io_expander[] = {
             .name = "tca6416",
             .description = "TCA6416 U96",
             .driver = "tca64xx",
+            .pdata = &tca64xx_io_expander_pdata[0],
+            .power_on = tca64xx_power_on,
+        },
+    },
+    {
+        .base = U90_GPIO_CHIP_START,
+        .count = 16,
+        .device = {
+            .name = "tca6416",
+            .description = "TCA6416 U90",
+            .driver = "tca64xx",
             .pdata = &tca64xx_io_expander_pdata[1],
+            .power_on = tca64xx_power_on,
         },
     },
     {
         .base = U135_GPIO_CHIP_START,
-        .count = 16,
+        .count = 24,
         .device = {
-            .name = "tca6416",
-            .description = "TCA6416 U135",
+            .name = "tca6424",
+            .description = "TCA6424 U135",
             .driver = "tca64xx",
             .pdata = &tca64xx_io_expander_pdata[2],
         },
