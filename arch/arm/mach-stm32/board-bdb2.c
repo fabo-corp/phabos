@@ -149,7 +149,7 @@ struct gpio_device gpio_port[] = {
     },
     {
         .base = 128,
-        .count = 16,
+        .count = 12,
         .device = {
             .name = "stm32-gpio-i",
             .description = "STM32 GPIO Port I",
