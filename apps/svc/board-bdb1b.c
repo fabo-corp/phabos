@@ -307,12 +307,6 @@ struct ara_board_info *board_init(void)
     stm32_configgpio(SVC_LED_RED);
     stm32_gpiowrite(SVC_LED_RED, true);
 
-    /* Disable these for now */
-    stm32_configgpio(IO_RESET);
-    stm32_configgpio(IO_RESET1);
-    stm32_gpiowrite(IO_RESET, false);
-    stm32_gpiowrite(IO_RESET1, false);
-
     /*
      * Configure the switch reset and power supply lines.
      * Hold all the lines low while we turn on the power rails.
