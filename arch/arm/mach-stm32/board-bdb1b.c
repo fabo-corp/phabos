@@ -359,4 +359,6 @@ void machine_init(void)
         device_register(&gpio_port[i].device);
     device_register(&stm32_usart_device.device);
     device_register(&stm32_i2c_adapter.device);
+    for (int i = 0; i < ARRAY_SIZE(tca64xx_io_expander); i++)
+        device_register(&tca64xx_io_expander[i].device);
 }

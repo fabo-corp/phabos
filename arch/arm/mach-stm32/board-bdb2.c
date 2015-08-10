@@ -1,5 +1,6 @@
 #include "stm32f4xx.h"
 #include "rcc.h"
+#include "bdb.h"
 
 #include <asm/hwio.h>
 #include <asm/delay.h>
@@ -9,6 +10,7 @@
 #include <phabos/driver.h>
 #include <phabos/serial/uart.h>
 #include <phabos/gpio.h>
+#include <phabos/gpio/tca64xx.h>
 #include <phabos/i2c.h>
 #include <phabos/i2c/stm32-i2c.h>
 #include <phabos/spi.h>
@@ -200,64 +202,62 @@ struct spi_master stm32_spi_master = {
     },
 };
 
-#if 0
 static struct tca64xx_platform tca64xx_io_expander_pdata[] = {
     {
         .part = TCA6416_PART,
-        .i2c_adapter = &stm32_i2c_adapter,
-        .i2c_addr = 0x21,
-        .reset = IO_RESET,
+        .adapter = &stm32_i2c_adapter,
+        .addr = 0x21,
+        .reset_gpio = GPIO_PORTE | GPIO_PIN1,
+        .irq = U96_GPIO_CHIP_START + 7,
     },
     {
         .part = TCA6416_PART,
-        .i2c_adapter = &stm32_i2c_adapter,
-        .i2c_addr = 0x20,
-        .reset = IO_RESET,
+        .adapter = &stm32_i2c_adapter,
+        .addr = 0x20,
+        .reset_gpio = GPIO_PORTE | GPIO_PIN0,
+        .irq = GPIO_PORTA | GPIO_PIN0,
     },
     {
         .part = TCA6416_PART,
-        .i2c_adapter = &stm32_i2c_adapter,
-        .i2c_addr = 0x23,
-        .reset = TCA64XX_IO_UNUSED,
+        .adapter = &stm32_i2c_adapter,
+        .addr = 0x23,
+        .reset_gpio = TCA64XX_IO_UNUSED,
+        .irq = TCA64XX_IO_UNUSED,
     },
 };
 
 static struct gpio_device tca64xx_io_expander[] = {
     {
+        .base = U90_GPIO_CHIP_START,
         .count = 16,
         .device = {
             .name = "tca6416",
             .description = "TCA6416 U90",
             .driver = "tca64xx",
-
-            .irq = 
             .pdata = &tca64xx_io_expander_pdata[0],
         },
     },
     {
+        .base = U96_GPIO_CHIP_START,
         .count = 16,
         .device = {
             .name = "tca6416",
             .description = "TCA6416 U96",
             .driver = "tca64xx",
-
-            .irq = 
             .pdata = &tca64xx_io_expander_pdata[1],
         },
     },
     {
+        .base = U135_GPIO_CHIP_START,
         .count = 16,
         .device = {
             .name = "tca6416",
             .description = "TCA6416 U135",
             .driver = "tca64xx",
-
-            .irq = 
             .pdata = &tca64xx_io_expander_pdata[2],
         },
     },
 };
-#endif
 
 static void uart_init(void)
 {
@@ -393,4 +393,6 @@ void machine_init(void)
     device_register(&stm32_usart_device.device);
     device_register(&stm32_i2c_adapter.device);
     device_register(&stm32_spi_master.device);
+    for (int i = 0; i < ARRAY_SIZE(tca64xx_io_expander); i++)
+        device_register(&tca64xx_io_expander[i].device);
 }

@@ -26,15 +26,8 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef  _ARA_BOARD_H_
-#define  _ARA_BOARD_H_
-
-#include <asm/gpio.h>
-#include <phabos/gpio.h>
-#include <phabos/gpio/tca64xx.h>
-
-#include "vreg.h"
-#include "tsb_switch.h"
+#ifndef  __BDB_H__
+#define  __BDB_H__
 
 #define STM32_GPIO_CHIP_BASE 0 // XXX phabos porting
 
@@ -63,33 +56,5 @@
 #define U90_GPIO_PIN(p)         (U90_GPIO_CHIP_START + (p))
 #define U135_GPIO_PIN(p)        (U135_GPIO_CHIP_START + (p))
 #define U701_GPIO_PIN(p)        (U701_GPIO_CHIP_START + (p))
-
-struct io_expander_info {
-    void *io_exp_driver_data;
-    uint32_t reset;
-    uint32_t irq;
-    int gpio_base;
-    struct i2c_dev_s *i2c_dev;
-    uint8_t i2c_bus;
-    uint8_t i2c_addr;
-    tca64xx_part part;
-};
-
-struct ara_board_info {
-    /* Interfaces */
-    struct interface **interfaces;
-    size_t nr_interfaces;
-    size_t nr_spring_interfaces;
-
-    /* Switch data */
-    struct tsb_switch_data sw_data;
-
-    /* IO Expanders data */
-    struct io_expander_info *io_expanders;
-    size_t nr_io_expanders;
-};
-
-struct ara_board_info *board_init(void);
-void board_exit(void);
 
 #endif
