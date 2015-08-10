@@ -66,6 +66,7 @@
 
 struct gpio_device gpio_port[] = {
     {
+        .base = 0,
         .count = 16,
         .device = {
             .name = "stm32-gpio-a",
@@ -75,6 +76,7 @@ struct gpio_device gpio_port[] = {
         },
     },
     {
+        .base = 16,
         .count = 16,
         .device = {
             .name = "stm32-gpio-b",
@@ -84,6 +86,7 @@ struct gpio_device gpio_port[] = {
         },
     },
     {
+        .base = 32,
         .count = 16,
         .device = {
             .name = "stm32-gpio-c",
@@ -93,6 +96,7 @@ struct gpio_device gpio_port[] = {
         },
     },
     {
+        .base = 48,
         .count = 16,
         .device = {
             .name = "stm32-gpio-d",
@@ -102,6 +106,7 @@ struct gpio_device gpio_port[] = {
         },
     },
     {
+        .base = 64,
         .count = 16,
         .device = {
             .name = "stm32-gpio-e",
@@ -111,6 +116,7 @@ struct gpio_device gpio_port[] = {
         },
     },
     {
+        .base = 80,
         .count = 16,
         .device = {
             .name = "stm32-gpio-f",
@@ -120,6 +126,7 @@ struct gpio_device gpio_port[] = {
         },
     },
     {
+        .base = 96,
         .count = 16,
         .device = {
             .name = "stm32-gpio-g",
@@ -129,6 +136,7 @@ struct gpio_device gpio_port[] = {
         },
     },
     {
+        .base = 112,
         .count = 16,
         .device = {
             .name = "stm32-gpio-h",
@@ -138,6 +146,7 @@ struct gpio_device gpio_port[] = {
         },
     },
     {
+        .base = 128,
         .count = 16,
         .device = {
             .name = "stm32-gpio-i",

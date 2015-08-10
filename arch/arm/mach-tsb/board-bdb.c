@@ -228,6 +228,7 @@ static struct gb_device gb_control_device = {
 };
 
 static struct gpio_device gpio_device = {
+    .base = -1,
 #if defined(CONFIG_TSB_ES1)
     .count = 16,
 #else
