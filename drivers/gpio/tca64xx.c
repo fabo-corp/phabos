@@ -151,7 +151,7 @@ struct tca64xx_platform_data {
 static inline struct tca64xx_platform_data*
 get_platform_data(struct gpio_device *dev)
 {
-    return dev ? dev->device.pdata : NULL;
+    return dev ? dev->device.priv : NULL;
 }
 
 /*
@@ -874,11 +874,7 @@ int tca64xx_gpio_irq_attach(struct gpio_device *dev, unsigned int which,
 
 static void tca64xx_polling_worker(void *data)
 {
-    char **argv = data;
-
-    // Get the private data passed via argc/argv
-    struct tca64xx_platform_data *tca64xx =
-        (struct tca64xx_platform_data *) strtol(argv[1], NULL, 16);
+    struct tca64xx_platform_data *tca64xx = data;
 
     if (!tca64xx) {
         lldbg_error("%s: no tca64xx driver context\n", __func__);
@@ -912,12 +908,13 @@ static int tca64xx_probe(struct device *device)
     struct tca64xx_platform *pdata = device->pdata;
     struct tca64xx_platform_data *tca64xx;
     struct task *task;
-    const char* argv[2];
-    char buf[16];
     uint8_t nr_gpios;
     int ret;
 
     RET_IF_FAIL(device, -EINVAL);
+
+    if (device->power_on)
+        device->power_on(device);
 
     nr_gpios = get_nr_gpios(pdata->part);
     if (nr_gpios < 0) {
@@ -939,6 +936,8 @@ static int tca64xx_probe(struct device *device)
     tca64xx->in = 0;
     tca64xx->intstat = 0;
     spinlock_init(&tca64xx->lock);
+
+    device->priv = tca64xx;
 
     if (pdata->reset_gpio != TCA64XX_IO_UNUSED)
         tca64xx_reset(tca64xx, 0);
@@ -963,10 +962,7 @@ static int tca64xx_probe(struct device *device)
 
         /* Create polling worker */
         tca64xx->worker_exit = false;
-        sprintf(buf, "%p", tca64xx);
-        argv[0] = buf;
-        argv[1] = NULL;
-        task = task_run(tca64xx_polling_worker, argv, 0);
+        task = task_run(tca64xx_polling_worker, tca64xx, 0);
         if (!task) {
             lldbg_error("%s: Failed to create polling worker\n", __func__);
             return -EINVAL;
