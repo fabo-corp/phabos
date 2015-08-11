@@ -176,7 +176,7 @@ static struct stm32_i2c_adapter_platform stm32_i2c_pdata = {
     .clk = APB1_FREQ,
 };
 
-static struct i2c_adapter stm32_i2c_adapter = {
+struct i2c_adapter stm32_i2c_adapter = {
     .device = {
         .name = "i2c-2",
         .description = "STM32 I2C-2",
