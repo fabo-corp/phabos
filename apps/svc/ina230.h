@@ -76,7 +76,7 @@ typedef enum {
 
 typedef struct
 {
-    int i2c_fd;                         /* I2C bus handler */
+    struct i2c_adapter *adapter;        /* I2C bus handler */
     uint8_t addr;                       /* I2C device address */
     uint32_t mohm;                      /* Shunt resistor value in milliohms */
     uint32_t current_lsb;               /* Current LSB in microamps */
@@ -85,7 +85,7 @@ typedef struct
     ina230_avg_count count;             /* Average sample count */
 } ina230_device;
 
-ina230_device *ina230_init(int i2c_fd, uint8_t addr,
+ina230_device *ina230_init(struct i2c_adapter *adapter, uint8_t addr,
                            uint32_t mohm, uint32_t current_lsb,
                            ina230_conversion_time ct,
                            ina230_avg_count count,
