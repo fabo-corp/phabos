@@ -195,7 +195,7 @@ static const uint8_t bdbpm_i2c_addr[DEV_MAX_RAIL_COUNT][DEV_COUNT] = {
     },
 };
 
-static int i2c_fd;
+extern struct i2c_adapter stm32_i2c_adapter; // XXX port phabos
 static uint32_t bdbpm_current_lsb;
 static ina230_conversion_time bdbpm_ct;
 static ina230_avg_count bdbpm_avg_count;
@@ -634,24 +634,14 @@ int bdbpm_init(uint32_t current_lsb_uA,
 {
     dbg_verbose("%s(): Initializing with options lsb=%uuA, ct=%u, avg_count=%u...\n",
                 __func__, current_lsb_uA, ct, avg_count);
-    /* Initialize I2C internal structs */
-    i2c_fd = open("/dev/i2c-0", 0);
-    if (i2c_fd < 0) {
-        dbg_error("%s(): Failed to get I2C bus %u\n", __func__, PWRM_I2C_BUS);
-        return -ENXIO;
-    }
 
     bdbpm_current_lsb = current_lsb_uA;
     if (ct >= ina230_ct_count) {
         dbg_error("%s(): invalid conversion time! (%u)\n", __func__, ct);
-        close(i2c_fd);
-        i2c_fd = -1;
         return -EINVAL;
     }
     if (avg_count >= ina230_avg_count_max) {
         dbg_error("%s(): invalid average count! (%u)\n", __func__, avg_count);
-        close(i2c_fd);
-        i2c_fd = -1;
         return -EINVAL;
     }
     bdbpm_ct = ct;
@@ -688,10 +678,6 @@ void bdbpm_deinit(void)
     gpio_set_value(I2C_INA230_SEL2_A, 1);
     gpio_set_value(I2C_INA230_SEL2_B, 1);
     gpio_set_value(I2C_INA230_SEL2_INH, 1);
-
-    /* Release I2C resource */
-    close(i2c_fd);
-    i2c_fd = -1;
 
     return;
 }
@@ -749,7 +735,7 @@ bdbpm_rail *bdbpm_init_rail(uint8_t dev, uint8_t rail)
     /* Init device */
     dbg_verbose("%s(): calling ina230_init() with addr=0x%02X, mohm=%u, lsb=%uuA, ct=%u, avg_count=%u, mode=%u\n",
                 __func__, addr, INA230_SHUNT_VALUE, bdbpm_current_lsb, bdbpm_ct, bdbpm_avg_count, ina230_shunt_bus_cont);
-    ina230_dev = ina230_init(i2c_fd, addr,
+    ina230_dev = ina230_init(&stm32_i2c_adapter, addr,
                            INA230_SHUNT_VALUE, bdbpm_current_lsb,
                            bdbpm_ct,
                            bdbpm_avg_count,
