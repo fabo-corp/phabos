@@ -48,26 +48,6 @@
 #define SVC_LED_RED         (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_PORTA | \
                              GPIO_OUTPUT_SET | GPIO_PIN7)
 
-/* U96 I/O Expander reset */
-#define IO_RESET            (GPIO_OUTPUT | GPIO_OPENDRAIN | GPIO_PULLUP | \
-                             GPIO_PORTE | GPIO_PIN0)
-
-/* U90 I/O Expander reset */
-#define IO_RESET1           (GPIO_OUTPUT | GPIO_OPENDRAIN | GPIO_PULLUP | \
-                             GPIO_PORTE | GPIO_PIN1)
-
-/* Main I/O Expander IRQ from U96 to SVC */
-#define U96_IO_EXP_IRQ      STM32_GPIO_PIN(GPIO_PORTA | GPIO_PIN0)
-
-/* I/O Expander IRQ from U90 cascaded to U96 */
-#define U90_IO_EXP_IRQ      U96_GPIO_PIN(7)
-
-/* I/O Expanders: I2C bus and addresses */
-#define IOEXP_I2C_BUS       2
-#define IOEXP_U90_I2C_ADDR  0x21
-#define IOEXP_U96_I2C_ADDR  0x20
-#define IOEXP_U135_I2C_ADDR 0x23
-
 /*
  * How long to leave hold each regulator before the next.
  */
