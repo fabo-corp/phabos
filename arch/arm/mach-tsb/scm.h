@@ -214,6 +214,8 @@ uint32_t tsb_get_debug_reg(uint32_t reg);
 void tsb_clk_init(void);
 void tsb_clk_enable(uint32_t clk);
 void tsb_clk_disable(uint32_t clk);
+int tsb_request_pinshare(uint32_t bits);
+int tsb_release_pinshare(uint32_t bits);
 uint32_t tsb_clk_status(uint32_t clk);
 void tsb_clk_dump(void);
 void tsb_reset(uint32_t rst);

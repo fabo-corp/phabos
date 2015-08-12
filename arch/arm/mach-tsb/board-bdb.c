@@ -65,8 +65,22 @@ extern struct driver uart16550_driver;
 #define TSB_HSIC_DPPULLDOWN             (1 << 0)
 #define TSB_HSIC_DMPULLDOWN             (1 << 1)
 
+#if defined(CONFIG_TSB_ES1)
+#define TSB_I2C_PINSHARE TSB_PIN_SDIO
+#else
+#define TSB_I2C_PINSHARE (TSB_PIN_GPIO21 | TSB_PIN_GPIO22)
+#endif
+
 static int tsb_hcd_power_on(struct device *device)
 {
+    int retval;
+
+    retval = tsb_request_pinshare(TSB_PIN_UART_CTSRTS);
+    if (retval)
+        return retval;
+
+    tsb_clr_pinshare(TSB_PIN_UART_CTSRTS);
+
     gpio_activate(HUB_LINE_N_RESET);
 
     gpio_direction_out(HUB_LINE_N_RESET, 0);
@@ -85,8 +99,6 @@ static int tsb_hcd_power_on(struct device *device)
     tsb_reset(TSB_RST_HSICPHY);
     tsb_reset(TSB_RST_HSICPOR);
 
-    tsb_clr_pinshare(TSB_PIN_UART_CTSRTS);
-
     return 0;
 }
 
@@ -99,18 +111,20 @@ static int tsb_hcd_power_off(struct device *device)
     gpio_direction_out(HUB_LINE_N_RESET, 0);
     gpio_deactivate(HUB_LINE_N_RESET);
 
+    tsb_release_pinshare(TSB_PIN_UART_CTSRTS);
+
     return 0;
 }
 
 static int tsb_i2c_power_on(struct device *device)
 {
-    /* enable I2C pins */
-#if defined(CONFIG_TSB_ES1)
-    tsb_clr_pinshare(TSB_PIN_SDIO);
-#elif defined(CONFIG_TSB_ES2)
-    tsb_clr_pinshare(TSB_PIN_GPIO21);
-    tsb_clr_pinshare(TSB_PIN_GPIO22);
-#endif
+    int retval;
+
+    retval = tsb_request_pinshare(TSB_I2C_PINSHARE);
+    if (retval)
+        return retval;
+
+    tsb_clr_pinshare(TSB_I2C_PINSHARE);
 
     /* enable I2C clocks */
     tsb_clk_enable(TSB_CLK_I2CP);
@@ -127,6 +141,8 @@ static int tsb_i2c_power_off(struct device *device)
 {
     tsb_clk_disable(TSB_CLK_I2CP);
     tsb_clk_disable(TSB_CLK_I2CS);
+
+    tsb_release_pinshare(TSB_I2C_PINSHARE);
 
     return 0;
 }
@@ -310,6 +326,7 @@ struct mm_region tsb_mm_regions[] = {
 
 void tsb_uart_init(void)
 {
+    tsb_request_pinshare(TSB_PIN_UART_RXTX);
     tsb_set_pinshare(TSB_PIN_UART_RXTX);
 
     tsb_clk_enable(TSB_CLK_UARTP);

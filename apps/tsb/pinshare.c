@@ -39,6 +39,8 @@
 
 void tsb_set_pinshare(uint32_t pin);
 void tsb_clr_pinshare(uint32_t pin);
+int tsb_request_pinshare(uint32_t bits);
+int tsb_release_pinshare(uint32_t bits);
 uint32_t tsb_get_pinshare(void);
 
 static void print_usage(void)
@@ -94,6 +96,8 @@ int pinshare_main(int argc, char *argv[])
         } else {
             switch(cmd) {
             case 's':
+                tsb_release_pinshare(mask); // force ownership of the pins
+                tsb_request_pinshare(mask);
                 tsb_set_pinshare(mask);
                 printf("New value of PINSHARE register is: 0x%x\n",
                        tsb_get_pinshare());
@@ -103,6 +107,9 @@ int pinshare_main(int argc, char *argv[])
                     printf("PINSHARE: Leaving bit 0 set, to keep UART active!\n");
                     mask &= ~1;
                 }
+
+                tsb_release_pinshare(mask); // force ownership of the pins
+                tsb_request_pinshare(mask);
                 tsb_clr_pinshare(mask);
                 printf("New value of PINSHARE register is: 0x%x\n",
                        tsb_get_pinshare());

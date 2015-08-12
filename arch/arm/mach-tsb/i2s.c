@@ -153,6 +153,13 @@
 #define TSB_I2S_FLAG_TX_PREPARED                        BIT(5)
 #define TSB_I2S_FLAG_TX_ACTIVE                          BIT(6)
 
+#if defined(CONFIG_TSB_CHIP_REV_ES1)
+#define TSB_I2S_PINSHARE TSB_PIN_ETM
+#else
+#define TSB_I2S_PINSHARE (TSB_PIN_ETM | TSB_PIN_GPIO16 | TSB_PIN_GPIO18 | \
+                          TSB_PIN_GPIO19 | TSB_PIN_GPIO20)
+#endif
+
 static inline uint32_t __swap32(uint32_t x)
 {
     uint32_t y;
@@ -2003,6 +2010,12 @@ static int tsb_i2s_dev_probe(struct device_ara *dev)
     struct tsb_i2s_info *info;
     int ret;
 
+    ret = tsb_request_pinshare(TSB_I2S_PINSHARE);
+    if (ret)
+        return ret;
+
+    tsb_clr_pinshare(TSB_I2S_PINSHARE);
+
     info = zalloc(sizeof(*info));
     if (!info)
         return -ENOMEM;
@@ -2030,16 +2043,6 @@ static int tsb_i2s_dev_probe(struct device_ara *dev)
     ret = irq_attach(info->si_irq, tsb_i2s_irq_si_handler, NULL);
     if (ret != 0)
         goto err_detach_sierr_irq;
-
-#if defined(CONFIG_TSB_CHIP_REV_ES1) || defined(CONFIG_TSB_CHIP_REV_ES2)
-    tsb_clr_pinshare(TSB_PIN_ETM);
-#if defined(CONFIG_TSB_CHIP_REV_ES2)
-    tsb_clr_pinshare(TSB_PIN_GPIO16);
-    tsb_clr_pinshare(TSB_PIN_GPIO18);
-    tsb_clr_pinshare(TSB_PIN_GPIO19);
-    tsb_clr_pinshare(TSB_PIN_GPIO20);
-#endif
-#endif
 
     info->dev = dev;
     dev->private = info;
@@ -2083,6 +2086,8 @@ static void tsb_i2s_dev_remove(struct device_ara *dev)
     memset(info, 0, sizeof(*info));
     free(info);
     dev->private = NULL;
+
+    tsb_release_pinshare(TSB_I2S_PINSHARE);
 }
 
 static struct device_i2s_type_ops tsb_i2s_type_ops = {

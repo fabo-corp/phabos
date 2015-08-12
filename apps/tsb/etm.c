@@ -77,6 +77,8 @@ enum tsb_drivestrength {
 void tsb_set_pinshare(uint32_t pin);
 void tsb_clr_pinshare(uint32_t pin);
 uint32_t tsb_get_pinshare(void);
+int tsb_request_pinshare(uint32_t bits);
+int tsb_release_pinshare(uint32_t bits);
 void tsb_set_drivestrength(uint32_t ds_id, enum tsb_drivestrength value);
 enum tsb_drivestrength tsb_get_drivestrength(uint32_t ds_id);
 
@@ -158,6 +160,7 @@ int etm_main(int argc, char *argv[])
     char cmd;
     long drive_ma;
     unsigned short last_drive_ma = etm.drive_ma;
+    int retval;
 
     if (argc < 2) {
         print_usage();
@@ -203,6 +206,12 @@ int etm_main(int argc, char *argv[])
              * but the present API doesn't expose it
              */
             etm.etm_pinshare_save = tsb_get_pinshare() & TSB_PIN_ETM;
+            retval = tsb_request_pinshare(TSB_PIN_ETM);
+            if (retval) {
+                fprintf(stderr, "ETM pin already held by another driver\n.");
+                return retval;
+            }
+
             tsb_set_pinshare(TSB_PIN_ETM);
 
             /* set drive strength for the TRACE signals to the specified value */
@@ -275,6 +284,7 @@ int etm_main(int argc, char *argv[])
             /* Clear the ETM pinshare if it wasn't set on entry */
             if (!etm.etm_pinshare_save)
                 tsb_clr_pinshare(TSB_PIN_ETM);
+            tsb_release_pinshare(TSB_PIN_ETM);
 
             etm.enabled = 0;
             etm.drive_ma = 0;

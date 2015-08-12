@@ -31,7 +31,9 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <errno.h>
 
+#include <asm/irq.h>
 #include <asm/hwio.h>
 #include <phabos/utils.h>
 #include <phabos/kprintf.h>
@@ -46,6 +48,8 @@
 #define TSB_SCM_PID                     0x00000704 // named MODULEID1 in ES1
 #define TSB_SCM_PINSHARE                0x00000800
 #define TSB_IO_DRIVE_STRENGTH0          0x00000A00
+
+static uint32_t pinshare_setting;
 
 static uint32_t scm_read(uint32_t offset)
 {
@@ -88,14 +92,41 @@ void tsb_reset(uint32_t rst)
     scm_write(TSB_SCM_SOFTRESETRELEASE0 + CLK_OFFSET(rst), CLK_MASK(rst));
 }
 
+int tsb_request_pinshare(uint32_t bits)
+{
+    if (pinshare_setting & bits)
+        return -EBUSY;
+
+    irq_disable();
+    pinshare_setting |= bits;
+    irq_enable();
+
+    return 0;
+}
+
+int tsb_release_pinshare(uint32_t bits)
+{
+    irq_disable();
+    pinshare_setting &= ~bits;
+    irq_enable();
+
+    return 0;
+}
+
 void tsb_set_pinshare(uint32_t bits)
 {
+    if ((pinshare_setting & bits) != bits)
+        return;
+
     uint32_t r = scm_read(TSB_SCM_PINSHARE);
     scm_write(TSB_SCM_PINSHARE, r | bits);
 }
 
 void tsb_clr_pinshare(uint32_t bits)
 {
+    if ((pinshare_setting & bits) != bits)
+        return;
+
     uint32_t r = scm_read(TSB_SCM_PINSHARE);
     scm_write(TSB_SCM_PINSHARE, r & ~bits);
 }
