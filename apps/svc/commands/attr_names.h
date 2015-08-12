@@ -26,39 +26,36 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef  _SVC_H_
-#define  _SVC_H_
+#ifndef __SVC_ATTR_NAMES_H_
+#define __SVC_ATTR_NAMES_H_
 
-#include <phabos/mutex.h>
-#include <phabos/scheduler.h>
+#include <stdint.h>
 
-enum svc_state {
-    SVC_STATE_STOPPED,
-    SVC_STATE_RUNNING,
+struct attr_name {
+    uint16_t attr;
+    const char *name;
 };
 
-struct svc {
-    struct tsb_switch *sw;
-    struct ara_board_info *board_info;
-
-    enum svc_state state;
-    int stop;
-    pid_t svcd_pid;
-    struct mutex lock;
-    struct task_cond cv;
+struct attr_name_group {
+    /*
+     * This is an array, terminated with an element whose "name"
+     * field is null.
+     */
+    const struct attr_name *attr_names;
+    /*
+     * A printable name of this group of attributes.
+     */
+    const char *group_name;
 };
 
-extern struct svc *svc;
+extern const struct attr_name_group unipro_l1_attr_group;
+extern const struct attr_name_group unipro_l1_5_attr_group;
+extern const struct attr_name_group unipro_l2_attr_group;
+extern const struct attr_name_group unipro_l3_attr_group;
+extern const struct attr_name_group unipro_l4_attr_group;
+extern const struct attr_name_group unipro_dme_attr_group;
+extern const struct attr_name_group unipro_tsb_attr_group;
 
-int svcd_start(void);
-void svcd_stop(void);
-
-struct interface;
-
-int svc_connect_interfaces(struct interface *iface1, uint16_t cportid1,
-                           struct interface *iface2, uint16_t cportid2,
-                           uint8_t tc, uint8_t flags);
+const char* attr_get_name(uint16_t attr);
 
 #endif
-
-
