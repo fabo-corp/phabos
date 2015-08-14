@@ -14,6 +14,7 @@
 #include <phabos/driver.h>
 #include <phabos/mm.h>
 #include <phabos/i2c.h>
+#include <phabos/unipro/tsb.h>
 
 #include <apps/shell.h>
 #include <asm/delay.h>
@@ -251,6 +252,8 @@ int dev_main(int argc, char **argv)
     kprintf("%.3d\n", 5);
 
     kprintf("%6s\n", "hello");
+
+tsb_unipro_mbox_set(TSB_MAIL_READY_OTHER, true);
 
 #if defined(CONFIG_TSB_APB1)
     bridge_main(argc, argv);

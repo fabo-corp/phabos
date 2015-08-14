@@ -28,7 +28,7 @@
 
 #include <errno.h>
 
-#include <asm/unipro.h>
+#include <phabos/unipro/unipro.h>
 //#include <nuttx/usb/apb_es1.h>
 
 #include "apbridge_backend.h"
@@ -66,7 +66,7 @@ static void unipro_backend_init(void)
     unipro_init();
 
     /* Now register a driver for those CPorts */
-    for (i = 0; i < CPORT_MAX; i++) {
+    for (i = 0; i < unipro_cport_count(); i++) {
         /* These cports are already allocated for display and camera */
         if (i == CPORTID_CDSI0 || i == CPORTID_CDSI1)
             continue;

@@ -50,7 +50,7 @@
 #include <asm/byteordering.h>
 #include <asm/delay.h>
 #include <asm/irq.h>
-#include <asm/unipro.h>
+#include <phabos/unipro/unipro.h>
 #include <phabos/list.h>
 #include <phabos/greybus.h>
 #include <phabos/semaphore.h>
@@ -65,7 +65,7 @@
 #define ESHUTDOWN 110  /* Can't send after socket shutdown */
 #define DEBUGASSERT(x)
 #define CONFIG_APBRIDGE_VENDORID 0xffff
-#define CONFIG_APBRIDGE_PRODUCTID 0x1
+#define CONFIG_APBRIDGE_PRODUCTID 0x2
 
 static size_t list_count(struct list_head *head)
 {
@@ -113,9 +113,7 @@ static size_t list_count(struct list_head *head)
 #define APBRIDGE_CONFIGIDNONE        (0)        /* Config ID means to return to address mode */
 #define APBRIDGE_CONFIGID            (1)        /* The only supported configuration ID */
 #define APBRIDGE_NCONFIGS            (1)        /* Number of configurations supported */
-#if defined(CONFIG_TSB_ES1)
-#define APBRIDGE_NBULKS              (1)
-#else
+#if defined(CONFIG_TSB_ES2)
 #define APBRIDGE_NBULKS              (7)
 #endif
 
@@ -199,6 +197,13 @@ struct apbridge_req_s {
     void *priv;
 };
 
+struct apbridge_msg_s {
+    struct list_head list;
+    struct usbdev_ep_s *ep;
+    const void *buf;
+    size_t len;
+};
+
 /* This structure describes the internal state of the driver */
 
 struct apbridge_dev_s {
@@ -214,7 +219,9 @@ struct apbridge_dev_s {
     struct list_head rdreq;
     struct list_head wrreq;
 
-    int cport_to_epin_n[CPORT_MAX];
+    struct list_head msg_queue;
+
+    int *cport_to_epin_n;
     int epout_to_cport_n[APBRIDGE_NBULKS];
 
     struct apbridge_usb_driver *driver;
@@ -441,6 +448,11 @@ static struct list_head *epno_to_req_list(struct apbridge_dev_s *priv,
     return NULL;
 }
 
+static unsigned int get_cportid(const struct gb_operation_hdr *hdr)
+{
+    return hdr->pad[1] << 8 | hdr->pad[0];
+}
+
 static struct usbdev_req_s *get_request(struct list_head *list)
 {
     struct usbdev_req_s *req;
@@ -464,11 +476,72 @@ static void put_request(struct list_head *list, struct usbdev_req_s *req)
     list_add(list, &reqcontainer->list);
 }
 
+static int apbridge_queue(struct apbridge_dev_s *priv, struct usbdev_ep_s *ep,
+                          const void *payload, size_t len)
+{
+    struct apbridge_msg_s *info;
+
+    info = malloc(sizeof(*info));
+    if (!info) {
+        return -ENOMEM;
+    }
+
+    info->ep = ep;
+    info->buf = payload;
+    info->len = len;
+
+    irq_disable();
+    list_add(&priv->msg_queue, &info->list);
+    irq_enable();
+
+    return 0;
+}
+
+static struct apbridge_msg_s *apbridge_dequeue(struct apbridge_dev_s *priv)
+{
+    struct list_head *list;
+
+    irq_disable();
+    if (list_is_empty(&priv->msg_queue)) {
+        irq_enable();
+        return NULL;
+    }
+
+    list = priv->msg_queue.next;
+    list_del(list);
+    irq_enable();
+    return list_entry(list, struct apbridge_msg_s, list);
+}
+
+static int _to_usb_submit(struct usbdev_ep_s *ep, struct usbdev_req_s *req,
+                          const void *payload, size_t len)
+{
+    int ret;
+    unsigned int cportid;
+
+    req->len = len;
+    memcpy(req->buf, payload, len);
+
+    /* Unpause unipro only if the request come from unipro */
+    if (USB_EPNO(ep->eplog) != CONFIG_APBRIDGE_EPINTIN) {
+        cportid = get_cportid(payload);
+        unipro_unpause_rx(cportid);
+    }
+
+    /* Then submit the request to the endpoint */
+
+    ret = EP_SUBMIT(ep, req);
+    if (ret != 0) {
+        usbtrace(TRACE_CLSERROR(USBSER_TRACEERR_SUBMITFAIL), (uint16_t) - ret);
+        return ret;
+    }
+
+    return 0;
+}
+
 static int _to_usb(struct apbridge_dev_s *priv, uint8_t epno,
                    const void *payload, size_t len)
 {
-    int ret;
-
     struct list_head *list;
     struct usbdev_ep_s *ep;
     struct usbdev_req_s *req;
@@ -478,21 +551,12 @@ static int _to_usb(struct apbridge_dev_s *priv, uint8_t epno,
         return -EINVAL;
 
     req = get_request(list);
-    if (!req)
-        return -EBUSY;
-    req->len = len;
-    memcpy(req->buf, payload, len);
-
-    /* Then submit the request to the endpoint */
-
     ep = priv->ep[epno & USB_EPNO_MASK];
-    ret = EP_SUBMIT(ep, req);
-    if (ret != 0) {
-        usbtrace(TRACE_CLSERROR(USBSER_TRACEERR_SUBMITFAIL), (uint16_t) - ret);
-        return ret;
+    if (!req) {
+        return apbridge_queue(priv, ep, payload, len);
     }
 
-    return 0;
+    return _to_usb_submit(ep, req, payload, len);
 }
 
 /**
@@ -506,22 +570,16 @@ static int _to_usb(struct apbridge_dev_s *priv, uint8_t epno,
 int unipro_to_usb(struct apbridge_dev_s *priv, const void *payload,
                   size_t len)
 {
-    int retval;
     uint8_t epno;
     unsigned int cportid;
-    struct gb_operation_hdr *hdr;
 
     if (len > APBRIDGE_REQ_SIZE)
         return -EINVAL;
 
-    hdr = (struct gb_operation_hdr *) payload;
-    cportid = hdr->pad[1] << 8 | hdr->pad[0];
+    cportid = get_cportid(payload);
     epno = priv->cport_to_epin_n[cportid];
 
-    retval = _to_usb(priv, epno, payload, len);
-    unipro_unpause_rx(cportid);
-
-    return retval;
+    return _to_usb(priv, epno, payload, len);
 }
 
 int usb_release_buffer(struct apbridge_dev_s *priv, const void *buf)
@@ -1038,6 +1096,7 @@ static void usbclass_wrcomplete(struct usbdev_ep_s *ep,
                               struct usbdev_req_s *req)
 {
     struct list_head *list;
+    struct apbridge_msg_s *info;
     struct apbridge_dev_s *priv;
 
     /* Sanity check */
@@ -1049,8 +1108,14 @@ static void usbclass_wrcomplete(struct usbdev_ep_s *ep,
 #endif
 
     priv = (struct apbridge_dev_s *) ep->priv;
-    list = epno_to_req_list(priv, USB_EPNO(ep->eplog));
-    put_request(list, req);
+    info = apbridge_dequeue(priv);
+    if (info) {
+        _to_usb_submit(info->ep, req, info->buf, info->len);
+        free(info);
+    } else {
+        list = epno_to_req_list(priv, USB_EPNO(ep->eplog));
+        put_request(list, req);
+    }
 
     switch (req->result) {
     case 0:                   /* Normal completion */
@@ -1660,7 +1725,7 @@ int usbdev_apbinitialize(struct apbridge_usb_driver *driver)
     struct apbridge_dev_s *priv;
     struct apbridge_driver_s *drvr;
     int ret;
-    int i;
+    unsigned int i;
 
     /* Reset USB HSIC HUB */
     hsic_hub_reset();
@@ -1684,10 +1749,17 @@ int usbdev_apbinitialize(struct apbridge_usb_driver *driver)
     memset(priv, 0, sizeof(struct apbridge_dev_s));
     priv->driver = driver;
 
-    for (i = 0; i < CPORT_MAX; i++) {
+    priv->cport_to_epin_n = kmalloc(sizeof(int) * unipro_cport_count(), 0);
+    if (!priv->cport_to_epin_n) {
+        ret = -ENOMEM;
+        goto errout_with_alloc;
+    }
+
+    for (i = 0; i < unipro_cport_count(); i++) {
         priv->cport_to_epin_n[i] = CONFIG_APBRIDGE_EPBULKIN;
     }
     semaphore_init(&priv->config_sem, 0);
+    list_init(&priv->msg_queue);
 
     /* Initialize the USB class driver structure */
 
@@ -1701,7 +1773,7 @@ int usbdev_apbinitialize(struct apbridge_usb_driver *driver)
     if (ret) {
         usbtrace(TRACE_CLSERROR(USBSER_TRACEERR_DEVREGISTER),
                  (uint16_t) - ret);
-        goto errout_with_alloc;
+        goto errout_cport_table;
     }
     ret = priv->driver->init(priv);
     if (ret)
@@ -1712,6 +1784,8 @@ int usbdev_apbinitialize(struct apbridge_usb_driver *driver)
 
  errout_with_init:
     usbdev_unregister(&drvr->drvr);
+errout_cport_table:
+    kfree(priv->cport_to_epin_n);
  errout_with_alloc:
     kfree(alloc);
     return ret;

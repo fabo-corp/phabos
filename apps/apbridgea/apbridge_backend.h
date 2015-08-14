@@ -29,7 +29,7 @@
 #ifndef APBRIDGE_BACKEND_H
 #define APBRIDGE_BACKEND_H
 
-#include <asm/unipro.h>
+#include <phabos/unipro/unipro.h>
 #include "svc.h"
 
 struct apbridge_backend {

@@ -39,7 +39,7 @@
 
 #include "control-gb.h"
 
-#define CONTROL_CPORT 2
+#define CONTROL_CPORT 0
 
 static struct gb_manifest *manifest;
 

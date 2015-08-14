@@ -34,6 +34,7 @@
 #include <phabos/list.h>
 #include <phabos/greybus/unipro.h>
 #include <phabos/unipro/unipro.h>
+#include <phabos/unipro/tsb.h>
 #include <phabos/greybus/tsb_unipro.h>
 #include <phabos/semaphore.h>
 #include <phabos/scheduler.h>
@@ -43,11 +44,15 @@
 #include <asm/hwio.h>
 #include <asm/tsb-irq.h>
 #include <asm/irq.h>
+#include <asm/delay.h>
 
 #include "chip.h"
 #include "scm.h"
 #include "unipro-es2.h"
 #include "es2-mphy-fixups.h"
+
+// See ENG-436
+#define MBOX_RACE_HACK_DELAY    100000
 
 #ifdef UNIPRO_DEBUG
 #define DBG_UNIPRO(fmt, ...) kprintf(fmt, __VA_ARGS__)
@@ -102,50 +107,29 @@ struct unipro_buffer {
                                       (CPORT_TX_BUF_SIZE * cport))
 #define CPORT_EOM_BIT(cport)      (cport->tx_buf + (CPORT_TX_BUF_SIZE - 1))
 
-#define DECLARE_CPORT(id) {            \
-    .tx_buf      = CPORT_TX_BUF(id),   \
-    .rx_buf      = CPORT_RX_BUF(id),   \
-    .cportid     = id,                 \
-    .connected   = 0,                  \
-}
-
 #define CPORTID_CDSI0    (16)
 #define CPORTID_CDSI1    (17)
 
 #define CPB_TX_BUFFER_SPACE_MASK        ((uint32_t) 0x0000007F)
 #define CPB_TX_BUFFER_SPACE_OFFSET_MASK CPB_TX_BUFFER_SPACE_MASK
 
-/*
- * FIXME: We could allocate and size this array at runtime, based on the type
- *        of bridge.
- */
-static struct cport cporttable[] = {
-    DECLARE_CPORT(0),  DECLARE_CPORT(1),  DECLARE_CPORT(2),  DECLARE_CPORT(3),
-    DECLARE_CPORT(4),  DECLARE_CPORT(5),  DECLARE_CPORT(6),  DECLARE_CPORT(7),
-    DECLARE_CPORT(8),  DECLARE_CPORT(9),  DECLARE_CPORT(10), DECLARE_CPORT(11),
-    DECLARE_CPORT(12), DECLARE_CPORT(13), DECLARE_CPORT(14), DECLARE_CPORT(15),
-    DECLARE_CPORT(16), DECLARE_CPORT(17), DECLARE_CPORT(18), DECLARE_CPORT(19),
-    DECLARE_CPORT(20), DECLARE_CPORT(21), DECLARE_CPORT(22), DECLARE_CPORT(23),
-    DECLARE_CPORT(24), DECLARE_CPORT(25), DECLARE_CPORT(26), DECLARE_CPORT(27),
-    DECLARE_CPORT(28), DECLARE_CPORT(29), DECLARE_CPORT(30), DECLARE_CPORT(31),
-    DECLARE_CPORT(32), DECLARE_CPORT(33), DECLARE_CPORT(34), DECLARE_CPORT(35),
-    DECLARE_CPORT(36), DECLARE_CPORT(37), DECLARE_CPORT(38), DECLARE_CPORT(39),
-    DECLARE_CPORT(40), DECLARE_CPORT(41), DECLARE_CPORT(42), DECLARE_CPORT(43),
-};
+static struct cport *cporttable;
 
+#define APBRIDGE_CPORT_MAX 44 // number of CPorts available on the APBridges
 #define GPBRIDGE_CPORT_MAX 16 // number of CPorts available on the GPBridges
-static inline unsigned int cport_max(void) {
+
+unsigned int unipro_cport_count(void) {
     /*
      * Reduce the run-time CPort count to what's available on the
      * GPBridges, unless we can determine that we're running on an
      * APBridge.
      */
     return ((tsb_get_product_id() == tsb_pid_apbridge) ?
-            CPORT_MAX : GPBRIDGE_CPORT_MAX);
+            APBRIDGE_CPORT_MAX : GPBRIDGE_CPORT_MAX);
 }
 
 static inline struct cport *cport_handle(unsigned int cportid) {
-    if (cportid >= cport_max() || cportid == CPORTID_CDSI0 ||
+    if (cportid >= unipro_cport_count() || cportid == CPORTID_CDSI0 ||
         cportid == CPORTID_CDSI1) {
         return NULL;
     } else {
@@ -169,6 +153,7 @@ static void dump_regs(void);
 
 /* irq handlers */
 static void irq_rx_eom(int, void*);
+static void irq_unipro(int, void*);
 
 /*
  * "Map" constants for M-PHY fixups.
@@ -320,12 +305,12 @@ static int configure_connected_cport(unsigned int cportid) {
  * @param write 0 for read, 1 for write
  * @param result_code unipro return code, optional
  */
-static int unipro_attr_access(uint16_t attr,
-                              uint32_t *val,
-                              uint16_t selector,
-                              int peer,
-                              int write,
-                              uint32_t *result_code) {
+int unipro_attr_access(uint16_t attr,
+                       uint32_t *val,
+                       uint16_t selector,
+                       int peer,
+                       int write,
+                       uint32_t *result_code) {
 
     uint32_t ctrl = (REG_ATTRACS_CTRL_PEERENA(peer) |
                      REG_ATTRACS_CTRL_SELECT(selector) |
@@ -403,13 +388,82 @@ static void irq_rx_eom(int irq, void *priv)
                                    (cport->cportid * sizeof(uint32_t)));
     DBG_UNIPRO("cport: %u driver: %s size=%u payload=0x%x\n",
                 cport->cportid,
-                cport->driver->name,
+                cport->driver->name, transferred_size,
                 data);
 
     if (cport->driver->rx_handler) {
         cport->driver->rx_handler(cport->cportid, data,
                                   (size_t)transferred_size);
     }
+}
+
+/**
+ * @brief See ENG-376.
+ *
+ * We use a mailbox notification from the SVC to solve a race condition
+ * involving FCT transmission. When the SVC makes a connection, it sets all the
+ * relevant DME parameters as defined in MIPI UniPro 1.6, then pokes the
+ * bridge mailbox, telling it that it is safe to send FCTs on a given CPort.
+ */
+static void irq_unipro(int irq, void *context) {
+    uint32_t cportid;
+    int rc;
+    uint32_t e2efc;
+    uint32_t val;
+    DBG_UNIPRO("mailbox interrupt received irq: %d \n", irq);
+
+    /*
+     * Clear the initial interrupt
+     */
+    rc = unipro_attr_local_read(TSB_INTERRUPTSTATUS, &val, 0, NULL);
+    if (rc) {
+        goto done;
+    }
+
+    /*
+     * Figure out which CPort to turn on FCT. The desired CPort is always
+     * the mailbox value - 1.
+     */
+    rc = unipro_attr_local_read(TSB_MAILBOX, &cportid, 0, NULL);
+    if (rc) {
+        goto done;
+    }
+    cportid--;
+
+    DBG_UNIPRO("Enabling E2EFC on cport %u\n", cportid);
+    if (cportid < 32) {
+        e2efc = unipro_read(CPB_RX_E2EFC_EN_0);
+        e2efc |= (1 << cportid);
+        unipro_write(CPB_RX_E2EFC_EN_0, e2efc);
+    } else if (cportid < APBRIDGE_CPORT_MAX) {
+        e2efc = unipro_read(CPB_RX_E2EFC_EN_1);
+        e2efc |= (1 << (cportid - 32));
+        unipro_write(CPB_RX_E2EFC_EN_1, e2efc);
+    }
+
+    configure_connected_cport(cportid);
+
+    /*
+     * Clear the mailbox. This triggers another a local interrupt which we have
+     * to clear.
+     */
+    rc = unipro_attr_local_write(TSB_MAILBOX, 0, 0, NULL);
+    if (rc) {
+        goto done;
+    }
+
+    rc = unipro_attr_local_read(TSB_INTERRUPTSTATUS, &val, 0, NULL);
+    if (rc) {
+        goto done;
+    }
+
+    rc = unipro_attr_local_read(TSB_MAILBOX, &cportid, 0, NULL);
+    if (rc) {
+        goto done;
+    }
+
+done:
+    irq_clear(TSB_IRQ_UNIPRO);
 }
 
 int unipro_unpause_rx(unsigned int cportid)
@@ -463,7 +517,7 @@ static void enable_int(unsigned int cportid) {
     unsigned int irqn;
 
     cport = cport_handle(cportid);
-    if (!cport || !cport->connected) {
+    if (!cport) {
         return;
     }
 
@@ -616,7 +670,7 @@ static void dump_regs(void) {
 
     kprintf("Connected CPorts:\n");
     kprintf("========================================\n");
-    for (i = 0; i < cport_max(); i++) {
+    for (i = 0; i < unipro_cport_count(); i++) {
         val = cport_get_status(cport_handle(i));
 
         if (val == CPORT_STATUS_CONNECTED) {
@@ -652,7 +706,6 @@ void unipro_info(void)
  */
 int unipro_init_cport(unsigned int cportid)
 {
-    int ret;
     struct cport *cport = cport_handle(cportid);
 
     if (!cport) {
@@ -662,12 +715,6 @@ int unipro_init_cport(unsigned int cportid)
     if (cport->connected)
         return 0;
 
-    /*
-     * Initialize cport.
-     */
-    ret = configure_connected_cport(cportid);
-    if (ret)
-        return ret;
 
     /*
      * FIXME: We presently specify a fixed receive buffer address
@@ -717,7 +764,7 @@ static void unipro_dequeue_tx_buffer(struct unipro_buffer *buffer, int status)
  * @return          0 on success, -EINVAL on invalid parameter,
  *                  -EBUSY when buffer could not be completely transferred
  *                  (unipro_send_tx_buffer() shall be called again until
- *                  buffer is enterily sent (return value == 0)).
+ *                  buffer is entirely sent (return value == 0)).
  * @param[in]       operation: greybus loopback operation
  */
 static int unipro_send_tx_buffer(struct cport *cport)
@@ -780,7 +827,7 @@ static void unipro_tx_worker(void *data)
         do {
             is_busy = false;
 
-            for (i = 0; i < cport_max(); i++) {
+            for (i = 0; i < unipro_cport_count(); i++) {
                 /* Browse all CPorts sending any pending buffers */
                 retval = unipro_send_tx_buffer(cport_handle(i));
                 if (retval == -EBUSY) {
@@ -801,9 +848,10 @@ static void unipro_tx_worker(void *data)
 void unipro_init(void)
 {
     unsigned int i;
+    int retval;
     struct cport *cport;
+    size_t table_size = sizeof(struct cport) * unipro_cport_count();
 
-    RET_IF_FAIL(ARRAY_SIZE(cporttable) <= 44,);
 
     semaphore_init(&worker.tx_fifo_lock, 0);
 
@@ -813,11 +861,18 @@ void unipro_init(void)
         return;
     }
 
-    for (i = 0; i < cport_max(); i++) {
-        cport = cport_handle(i);
-        if (cport) {
-            list_init(&cport->tx_fifo);
-        }
+    cporttable = zalloc(table_size);
+    if (!cporttable) {
+        return;
+    }
+
+    for (i = 0; i < unipro_cport_count(); i++) {
+        cport = &cporttable[i];
+        cport->tx_buf = CPORT_TX_BUF(i);
+        cport->rx_buf = CPORT_RX_BUF(i);
+        cport->cportid = i;
+        cport->connected = 0;
+        list_init(&cport->tx_fifo);
     }
 
     if (es2_fixup_mphy()) {
@@ -834,13 +889,32 @@ void unipro_init(void)
     configure_transfer_mode(TRANSFER_MODE);
 
     /*
-     * Initialize connected cports.
+     * Initialize cports.
      */
     unipro_write(UNIPRO_INT_EN, 0x0);
-    for (i = 0; i < cport_max(); i++) {
+    for (i = 0; i < unipro_cport_count(); i++) {
         unipro_init_cport(i);
     }
     unipro_write(UNIPRO_INT_EN, 0x1);
+
+
+    /*
+     * Disable FCT transmission. See ENG-376.
+     */
+    unipro_write(CPB_RX_E2EFC_EN_0, 0x0);
+    if (tsb_get_product_id() == tsb_pid_apbridge) {
+        unipro_write(CPB_RX_E2EFC_EN_1, 0x0);
+    }
+
+    /*
+     * Enable the mailbox interrupt
+     */
+    retval = unipro_attr_local_write(TSB_INTERRUPTENABLE, 0x1 << 15, 0, NULL);
+    if (retval) {
+        kprintf("Failed to enable mailbox interrupt\n");
+    }
+    irq_attach(TSB_IRQ_UNIPRO, irq_unipro, NULL);
+    irq_enable_line(TSB_IRQ_UNIPRO);
 
 #ifdef UNIPRO_DEBUG
     unipro_info();
@@ -1064,4 +1138,37 @@ int unipro_driver_unregister(unsigned int cportid)
     cport->driver = NULL;
 
     return 0;
+}
+
+/**
+ * @brief Set the mailbox value and wait for it to be cleared.
+ */
+int tsb_unipro_mbox_set(uint32_t val, int peer) {
+    int rc;
+
+    rc = unipro_attr_write(TSB_MAILBOX, val, 0, peer, NULL);
+    if (rc) {
+        kprintf("TSB_MAILBOX write failed: %d\n", rc);
+        return rc;
+    }
+
+    /*
+     * Silicon bug?: There seems to be a problem in the switch regarding
+     * lost mailbox sets. It seems to happen when a bridge writes to the
+     * mailbox and immediately reads the value back.
+     *
+     * Workaround for now by inserting a small delay.
+     *
+     * @jira{ENG-436}
+     */
+    udelay(MBOX_RACE_HACK_DELAY);
+
+    do {
+        rc = unipro_attr_read(TSB_MAILBOX, &val, 0, peer, NULL);
+        if (rc) {
+            kprintf("%s(): TSB_MAILBOX poll failed: %d\n", __func__, rc);
+        }
+    } while (!rc && val != TSB_MAIL_RESET);
+
+    return rc;
 }
