@@ -14,8 +14,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <string.h>
 
 #define BASE_PREFIX_FLAG (1 << 0)
+#define LEFT_PAD_0_FLAG  (1 << 1)
+
+struct format_specifier {
+    int flags;
+    int width;
+    int precision;
+    int length;
+};
 
 void low_putchar(char c);
 
@@ -37,7 +46,7 @@ int kputs(const char* str)
     return nbyte;
 }
 
-static int pr_unsigned(int precision, unsigned num, unsigned base,
+static int pr_unsigned(struct format_specifier *fs, unsigned num, unsigned base,
                        int recursion)
 {
     int size = 1;
@@ -47,12 +56,17 @@ static int pr_unsigned(int precision, unsigned num, unsigned base,
         return -EINVAL;
 
     if (num >= base) {
-        retval = pr_unsigned(precision, num / base, base, recursion + 1);
+        retval = pr_unsigned(fs, num / base, base, recursion + 1);
         if (retval < 0)
             return retval;
         size += retval;
     } else {
-        for (int i = recursion; i < precision; i++)
+        if (fs->precision < 0)
+            fs->precision = 1;
+        for (int i = recursion + fs->precision - 1; i < fs->width; i++)
+            kputc(fs->flags & LEFT_PAD_0_FLAG ? '0' : ' ');
+
+        for (int i = recursion; i < fs->precision; i++)
             kputc('0');
     }
 
@@ -65,12 +79,13 @@ static int pr_unsigned(int precision, unsigned num, unsigned base,
     return size;
 }
 
-static int print_unsigned_number(int precision, unsigned num, unsigned base)
+static int print_unsigned_number(struct format_specifier *fs, unsigned num,
+                                 unsigned base)
 {
-    return pr_unsigned(precision, num, base, 1);
+    return pr_unsigned(fs, num, base, 1);
 }
 
-static int print_signed_number(int precision, int num)
+static int print_signed_number(struct format_specifier *fs, int num)
 {
     int size = 1;
 
@@ -80,59 +95,59 @@ static int print_signed_number(int precision, int num)
         size++;
     }
 
-    int result = print_unsigned_number(precision, (unsigned) num, 10);
+    int result = print_unsigned_number(fs, (unsigned) num, 10);
     if (result < 0)
         return result;
 
     return size + result;
 }
 
-static int print_hexa(int flags, int precision, unsigned nbr)
+static int print_hexa(struct format_specifier *fs, unsigned nbr)
 {
     size_t nwrote = 0;
     int retval;
 
-    if (precision == 0 && nbr == 0)
+    if (fs->precision == 0 && nbr == 0)
         return 0;
 
-    if (flags & BASE_PREFIX_FLAG) {
+    if (fs->flags & BASE_PREFIX_FLAG) {
         retval = kputs("0x");
         if (retval < 0)
             return retval;
         nwrote += retval;
     }
 
-    return print_unsigned_number(precision, nbr, 16) + nwrote;
+    return print_unsigned_number(fs, nbr, 16) + nwrote;
 }
 
-static int print_octal(int flags, int precision, unsigned nbr)
+static int print_octal(struct format_specifier *fs, unsigned nbr)
 {
     size_t nwrote = 0;
 
-    if (precision == 0 && nbr == 0)
+    if (fs->precision == 0 && nbr == 0)
         return 0;
 
-    if (flags & BASE_PREFIX_FLAG) {
+    if (fs->flags & BASE_PREFIX_FLAG) {
         nwrote++;
         kputc('o');
     }
 
-    return print_unsigned_number(precision, nbr, 8) + nwrote;
+    return print_unsigned_number(fs, nbr, 8) + nwrote;
 }
 
-static int print_binary(int flags, int precision, unsigned nbr)
+static int print_binary(struct format_specifier *fs, unsigned nbr)
 {
     size_t nwrote = 0;
 
-    if (precision == 0 && nbr == 0)
+    if (fs->precision == 0 && nbr == 0)
         return 0;
 
-    if (flags & BASE_PREFIX_FLAG) {
+    if (fs->flags & BASE_PREFIX_FLAG) {
         nwrote++;
         kputc('b');
     }
 
-    return print_unsigned_number(precision, nbr, 2) + nwrote;
+    return print_unsigned_number(fs, nbr, 2) + nwrote;
 }
 
 static ssize_t katoi(const char** specifier, int *x)
@@ -155,14 +170,18 @@ static ssize_t katoi(const char** specifier, int *x)
     return nread;
 }
 
-static ssize_t pr_string(int precision, const char *str)
+static ssize_t pr_string(struct format_specifier *fs, const char *str)
 {
     size_t nwritten = 0;
+    size_t len = strlen(str);
 
-    if (precision < 0)
+    for (int i = len; i < fs->width; i++)
+        kputc(' ');
+
+    if (fs->precision < 0)
         return kputs(str);
 
-    while (*str != '\0' && precision--) {
+    while (*str != '\0' && fs->precision--) {
         kputc(*str++);
         nwritten += 1;
     }
@@ -172,9 +191,14 @@ static ssize_t pr_string(int precision, const char *str)
 
 static int print_from_specifier(const char** specifier, va_list* arg)
 {
-    int flags = 0;
-    int precision = -1;
     ssize_t nread;
+    ssize_t long_count = 0;
+    struct format_specifier fs = {
+        .flags = 0,
+        .precision = -1,
+        .width = -1,
+        .length = sizeof(int),
+    };
 
     if (!specifier || !*specifier || **specifier != '%')
         return -EINVAL;
@@ -183,13 +207,36 @@ static int print_from_specifier(const char** specifier, va_list* arg)
         *specifier += 1;
 
         switch (**specifier) {
+            case '0':
+                fs.flags |= LEFT_PAD_0_FLAG;
+
+            case '1' ... '9':
+                nread = katoi(specifier, &fs.width);
+                if (nread < 0)
+                    return nread;
+                break;
+
             case '#':
-                flags |= BASE_PREFIX_FLAG;
+                fs.flags |= BASE_PREFIX_FLAG;
+                break;
+
+            case 'l':
+                if (long_count++ == 1)
+                    fs.length *= 2; // let's not support 8/16 bits machines.
+                break;
+
+            case 'z':
+                break;
+
+            case 'h':
+                fs.length /= 2;
+                if (fs.length == 0)
+                    return -EINVAL;
                 break;
 
             case '.':
                 *specifier += 1;
-                nread = katoi(specifier, &precision);
+                nread = katoi(specifier, &fs.precision);
                 if (nread < 0)
                     return nread;
                 break;
@@ -199,32 +246,32 @@ static int print_from_specifier(const char** specifier, va_list* arg)
                 return 1;
 
             case 's':
-                return pr_string(precision, va_arg(*arg, const char*));
+                return pr_string(&fs, va_arg(*arg, const char*));
 
             case 'c':
                 kputc((char) va_arg(*arg, int));
                 return 1;
 
             case 'd':
-                return print_signed_number(precision, va_arg(*arg, int));
+                return print_signed_number(&fs, va_arg(*arg, int));
 
             case 'u':
-                return print_unsigned_number(precision, va_arg(*arg, unsigned),
-                                             10);
+                return print_unsigned_number(&fs, va_arg(*arg, unsigned), 10);
 
             case 'o':
-                return print_octal(flags, precision, va_arg(*arg, unsigned));
+                return print_octal(&fs, va_arg(*arg, unsigned));
 
             case 'x':
             case 'X':
-                return print_hexa(flags, precision, va_arg(*arg, unsigned));
+                return print_hexa(&fs, va_arg(*arg, unsigned));
 
             case 'p':
-                return print_hexa(BASE_PREFIX_FLAG, sizeof(void*) * 2,
-                                  va_arg(*arg, unsigned));
+                fs.flags = BASE_PREFIX_FLAG;
+                fs.precision = sizeof(void*) * 2;
+                return print_hexa(&fs, va_arg(*arg, unsigned));
 
             case 'b':
-                return print_binary(flags, precision, va_arg(*arg, unsigned));
+                return print_binary(&fs, va_arg(*arg, unsigned));
 
             default:
                 return -EINVAL;
