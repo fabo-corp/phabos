@@ -6,8 +6,6 @@
 
 #include <errno.h>
 
-#define PAGE_ORDER 12
-#define PAGE_SIZE (1 << PAGE_ORDER)
 #define MIN_REGION_ORDER PAGE_ORDER
 #define MAX_ADDRESSABLE_MEM_ORDER 31
 
