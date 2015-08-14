@@ -34,8 +34,8 @@
 #include <phabos/time.h>
 #include <phabos/watchdog.h>
 #include <phabos/greybus/debug.h>
+#include <phabos/unipro/unipro.h>
 
-#include <asm/unipro.h>
 #include <asm/atomic.h>
 #include <asm/spinlock.h>
 #include <asm/byteordering.h>

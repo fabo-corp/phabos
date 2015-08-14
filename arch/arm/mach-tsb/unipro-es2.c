@@ -33,6 +33,7 @@
 
 #include <phabos/list.h>
 #include <phabos/greybus/unipro.h>
+#include <phabos/unipro/unipro.h>
 #include <phabos/greybus/tsb_unipro.h>
 #include <phabos/semaphore.h>
 #include <phabos/scheduler.h>
@@ -40,7 +41,6 @@
 #include <phabos/utils.h>
 
 #include <asm/hwio.h>
-#include <asm/unipro.h>
 #include <asm/tsb-irq.h>
 #include <asm/irq.h>
 

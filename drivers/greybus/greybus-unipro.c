@@ -30,7 +30,7 @@
 
 #include <errno.h>
 #include <asm/delay.h>
-#include <asm/unipro.h>
+#include <phabos/unipro/unipro.h>
 #include <phabos/greybus.h>
 #include <phabos/greybus/debug.h>
 

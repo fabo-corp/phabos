@@ -35,13 +35,13 @@
 
 #include "unipro-es1.h" // private
 
-#include <asm/unipro.h>
 #include <asm/hwio.h>
 #include <asm/irq.h>
 #include <asm/tsb-irq.h>
 
 #include <phabos/unipro.h>
 #include <phabos/unipro/tsb.h>
+#include <phabos/unipro/unipro.h>
 #include <phabos/utils.h>
 #include <phabos/kprintf.h>
 #include <phabos/assert.h>
