@@ -31,3 +31,4 @@ obj-y += greybus-core.o
 obj-y += greybus-debug.o
 obj-$(CONFIG_GREYBUS_UNIPRO) += greybus-unipro.o
 obj-$(CONFIG_GREYBUS_USB) += greybus-usb.o
+obj-$(CONFIG_GREYBUS_NULL) += greybus-null.o

@@ -43,6 +43,9 @@ choice
 
     config GREYBUS_USB
         bool "USB"
+
+    config GREYBUS_NULL
+        bool "NULL"
 endchoice
 
 if GREYBUS_MODULE

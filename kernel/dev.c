@@ -160,6 +160,16 @@ void __aeabi_memcpy(void *dest, void *src, size_t n)
     memcpy(dest, src, n);
 }
 
+void data_constructor(void *buffer)
+{
+    kprintf("%s(%X)\n", __func__, buffer);
+}
+
+void data_destructor(void *buffer)
+{
+    kprintf("%s(%X)\n", __func__, buffer);
+}
+
 int dev_main(int argc, char **argv)
 {
 #ifdef CONFIG_BINFS
@@ -217,6 +227,30 @@ int dev_main(int argc, char **argv)
 #endif
 
     ls("/dev");
+
+#if 0
+    struct mcache *cache = mcache_create("test-cache", 32, 4, MM_DMA,
+                                         data_constructor, data_destructor);
+
+    for (int i = 0; i < 50; i++)
+        kprintf("%X\n", mcache_alloc(cache));
+
+    void *buffer = mcache_alloc(cache);
+    kprintf("%X\n", buffer);
+
+    mcache_free(cache, buffer);
+
+    kprintf("%X\n", mcache_alloc(cache));
+#endif
+
+    kprintf("%3d\n", 5);
+    kprintf("%4.3d\n", 5);
+    kprintf("%3.4d\n", 5);
+    kprintf("%04d\n", 5);
+    kprintf("%4d\n", 5);
+    kprintf("%.3d\n", 5);
+
+    kprintf("%6s\n", "hello");
 
 #if defined(CONFIG_TSB_APB1)
     bridge_main(argc, argv);
