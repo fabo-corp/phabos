@@ -17,7 +17,7 @@
 #include <sys/types.h>
 #include <signal.h>
 
-#define DEFAULT_STACK_SIZE              4096
+#define DEFAULT_STACK_SIZE              2048
 
 static hashtable_t task_table;
 static struct spinlock task_table_lock = SPINLOCK_INIT(task_table_lock);
