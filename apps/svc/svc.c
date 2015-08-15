@@ -36,6 +36,8 @@
 #include <asm/delay.h>
 #include <phabos/greybus/unipro.h>
 #include <phabos/scheduler.h>
+#include <phabos/unipro/tsb.h>
+#include <phabos/unipro/unipro.h>
 
 #include <apps/shell.h>
 #include <apps/apbridgea/utils.h>
@@ -47,256 +49,407 @@
 #include "up_debug.h"
 #include "interface.h"
 #include "tsb_switch.h"
+#include "tsb_switch_driver_es2.h"
 #include "svc.h"
 #include "vreg.h"
+#include "gb_svc.h"
 
 #define SVCD_PRIORITY      (60)
 #define SVCD_STACK_SIZE    (2048)
+#define SVC_PROTOCOL_CPORT_ID    (4)
 
 static struct svc the_svc;
 struct svc *svc = &the_svc;
+
+#define SVC_EVENT_TYPE_READY_AP       0x1
+#define SVC_EVENT_TYPE_READY_OTHER    0x2
+
+struct svc_event_ready_other {
+    uint8_t port;
+};
+
+struct svc_event {
+    int type;
+    struct list_head events;
+    union {
+        struct svc_event_ready_other ready_other;
+    } data;
+};
+
+static struct list_head svc_events;
+
+static struct svc_event *svc_event_create(int type) {
+    struct svc_event *event;
+
+    event = malloc(sizeof(*event));
+    if (!event) {
+        return NULL;
+    }
+
+    event->type = type;
+    list_init(&event->events);
+    return event;
+}
+
+static inline void svc_event_destroy(struct svc_event *event) {
+    free(event);
+}
+
+static int event_cb(struct tsb_switch_event *ev);
+static int event_mailbox(struct tsb_switch_event *ev);
+
+static struct tsb_switch_event_listener evl = {
+    .cb = event_cb,
+};
+
+/**
+ * @brief "Acknowledge" a write to the switch's mailbox.  The mailbox is a DME
+ * register in the vendor-defined space present on Toshiba bridges. This is used
+ * as a notification to the bridge that the SVC has read what the bridge wrote
+ * to the switch's mailbox.
+ */
+static int svc_mailbox_ack(uint8_t portid) {
+    int rc;
+    uint32_t val;
+
+    rc = switch_dme_set(svc->sw, portid, TSB_MAILBOX, 0, 0);
+    if (rc) {
+        dbg_error("Failed to ack to port %u\n", portid);
+        return rc;
+    }
+    rc = switch_dme_get(svc->sw, portid, TSB_MAILBOX, 0, &val);
+    if (rc) {
+        dbg_error("Failed to reread mailbox ack on port %u\n", portid);
+        return rc;
+    }
+
+    return 0;
+}
+
+
+static int event_cb(struct tsb_switch_event *ev) {
+
+    switch (ev->type) {
+    case TSB_SWITCH_EVENT_MAILBOX:
+        event_mailbox(ev);
+        svc_mailbox_ack(ev->mbox.port);
+        break;
+    }
+    return 0;
+}
+
+static int event_mailbox(struct tsb_switch_event *ev) {
+    struct svc_event *svc_ev;
+    int rc;
+    dbg_info("event received: type: %u port: %u val: %u\n", ev->type, ev->mbox.port, ev->mbox.val);
+    mutex_lock(&svc->lock);
+    switch (ev->mbox.val) {
+    case TSB_MAIL_READY_AP:
+        rc = interface_get_id_by_portid(ev->mbox.port);
+        if (rc < 0) {
+            dbg_error("Unknown module on port %u: %d\n", ev->mbox.port, rc);
+            break;
+        }
+
+        svc->ap_intf_id = rc;
+        break;
+
+    case TSB_MAIL_READY_OTHER:
+        svc_ev = svc_event_create(SVC_EVENT_TYPE_READY_OTHER);
+        if (!svc_ev) {
+            dbg_error("Couldn't create event\n");
+        }
+        svc_ev->data.ready_other.port = ev->mbox.port;
+        list_add(&svc_events, &svc_ev->events);
+        break;
+    default:
+        dbg_error("unexpected mailbox value: %u port: %u", ev->mbox.val, ev->mbox.port)
+    }
+    task_cond_signal(&svc->cv);
+    mutex_unlock(&svc->lock);
+
+    return 0;
+}
+
+static int svc_event_init(void) {
+    list_init(&svc_events);
+    switch_event_register_listener(svc->sw, &evl);
+    return 0;
+}
+
+static struct unipro_driver svc_greybus_driver = {
+    .name = "svcd-greybus",
+    .rx_handler = greybus_rx_handler,
+};
+
+static int svc_listen(unsigned int cport) {
+    return unipro_driver_register(&svc_greybus_driver, cport);
+}
+
+static struct gb_transport_backend svc_backend = {
+    .init   = unipro_init,
+    .send   = unipro_send,
+    .listen = svc_listen,
+};
+
+static int svc_gb_init(void) {
+    gb_init(&svc_backend);
+    gb_svc_register(SVC_PROTOCOL_CPORT_ID);
+    return gb_listen(SVC_PROTOCOL_CPORT_ID);
+}
+
+/**
+ * @brief "Poke" a bridge's mailbox. The mailbox is a DME register in the
+ * vendor-defined space present on Toshiba bridges. This is used as a notification
+ * to the bridge that a connection has been established and that it can enable
+ * transmission of E2EFC credits.
+ *
+ * Value 'x' means that cport 'x - 1' is ready. When the bridge responds, it
+ * clears its own mailbox to notify the SVC that it has received the
+ * notification.
+ */
+static int svc_mailbox_poke(uint8_t intf_id, uint8_t cport) {
+    size_t retries = 1000;
+    uint32_t val;
+    int rc;
+    uint32_t portid = interface_get_portid_by_id(intf_id);
+
+    rc = switch_dme_peer_set(svc->sw, portid,
+                             TSB_MAILBOX, 0, cport + 1);
+    if (rc) {
+        dbg_error("Failed to notify intf %u\n", intf_id);
+    }
+
+    while (retries--) {
+        rc = switch_dme_peer_get(svc->sw, portid, TSB_MAILBOX, 0, &val);
+        if (!rc && !val) {
+            return 0;
+        }
+    }
+
+    return -ETIMEDOUT;
+}
+
+/**
+ * @brief Assign a device id given an interface id
+ */
+int svc_intf_device_id(uint8_t intf_id, uint8_t dev_id) {
+    struct tsb_switch *sw = svc->sw;
+    int rc;
+
+    rc = switch_if_dev_id_set(sw, interface_get_portid_by_id(intf_id), dev_id);
+    if (rc) {
+        return rc;
+    }
+
+    return interface_set_devid_by_id(intf_id, dev_id);
+}
+
+/**
+ * @brief Create a UniPro connection
+ */
+int svc_connection_create(uint8_t intf1_id, uint16_t cport1_id,
+                          uint8_t intf2_id, uint16_t cport2_id, u8 tc, u8 flags) {
+    struct tsb_switch *sw = svc->sw;
+    struct unipro_connection c;
+    int rc;
+
+    memset(&c, 0x0, sizeof c);
+
+    c.port_id0      = interface_get_portid_by_id(intf1_id);
+    c.device_id0    = interface_get_devid_by_id(intf1_id);
+    c.cport_id0     = cport1_id;
+
+    c.port_id1      = interface_get_portid_by_id(intf2_id);
+    c.device_id1    = interface_get_devid_by_id(intf2_id);
+    c.cport_id1     = cport2_id;
+
+    c.tc            = tc;
+    c.flags         = flags;
+
+    rc = switch_connection_create(sw, &c);
+    if (rc) {
+        return rc;
+    }
+
+    if (flags & CPORT_FLAGS_E2EFC) {
+        /*
+         * Poke bridge mailboxes and wait for them to enable E2EFC.
+         * @jira{ENG-376}
+         */
+        rc = svc_mailbox_poke(intf1_id, cport1_id);
+        if (rc) {
+            dbg_error("Failed to notify intf %u\n", intf1_id);
+            return rc;
+        }
+        rc = svc_mailbox_poke(intf2_id, cport2_id);
+        if (rc) {
+            dbg_error("Failed to notify intf %u\n", intf2_id);
+            return rc;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Create a bidirectional route through the switch
+ */
+int svc_route_create(uint8_t intf1_id, uint8_t dev1_id,
+                     uint8_t intf2_id, uint8_t dev2_id) {
+    struct tsb_switch *sw = svc->sw;
+    int rc;
+    int port1_id, port2_id;
+
+    port1_id = interface_get_portid_by_id(intf1_id);
+    port2_id = interface_get_portid_by_id(intf2_id);
+    if (port1_id < 0 || port2_id < 0) {
+        return -EINVAL;
+    }
+
+    rc = switch_setup_routing_table(sw,
+                                    dev1_id,
+                                    port1_id,
+                                    dev2_id,
+                                    port2_id);
+    if (rc) {
+        dbg_error("Failed to create route [p=%d,d=%d]<->[p=%d,d=%d]\n",
+                  port1_id, dev1_id, port2_id, dev2_id);
+        return rc;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Handle AP module boot
+ */
+static int svc_handle_ap(void) {
+    struct unipro_connection svc_conn;
+    uint8_t ap_port_id = interface_get_portid_by_id(svc->ap_intf_id);
+    int rc;
+
+    dbg_info("Creating initial SVC connection\n");
+
+    /* Assign a device ID. The AP is always GB_SVC_DEVICE_ID = 1 */
+    rc = svc_intf_device_id(svc->ap_intf_id, GB_SVC_DEVICE_ID);
+    if (rc) {
+        dbg_error("Failed to assign device id to AP: %d\n", rc);
+    }
+
+    rc = switch_setup_routing_table(svc->sw, SWITCH_DEVICE_ID, SWITCH_PORT_ID,
+                                    GB_SVC_DEVICE_ID, ap_port_id);
+    if (rc) {
+        dbg_error("Failed to set initial SVC route: %d\n", rc);
+    }
+
+    svc_conn.port_id0      = SWITCH_PORT_ID;
+    svc_conn.device_id0    = SWITCH_DEVICE_ID;
+    svc_conn.cport_id0     = SVC_PROTOCOL_CPORT_ID;
+    svc_conn.port_id1      = ap_port_id;
+    svc_conn.device_id1    = GB_SVC_DEVICE_ID;
+    svc_conn.cport_id1     = GB_SVC_CPORT_ID;
+    svc_conn.tc            = 0;
+    svc_conn.flags         = CPORT_FLAGS_E2EFC | CPORT_FLAGS_CSD_N | CPORT_FLAGS_CSV_N;
+    rc = switch_connection_create(svc->sw, &svc_conn);
+    if (rc) {
+        dbg_error("Failed to create initial SVC connection: %d\n", rc);
+    }
+
+    /*
+     * Poke the AP module so that it can transmit FCTs
+     */
+    rc = svc_mailbox_poke(svc->ap_intf_id, GB_SVC_CPORT_ID);
+    if (rc) {
+        dbg_error("AP did not respond to poke. Timed out.\n");
+        return rc;
+    }
+
+    /*
+     * Now turn on E2EFC on the switch so that it can transmit FCTs.
+     */
+    rc = tsb_switch_es2_fct_enable(svc->sw);
+    if (rc) {
+        dbg_error("Failed to enable FCT on switch.\n");
+        return rc;
+    }
+
+    /*
+     * Now start the SVC protocol handshake.
+     */
+    gb_svc_protocol_version();
+    /*
+     * Tell the AP what kind of endo it's in, and the AP's intf_id.
+     */
+    gb_svc_hello(svc->ap_intf_id);
+
+    /*
+     * FIXME: Hotplug events should be sent upon receiving a linkup
+     * notification. For now, send a fake one for intf_id 2.
+     */
+    return 0;
+}
+
+static int svc_handle_module_ready(uint8_t portid) {
+    int rc, intf_id;
+    uint32_t unipro_mfg_id, unipro_prod_id, ara_vend_id, ara_prod_id;
+
+    dbg_info("Hotplug event received for port: %u\n", portid);
+    intf_id  = interface_get_id_by_portid(portid);
+    if (intf_id < 0) {
+        return intf_id;
+    }
+
+    rc = switch_dme_peer_get(svc->sw, portid, DME_DDBL1_MANUFACTURERID, 0, &unipro_mfg_id);
+    if (rc) {
+        dbg_error("Failed to read manufacturer id: %d\n", rc);
+        return rc;
+    }
+
+    rc = switch_dme_peer_get(svc->sw, portid, DME_DDBL1_PRODUCTID, 0, &unipro_prod_id);
+    if (rc) {
+        dbg_error("Failed to read product id: %d\n", rc);
+        return rc;
+    }
+
+    /*
+     * Ara vendor id and product ID attributes don't exist on ES2 silicon.
+     * These are unused for now.
+     */
+    ara_vend_id = 0xfeedface;
+    ara_prod_id = 0xdeadbeef;
+
+    return gb_svc_intf_hotplug(intf_id, unipro_mfg_id, unipro_prod_id,
+                               ara_vend_id, ara_prod_id);
+}
+
+/**
+ * @brief Main event loop processing routine
+ */
+static int svc_handle_events(void) {
+    struct svc_event *event;
+
+    list_foreach_safe(&svc_events, node) {
+        event = list_entry(node, struct svc_event, events);
+        switch (event->type) {
+        case SVC_EVENT_TYPE_READY_OTHER:
+            svc_handle_module_ready(event->data.ready_other.port);
+            break;
+        default:
+            dbg_error("Unknown event: %d\n", event->type);
+        }
+
+        svc_event_destroy(event);
+    }
+
+    return 0;
+}
 
 /* state helpers */
 #define svcd_state_running() (svc->state == SVC_STATE_RUNNING)
 #define svcd_state_stopped() (svc->state == SVC_STATE_STOPPED)
 static inline void svcd_set_state(enum svc_state state){
     svc->state = state;
-}
-
-
-// XXX: porting to phabos
-static size_t list_count(struct list_head *head)
-{
-    size_t count = 0;
-
-    list_foreach(head, iter)
-        count++;
-
-    return count;
-}
-
-/*
- * Static connections table
- *
- * The routing and connections setup is made of two tables:
- * 1) The interface to deviceID mapping table. Every interface is given by
- *    its name (provided in the board file). The deviceID to associate to
- *    the interface is freely chosen.
- *    Cf. the console command 'power' for the interfaces naming.
- *    The physical port to the switch is retrieved from the board file
- *    information, there is no need to supply it in the connection tables.
- *
- * 2) The connections table, given by the deviceID and the CPort to setup, on
- *    both local and remote ends of the link. The routing will be setup in a
- *    bidirectional way.
- *
- * Spring interfaces placement on BDB1B/2A:
- *
- *                             8
- *                            (9)
- *          7     5  6
- *    3  2     4        1
- */
-struct svc_interface_device_id {
-    char *interface_name;       // Interface name
-    uint8_t device_id;          // DeviceID
-    uint8_t port_id;            // PortID
-    bool found;
-};
-
-/*
- * Keep the Device IDs here and the Device IDs descriptions in
- * apps/greybus-utils/Kconfig and apps/greybus-utils/Makefile in sync.
- */
-#define DEV_ID_APB1              (1)
-#define DEV_ID_APB2              (2)
-#define DEV_ID_APB3              (3)
-#define DEV_ID_GPB1              (4)
-#define DEV_ID_GPB2              (5)
-#define DEV_ID_SPRING1           (6)
-#define DEV_ID_SPRING2           (7)
-#define DEV_ID_SPRING3           (8)
-#define DEV_ID_SPRING4           (9)
-#define DEV_ID_SPRING5           (10)
-#define DEV_ID_SPRING6           (11)
-#define DEV_ID_SPRING7           (12)
-#define DEV_ID_SPRING8           (13)
-
-#define DSI_APB1_CPORT           (16)
-#define DSI_APB2_CPORT           (16)
-
-/* Interface name to deviceID mapping table */
-static struct svc_interface_device_id devid[] = {
-    { "apb1", DEV_ID_APB1 },
-    { "apb2", DEV_ID_APB2 },
-    { "apb3", DEV_ID_APB3 },
-    { "gpb1", DEV_ID_GPB1 },
-    { "gpb2", DEV_ID_GPB2 },
-    { "spring1", DEV_ID_SPRING1 },
-    { "spring2", DEV_ID_SPRING2 },
-    { "spring3", DEV_ID_SPRING3 },
-    { "spring4", DEV_ID_SPRING4 },
-    { "spring5", DEV_ID_SPRING5 },
-    { "spring6", DEV_ID_SPRING6 },
-    { "spring7", DEV_ID_SPRING7 },
-    { "spring8", DEV_ID_SPRING8 },
-};
-
-/* Connections table */
-static struct unipro_connection *conn;
-
-static int setup_routes_from_manifest(void)
-{
-    struct list_head *cports;
-    struct gb_cport *gb_cport;
-    uint8_t device_id0;
-    int hd_cport_max;
-    int hd_cport = 0;
-
-    cports = get_manifest_cports();
-    hd_cport_max = list_count(cports) + 1;
-    conn = zalloc(hd_cport_max * sizeof(*conn));
-    if (!conn) {
-        return 0;
-    }
-
-#if defined(CONFIG_SVC_ROUTE_DEFAULT)
-    device_id0 = DEV_ID_APB1;
-#elif defined(CONFIG_SVC_ROUTE_SPRING6_APB2)
-    device_id0 = DEV_ID_SPRING6;
-#endif
-
-    list_foreach(cports, iter) {
-        gb_cport = list_entry(iter, struct gb_cport, list);
-        conn[hd_cport].device_id0 = device_id0;
-        conn[hd_cport].cport_id0  = hd_cport;
-        conn[hd_cport].device_id1 = gb_cport->device_id;
-        conn[hd_cport].cport_id1  = gb_cport->id;
-        conn[hd_cport].flags      = CPORT_FLAGS_CSD_N | CPORT_FLAGS_CSV_N;
-        hd_cport++;
-    }
-
-    conn[hd_cport].device_id0 = device_id0;
-    conn[hd_cport].cport_id0  = DSI_APB1_CPORT;
-    conn[hd_cport].device_id1 = DEV_ID_APB2;
-    conn[hd_cport].cport_id1  = DSI_APB2_CPORT;
-    conn[hd_cport].flags      = CPORT_FLAGS_CSD_N | CPORT_FLAGS_CSV_N;
-    hd_cport++;
-
-    return hd_cport;
-}
-
-#define IID_LENGTH 7
-static void manifest_enable(unsigned char *manifest_file,
-                            int device_id, int manifest_number)
-{
-    char iid[IID_LENGTH];
-
-    snprintf(iid, IID_LENGTH, "IID-%d", manifest_number + 1);
-    enable_manifest(iid, manifest_file, device_id);
-}
-
-static void manifest_disable(unsigned char *manifest_file,
-                            int device_id, int manifest_number)
-{
-    char iid[IID_LENGTH];
-
-    snprintf(iid, IID_LENGTH, "IID-%d", manifest_number + 1);
-    disable_manifest(iid, manifest_file, device_id);
-}
-
-static int setup_default_routes(struct tsb_switch *sw) {
-    int i, j, rc;
-    int conn_size;
-    uint8_t port_id_0, port_id_1;
-    bool port_id_0_found, port_id_1_found;
-    struct interface *iface;
-
-    /*
-     * Setup hard-coded default routes from the routing and
-     * connection tables
-     */
-
-    /* Setup Port <-> deviceID and configure the Switch routing table */
-    for (i = 0; i < ARRAY_SIZE(devid); i++) {
-        devid[i].found = false;
-        /* Retrieve the portID from the interface name */
-        interface_foreach(iface, j) {
-            if (!strcmp(iface->name, devid[i].interface_name)) {
-                devid[i].port_id = iface->switch_portid;
-                devid[i].found = true;
-
-                rc = switch_if_dev_id_set(sw, devid[i].port_id,
-                                          devid[i].device_id);
-                if (rc) {
-                    dbg_error("Failed to assign deviceID %u to interface %s\n",
-                              devid[i].device_id, devid[i].interface_name);
-                    continue;
-                } else {
-                    dbg_info("Set deviceID %d to interface %s (portID %d)\n",
-                             devid[i].device_id, devid[i].interface_name,
-                             devid[i].port_id);
-                }
-            }
-        }
-    }
-
-    foreach_manifest(manifest_enable);
-    conn_size = setup_routes_from_manifest();
-    if (!conn_size)
-        return -1;
-
-    /* Connections setup */
-    for (i = 0; i < conn_size; i++) {
-        /* Look up local and peer portIDs for the given deviceIDs */
-        port_id_0 = port_id_1 = 0;
-        port_id_0_found = port_id_1_found = false;
-        for (j = 0; j < ARRAY_SIZE(devid); j++) {
-            if (!devid[j].found)
-                continue;
-
-            if (devid[j].device_id == conn[i].device_id0) {
-                conn[i].port_id0 = port_id_0 = devid[j].port_id;
-                port_id_0_found = true;
-            }
-            if (devid[j].device_id == conn[i].device_id1) {
-                conn[i].port_id1 = port_id_1 = devid[j].port_id;
-                port_id_1_found = true;
-            }
-        }
-
-        /* If found, create the requested connection */
-        if (port_id_0_found && port_id_1_found) {
-            /* Update Switch routing table */
-            rc = switch_setup_routing_table(sw,
-                                            conn[i].device_id0, port_id_0,
-                                            conn[i].device_id1, port_id_1);
-            if (rc) {
-                dbg_error("Failed to setup routing table [%u:%u]<->[%u:%u]\n",
-                          conn[i].device_id0, port_id_0,
-                          conn[i].device_id1, port_id_1);
-                return -1;
-            }
-
-            /* Create connection */
-            rc = switch_connection_create(sw, &conn[i]);
-            if (rc) {
-                dbg_error("Failed to create connection [%u:%u]<->[%u:%u]\n",
-                          port_id_0, conn[i].cport_id0,
-                          port_id_1, conn[i].cport_id1);
-                return -1;
-            }
-        } else {
-            dbg_error("Cannot find portIDs for deviceIDs %d and %d\n",
-                      port_id_0, port_id_1);
-        }
-    }
-    free(conn);
-    foreach_manifest(manifest_disable);
-
-    switch_dump_routing_table(sw);
-
-    return 0;
 }
 
 static int svcd_startup(void) {
@@ -351,10 +504,17 @@ static int svcd_startup(void) {
      */
     mdelay(300);
 
-    /* Set up default routes */
-    rc = setup_default_routes(sw);
+    /* Initialize event system */
+    rc = svc_event_init();
     if (rc) {
-        dbg_error("%s: Failed to set default routes\n", __func__);
+        goto error3;
+    }
+
+    /* Register svc protocol greybus driver*/
+    rc = svc_gb_init();
+    if (rc) {
+        dbg_error("%s: Failed to initialize SVC protocol\n", __func__);
+        goto error3;
     }
 
     /*
@@ -413,6 +573,19 @@ static void svcd_main(void *data) {
         if (svc->stop) {
             dbg_verbose("svc stop requested\n");
             break;
+        }
+
+        if (svc->ap_intf_id && !svc->ap_initialized) {
+            if (svc_handle_ap()) {
+                break;
+            }
+
+            dbg_info("AP initialized on interface  %u\n", svc->ap_intf_id);
+            svc->ap_initialized = 1;
+        }
+
+        if (svc->ap_initialized) {
+            svc_handle_events();
         }
     };
 

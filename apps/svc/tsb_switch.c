@@ -108,6 +108,19 @@ static inline uint8_t dev_ids_port_to_dev(struct tsb_switch *sw,
     return sw->dev_ids[port_id];
 }
 
+static inline uint8_t dev_ids_dev_to_port(struct tsb_switch *sw,
+                                          uint8_t dev_id) {
+    int i;
+
+    for (i = 0; i < SWITCH_PORT_MAX; i++) {
+        if (sw->dev_ids[i] == dev_id) {
+             return i;
+        }
+    }
+
+    return INVALID_PORT;
+}
+
 static void dev_ids_destroy(struct tsb_switch *sw) {
     memset(sw->dev_ids, INVALID_PORT, sizeof(sw->dev_ids));
 }
@@ -1519,6 +1532,16 @@ int switch_configure_link(struct tsb_switch *sw,
     return rc;
 }
 
+/*
+ * send data down the SVC connection cport
+ */
+int switch_data_send(struct tsb_switch *sw, void *data, size_t len) {
+    if (!sw->ops->switch_data_send) {
+        return -EOPNOTSUPP;
+    }
+    return sw->ops->switch_data_send(sw, data, len);
+}
+
 /* Post a message to the IRQ worker */
 int switch_post_irq(struct tsb_switch *sw)
 {
@@ -1704,11 +1727,11 @@ void switch_exit(struct tsb_switch *sw) {
     case SWITCH_REV_ES1:
         tsb_switch_es1_exit(sw);
         break;
-#if 0
+
     case SWITCH_REV_ES2:
         tsb_switch_es2_exit(sw);
         break;
-#endif
+
     default:
         dbg_error("Unsupported switch revision: %u\n", sw->pdata->rev);
         break;

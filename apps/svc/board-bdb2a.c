@@ -48,10 +48,12 @@
                              GPIO_OUTPUT_SET | GPIO_PIN0)
 
 /* U96 I/O Expander reset */
+#define IO_RESET_PIN        STM32_GPIO_PIN(GPIO_PORTE | GPIO_PIN0)
 #define IO_RESET            (GPIO_OUTPUT | GPIO_OPENDRAIN | GPIO_PULLUP | \
                              GPIO_PORTE | GPIO_PIN0)
 
 /* U90 I/O Expander reset */
+#define IO_RESET1_PIN        STM32_GPIO_PIN(GPIO_PORTE | GPIO_PIN1)
 #define IO_RESET1           (GPIO_OUTPUT | GPIO_OPENDRAIN | GPIO_PULLUP | \
                              GPIO_PORTE | GPIO_PIN1)
 
