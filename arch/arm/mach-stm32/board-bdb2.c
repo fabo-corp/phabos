@@ -404,6 +404,9 @@ void machine_init(void)
     i2c_init();  // XXX: Enable I2C2
     spi_init();
 
+    stm32_clk_enable(STM32_CLK_SYSCFG);
+    stm32_reset(STM32_RST_SYSCFG);
+
     //display_temperature();
 
     for (int i = 0; i < ARRAY_SIZE(gpio_port); i++)
