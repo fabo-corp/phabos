@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <spawn.h>
 
+#include <config.h>
 #include <phabos/kprintf.h>
 #include <phabos/scheduler.h>
 #include <phabos/syscall.h>
