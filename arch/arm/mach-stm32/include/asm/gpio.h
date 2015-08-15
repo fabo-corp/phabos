@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 /*
+ * config[21:21] = EXTI
  * config[20:20] = GPIO Output set
  * config[19:19] = GPIO Output clear
  * config[18:17] = Floating/Pull up/Pull down
@@ -83,15 +84,16 @@
 #define GPIO_OUTPUT     (1 << 14)
 #define GPIO_ALT_FCT    (2 << 14)
 
-#define GPIO_OUTPUT_CLEAR (1 << 18)
-#define GPIO_OUTPUT_SET   (1 << 19)
-
 #define GPIO_PUSHPULL   (0 << 16)
 #define GPIO_OPENDRAIN  (1 << 16)
 
 #define GPIO_FLOAT      (0 << 17)
 #define GPIO_PULLUP     (1 << 17)
 #define GPIO_PULLDOWN   (2 << 17)
+
+#define GPIO_OUTPUT_CLEAR (1 << 19)
+#define GPIO_OUTPUT_SET   (1 << 20)
+#define GPIO_EXTI         (1 << 21)
 
 int stm32_configgpio(unsigned long config);
 int stm32_gpiowrite(unsigned long port, bool high_level);
