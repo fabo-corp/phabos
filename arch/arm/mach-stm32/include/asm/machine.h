@@ -18,8 +18,8 @@
 #define LOOP_PER_MSEC   25000
 #define CPU_FREQ        160000000
 #else
-#define LOOP_PER_USEC   47
-#define LOOP_PER_MSEC   47000
+#define LOOP_PER_USEC   15      // +20% higher delay than expected
+#define LOOP_PER_MSEC   13000
 #define CPU_FREQ        168000000
 #endif
 
