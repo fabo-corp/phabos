@@ -210,7 +210,7 @@ static void gb_watchdog_update(unsigned int cport)
     if (list_is_empty(&g_cport[cport].tx_fifo)) {
         watchdog_cancel(&g_cport[cport].timeout_wd);
     } else {
-        watchdog_start_usec(&g_cport[cport].timeout_wd, TIMEOUT_IN_MS);
+        watchdog_start_msec(&g_cport[cport].timeout_wd, TIMEOUT_IN_MS);
     }
 
     irq_enable();
@@ -452,7 +452,7 @@ int gb_operation_send_request(struct gb_operation *operation,
         gb_operation_ref(operation);
         list_add(&g_cport[operation->cport].tx_fifo, &operation->list);
         if (!watchdog_is_active(&g_cport[operation->cport].timeout_wd)) {
-            watchdog_start_usec(&g_cport[operation->cport].timeout_wd,
+            watchdog_start_msec(&g_cport[operation->cport].timeout_wd,
                                 TIMEOUT_IN_MS);
         }
     }
@@ -675,6 +675,7 @@ int gb_init(struct gb_transport_backend *transport)
         watchdog_init(&g_cport[i].timeout_wd);
         g_cport[i].timeout_wd.timeout = gb_operation_timeout;
         g_cport[i].timeout_wd.user_priv = (void*) i;
+        g_cport[i].timedout_operation.request_buffer = &timedout_hdr;
     }
 
     atomic_init(&request_id, (uint32_t) 0);
