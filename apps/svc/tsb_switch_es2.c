@@ -914,7 +914,7 @@ int es2_switch_irq_handler(struct tsb_switch *sw)
  *
  * Posts a message in a list in order to defer the work to perform
  */
-static int switch_irq_handler(int irq, void *context, void *priv)
+static int switch_irq_handler(int irq, void *priv)
 {
     struct tsb_switch *sw = priv;
 
@@ -942,8 +942,8 @@ static int es2_switch_irq_enable(struct tsb_switch *sw, bool enable)
          * Configure switch IRQ line: rising edge; install handler
          * and pass the tsb_switch struct to the handler
          */
-        //stm32_gpiosetevent_priv(sw->pdata->gpio_irq, true, false, true,
-        //                        switch_irq_handler, sw); XXX phabos
+        stm32_gpiosetevent_priv(sw->pdata->gpio_irq, true, false, true,
+                                switch_irq_handler, sw);
 
         // Enable the switch internal interrupt sources
         if (switch_internal_setattr(sw, SWINE, SWINE_ENABLE_ALL)) {
@@ -981,7 +981,7 @@ static int es2_switch_irq_enable(struct tsb_switch *sw, bool enable)
         }
     } else {
         // Disable switch interrupt
-        //stm32_gpiosetevent_priv(sw->pdata->gpio_irq, false, false, false, NULL, NULL); XXX phabos
+        stm32_gpiosetevent_priv(sw->pdata->gpio_irq, false, false, false, NULL, NULL);
     }
 
     return 0;

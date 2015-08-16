@@ -163,7 +163,7 @@ static int event_mailbox(struct tsb_switch_event *ev) {
         list_add(&svc_events, &svc_ev->events);
         break;
     default:
-        dbg_error("unexpected mailbox value: %u port: %u", ev->mbox.val, ev->mbox.port)
+        dbg_error("unexpected mailbox value: %u port: %u", ev->mbox.val, ev->mbox.port);
     }
     task_cond_signal(&svc->cv);
     mutex_unlock(&svc->lock);
@@ -494,16 +494,6 @@ static int svcd_startup(void) {
         goto error2;
     }
 
-    /*
-     * FIXME remove when system bootstrap sequence is implemented.
-     *
-     * HACK: until the system bootstrap sequence is finished, we can't
-     * synchronize with the bridges' own initialization sequence. This
-     * is breaking GPB2 setup on BDB2B. Add a magic delay until the
-     * system bootstrap sequence is implemented.
-     */
-    mdelay(300);
-
     /* Initialize event system */
     rc = svc_event_init();
     if (rc) {
@@ -618,7 +608,7 @@ int svc_init(int argc, char **argv) {
     /*
      * Now start the shell.
      */
-    return shell_main(argc, argv);
+    return 0; //shell_main(argc, argv);
 }
 
 int svcd_start(void) {

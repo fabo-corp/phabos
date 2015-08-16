@@ -386,7 +386,7 @@ static void irq_rx_eom(int irq, void *priv)
 
     transferred_size = unipro_read(CPB_RX_TRANSFERRED_DATA_SIZE_00 +
                                    (cport->cportid * sizeof(uint32_t)));
-    DBG_UNIPRO("cport: %u driver: %s size=%u payload=0x%x\n",
+    DBG_UNIPRO("cport: %u driver: %s size=%u payload=0x%p\n",
                 cport->cportid,
                 cport->driver->name, transferred_size,
                 data);
@@ -671,7 +671,11 @@ static void dump_regs(void) {
     kprintf("Connected CPorts:\n");
     kprintf("========================================\n");
     for (i = 0; i < unipro_cport_count(); i++) {
-        val = cport_get_status(cport_handle(i));
+        struct cport *cport = cport_handle(i);
+        if (!cport)
+            continue;
+
+        val = cport_get_status(cport);
 
         if (val == CPORT_STATUS_CONNECTED) {
             kprintf("CPORT %u:\n", i);

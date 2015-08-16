@@ -106,10 +106,8 @@ int stm32_configgpio(unsigned long config)
     if (config & GPIO_EXTI) {
         irq_disable();
         uint32_t reg = SYSCONFIG_BASE + SYSCFG_EXTICR1 + 4 * (pin / 4);
-        kprintf("reg = %x\n", reg);
         uint32_t exti = read32(reg) & ~(GPIO_PORT_MASK << (pin % 4));
-        kprintf("exti = %x\n", exti | (config_to_port(config) << ((pin % 4) * 4)));
-        write32(reg, exti | (config_to_port(config) << (pin % 4)));
+        write32(reg, exti | (config_to_port(config) << ((pin % 4) * 4)));
         irq_enable();
     }
 
@@ -147,7 +145,7 @@ static void update_bit(uint32_t addr, int bit, bool value)
 static void exti_interrupt(int irq, void *priv)
 {
     unsigned pin;
-    uint32_t pr;
+    uint32_t pr = read32(EXTI_BASE + EXTI_PR);
 
     switch (irq) {
     case STM32_IRQ_EXTI0 ... STM32_IRQ_EXTI4:
@@ -155,7 +153,7 @@ static void exti_interrupt(int irq, void *priv)
         break;
 
     case STM32_IRQ_EXTI9_5:
-        pr = (read32(EXTI_BASE + EXTI_PR) >> 5) & 0x1f;
+        pr = (pr >> 5) & 0x1f;
         if (!pr)
             return;
 
@@ -165,7 +163,7 @@ static void exti_interrupt(int irq, void *priv)
         break;
 
     case STM32_IRQ_EXTI15_10:
-        pr = (read32(EXTI_BASE + EXTI_PR) >> 10) & 0x3f;
+        pr = (pr >> 10) & 0x3f;
         if (!pr)
             return;
 
@@ -188,13 +186,15 @@ int stm32_gpiosetevent_priv(unsigned long config, bool rising_edge,
     static bool is_initialized = false;
     int pin = config_to_pin(config);
 
-    if (!handler)
-        return -EINVAL;
+    irq_disable();
 
-    update_bit(EXTI_BASE + EXTI_IMR, pin, true);
-    update_bit(EXTI_BASE + EXTI_EMR, pin, event);
+    update_bit(EXTI_BASE + EXTI_IMR, pin, false);
+    update_bit(EXTI_BASE + EXTI_EMR, pin, false);
+
     update_bit(EXTI_BASE + EXTI_RTSR, pin, rising_edge);
     update_bit(EXTI_BASE + EXTI_FTSR, pin, falling_edge);
+    update_bit(EXTI_BASE + EXTI_IMR, pin, handler ? true : false);
+    update_bit(EXTI_BASE + EXTI_EMR, pin, handler ? event : false);
 
     exti_handlers[pin].handler = handler;
     exti_handlers[pin].priv = priv;
@@ -213,6 +213,8 @@ int stm32_gpiosetevent_priv(unsigned long config, bool rising_edge,
     }
 
     stm32_configgpio(config);
+
+    irq_enable();
 
     return 0;
 }

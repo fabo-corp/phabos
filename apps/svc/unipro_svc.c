@@ -35,6 +35,7 @@
 #include <errno.h>
 #include <stddef.h>
 
+#include <asm/irq.h>
 #include <phabos/unipro/unipro.h>
 
 #include "up_debug.h"
@@ -103,5 +104,7 @@ void unipro_if_rx(unsigned int cportid, void *data, size_t len) {
         return;
     }
 
+    irq_disable();
     drv->rx_handler(cportid, data, len);
+    irq_enable();
 }
