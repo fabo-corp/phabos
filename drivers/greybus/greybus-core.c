@@ -34,6 +34,7 @@
 #include <phabos/time.h>
 #include <phabos/watchdog.h>
 #include <phabos/greybus/debug.h>
+#include <phabos/greybus/tape.h>
 #include <phabos/unipro/unipro.h>
 
 #include <asm/atomic.h>
@@ -65,12 +66,24 @@ struct gb_cport_driver {
     struct gb_operation timedout_operation;
 };
 
+struct gb_tape_record_header {
+    uint16_t size;
+    uint16_t cport;
+};
+
 static atomic_t request_id;
 static struct gb_cport_driver *g_cport;
 static struct gb_transport_backend *transport_backend;
+static struct gb_tape_mechanism *gb_tape;
+static int gb_tape_fd = -EBADF;
 static struct gb_operation_hdr timedout_hdr = {
     .size = sizeof(timedout_hdr),
     .result = GB_OP_TIMEOUT,
+    .type = TYPE_RESPONSE_FLAG,
+};
+static struct gb_operation_hdr oom_hdr = {
+    .size = sizeof(timedout_hdr),
+    .result = GB_OP_NO_MEMORY,
     .type = TYPE_RESPONSE_FLAG,
 };
 
@@ -164,11 +177,15 @@ static void gb_process_request(struct gb_operation_hdr *hdr,
 
     op_handler = find_operation_handler(hdr->type, operation->cport);
     if (!op_handler) {
+        gb_error("Cport %u: Invalid operation type %u\n",
+                 operation->cport, hdr->type);
         gb_operation_send_response(operation, GB_OP_INVALID);
         return;
     }
 
     result = op_handler->handler(operation);
+    gb_debug("%s: %u\n", gb_handler_name(op_handler), result);
+
     if (hdr->id)
         gb_operation_send_response(operation, result);
 }
@@ -306,26 +323,43 @@ int greybus_rx_handler(unsigned int cport, void *data, size_t size)
     struct gb_operation_handler *op_handler;
     size_t hdr_size;
 
-    if (cport >= unipro_cport_count() || !data)
+    if (cport >= unipro_cport_count() || !data) {
+        gb_error("Invalid cport number: %u\n", cport);
         return -EINVAL;
+    }
 
-    if (!g_cport[cport].driver || !g_cport[cport].driver->op_handlers)
+    if (!g_cport[cport].driver || !g_cport[cport].driver->op_handlers) {
+        gb_error("Cport %u does not have a valid driver registered\n", cport);
         return 0;
+    }
 
     if (sizeof(*hdr) > size) {
+        gb_error("Dropping garbage request\n");
         return -EINVAL; /* Dropping garbage request */
     }
 
     hdr_size = le16_to_cpu(hdr->size);
 
     if (hdr_size > size || sizeof(*hdr) > hdr_size) {
+        gb_error("Dropping garbage request\n");
         return -EINVAL; /* Dropping garbage request */
     }
 
     gb_dump(data, size);
 
+    if (gb_tape && gb_tape_fd >= 0) {
+        struct gb_tape_record_header record_hdr = {
+            .size = size,
+            .cport = cport,
+        };
+
+        gb_tape->write(gb_tape_fd, &record_hdr, sizeof(record_hdr));
+        gb_tape->write(gb_tape_fd, data, size);
+    }
+
     op_handler = find_operation_handler(hdr->type, cport);
     if (op_handler && op_handler->fast_handler) {
+        gb_debug("%s\n", gb_handler_name(op_handler));
         op_handler->fast_handler(cport, data);
         return 0;
     }
@@ -344,23 +378,39 @@ int greybus_rx_handler(unsigned int cport, void *data, size_t size)
     return 0;
 }
 
-int gb_register_driver(unsigned int cport, struct gb_driver *driver)
+int _gb_register_driver(unsigned int cport, struct gb_driver *driver)
 {
     int retval;
 
-    if (cport >= unipro_cport_count() || !driver)
-        return -EINVAL;
+    gb_debug("Registering Greybus driver on CP%u\n", cport);
 
-    if (g_cport[cport].driver)
+    if (cport >= unipro_cport_count()) {
+        gb_error("Invalid cport number %u\n", cport);
+        return -EINVAL;
+    }
+
+    if (!driver) {
+        gb_error("No driver to register\n");
+        return -EINVAL;
+    }
+
+    if (g_cport[cport].driver) {
+        gb_error("%s is already registered for CP%u\n",
+                 gb_driver_name(g_cport[cport].driver), cport);
         return -EEXIST;
+    }
 
-    if (!driver->op_handlers && driver->op_handlers_count > 0)
+    if (!driver->op_handlers && driver->op_handlers_count > 0) {
+        gb_error("Invalid driver\n");
         return -EINVAL;
+    }
 
     if (driver->init) {
         retval = driver->init(cport);
-        if (retval)
+        if (retval) {
+            gb_error("Can not init %s\n", gb_driver_name(driver));
             return retval;
+        }
     }
 
     if (driver->op_handlers) {
@@ -392,7 +442,13 @@ int gb_listen(unsigned int cport)
     RET_IF_FAIL(transport_backend, -EINVAL);
     RET_IF_FAIL(transport_backend->listen, -EINVAL);
 
-    if (cport >= unipro_cport_count() || !g_cport[cport].driver) {
+    if (cport >= unipro_cport_count()) {
+        gb_error("Invalid cport number %u\n", cport);
+        return -EINVAL;
+    }
+
+    if (!g_cport[cport].driver) {
+        gb_error("No driver registered! Can not connect CP%u.\n", cport);
         return -EINVAL;
     }
 
@@ -404,7 +460,14 @@ int gb_stop_listening(unsigned int cport)
     RET_IF_FAIL(transport_backend, -EINVAL);
     RET_IF_FAIL(transport_backend->stop_listening, -EINVAL);
 
-    if (cport >= unipro_cport_count() || !g_cport[cport].driver) {
+    if (cport >= unipro_cport_count()) {
+        gb_error("Invalid cport number %u\n", cport);
+        return -EINVAL;
+    }
+
+    if (!g_cport[cport].driver) {
+        gb_error("No driver registered! Can not disconnect CP%u.\n",
+                 cport);
         return -EINVAL;
     }
 
@@ -493,6 +556,24 @@ int gb_operation_send_request_sync(struct gb_operation *operation)
     return 0;
 }
 
+static int gb_operation_send_oom_response(struct gb_operation *operation)
+{
+    int retval;
+    struct gb_operation_hdr *req_hdr = operation->request_buffer;
+
+    irq_disable();
+
+    oom_hdr.id = req_hdr->id;
+    oom_hdr.type = TYPE_RESPONSE_FLAG | req_hdr->type;
+
+    retval = transport_backend->send(operation->cport, &oom_hdr,
+                                     sizeof(oom_hdr));
+
+    irq_enable();
+
+    return retval;
+}
+
 int gb_operation_send_response(struct gb_operation *operation, uint8_t result)
 {
     struct gb_operation_hdr *resp_hdr;
@@ -509,7 +590,7 @@ int gb_operation_send_response(struct gb_operation *operation, uint8_t result)
     if (!operation->response_buffer) {
         gb_operation_alloc_response(operation, 0);
         if (!operation->response_buffer)
-            return -ENOMEM;
+            return gb_operation_send_oom_response(operation);
 
         has_allocated_response = true;
     }
@@ -522,7 +603,9 @@ int gb_operation_send_response(struct gb_operation *operation, uint8_t result)
                                      operation->response_buffer,
                                      le16_to_cpu(resp_hdr->size));
     if (retval) {
+        gb_error("Greybus backend failed to send: error %d\n", retval);
         if (has_allocated_response) {
+            gb_debug("Free the response buffer\n");
             free(operation->response_buffer);
             operation->response_buffer = NULL;
         }
@@ -541,8 +624,10 @@ void *gb_operation_alloc_response(struct gb_operation *operation, size_t size)
     RET_IF_FAIL(operation, NULL);
 
     operation->response_buffer = malloc(size + sizeof(*resp_hdr));
-    if (!operation->response_buffer)
+    if (!operation->response_buffer) {
+        gb_error("Can not allocate a response_buffer\n");
         return NULL;
+    }
 
     memset(operation->response_buffer, 0, size + sizeof(*resp_hdr));
 
@@ -642,7 +727,7 @@ uint8_t gb_operation_get_request_result(struct gb_operation *operation)
     struct gb_operation_hdr *hdr;
 
     if (!operation) {
-        return GB_OP_MALFUNCTION;
+        return GB_OP_INTERNAL;
     }
 
     if (!operation->response) {
@@ -651,7 +736,7 @@ uint8_t gb_operation_get_request_result(struct gb_operation *operation)
 
     hdr = operation->response->request_buffer;
     if (!hdr || hdr->size < sizeof(*hdr)) {
-        return GB_OP_MALFUNCTION;
+        return GB_OP_INTERNAL;
     }
 
     return hdr->result;
@@ -676,6 +761,7 @@ int gb_init(struct gb_transport_backend *transport)
         g_cport[i].timeout_wd.timeout = gb_operation_timeout;
         g_cport[i].timeout_wd.user_priv = (void*) i;
         g_cport[i].timedout_operation.request_buffer = &timedout_hdr;
+        list_init(&g_cport[i].timedout_operation.list);
     }
 
     atomic_init(&request_id, (uint32_t) 0);
@@ -684,4 +770,96 @@ int gb_init(struct gb_transport_backend *transport)
     transport_backend->init();
 
     return 0;
+}
+
+int gb_tape_register_mechanism(struct gb_tape_mechanism *mechanism)
+{
+    if (!mechanism || !mechanism->open || !mechanism->close ||
+        !mechanism->read || !mechanism->write)
+        return -EINVAL;
+
+    if (gb_tape)
+        return -EBUSY;
+
+    gb_tape = mechanism;
+
+    return 0;
+}
+
+int gb_tape_communication(const char *pathname)
+{
+    if (!gb_tape)
+        return -EINVAL;
+
+    if (gb_tape_fd >= 0)
+        return -EBUSY;
+
+    gb_tape_fd = gb_tape->open(pathname, GB_TAPE_WRONLY);
+    if (gb_tape_fd < 0)
+        return gb_tape_fd;
+
+    return 0;
+}
+
+int gb_tape_stop(void)
+{
+    if (!gb_tape || gb_tape_fd < 0)
+        return -EINVAL;
+
+    gb_tape->close(gb_tape_fd);
+    gb_tape_fd = -EBADF;
+
+    return 0;
+}
+
+int gb_tape_replay(const char *pathname)
+{
+    struct gb_tape_record_header hdr;
+    char *buffer;
+    ssize_t nread;
+    int retval = 0;
+    int fd;
+
+    if (!pathname || !gb_tape)
+        return -EINVAL;
+
+    kprintf("greybus: replaying '%s'...\n", pathname);
+
+    fd = gb_tape->open(pathname, GB_TAPE_RDONLY);
+    if (fd < 0)
+        return fd;
+
+    buffer = malloc(CPORT_BUF_SIZE);
+    if (!buffer) {
+        retval = -ENOMEM;
+        goto error_buffer_alloc;
+    }
+
+    while (1) {
+        nread = gb_tape->read(fd, &hdr, sizeof(hdr));
+        if (!nread)
+            break;
+
+        if (nread != sizeof(hdr)) {
+            gb_error("gb-tape: invalid byte count read, aborting...\n");
+            retval = -EIO;
+            break;
+        }
+
+        nread = gb_tape->read(fd, buffer, hdr.size);
+        if (hdr.size != nread) {
+            gb_error("gb-tape: invalid byte count read, aborting...\n");
+            retval = -EIO;
+            break;
+        }
+
+        greybus_rx_handler(hdr.cport, buffer, nread);
+    }
+
+    free(buffer);
+
+error_buffer_alloc:
+    gb_tape->close(fd);
+
+    return retval;
 }
