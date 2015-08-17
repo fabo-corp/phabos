@@ -35,19 +35,22 @@ uint64_t watchdog_get_ticks_until_next_expiration(void);
 
 static inline void watchdog_start_nsec(struct watchdog *wd, unsigned long nsec)
 {
-    unsigned long ticks = (nsec / TICK_IN_NSEC) + (nsec % TICK_IN_NSEC) ? 1 : 0;
+    unsigned long ticks = (nsec / TICK_IN_NSEC) +
+                          ((nsec % TICK_IN_NSEC) ? 1 : 0);
     watchdog_start(wd, ticks ? ticks : 1);
 }
 
 static inline void watchdog_start_usec(struct watchdog *wd, unsigned long usec)
 {
-    unsigned long ticks = (usec / TICK_IN_USEC) + (usec % TICK_IN_USEC) ? 1 : 0;
+    unsigned long ticks = (usec / TICK_IN_USEC) +
+                          ((usec % TICK_IN_USEC) ? 1 : 0);
     watchdog_start(wd, ticks ? ticks : 1);
 }
 
 static inline void watchdog_start_msec(struct watchdog *wd, unsigned long msec)
 {
-    unsigned long ticks = (msec / TICK_IN_MSEC) + (msec % TICK_IN_MSEC) ? 1 : 0;
+    unsigned long ticks = (msec / TICK_IN_MSEC) +
+                          ((msec % TICK_IN_MSEC) ? 1 : 0);
     watchdog_start(wd, ticks ? ticks : 1);
 }
 
