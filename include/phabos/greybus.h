@@ -186,11 +186,17 @@ static inline const char *gb_handler_name(struct gb_operation_handler *handler)
 
 int gb_init(struct gb_transport_backend *transport);
 int _gb_register_driver(unsigned int cport, struct gb_driver *driver);
-#define gb_register_driver(cport, driver)       \
-    do {                                        \
-        (driver)->name = __FILE__;              \
-        _gb_register_driver(cport, driver);     \
-    } while (0)
+
+static inline int _gb_register_driver_debug(unsigned int cport,
+                                            struct gb_driver *driver,
+                                            const char *file)
+{
+    driver->name = file;
+    return _gb_register_driver(cport, driver);
+}
+
+#define gb_register_driver(cport, driver) \
+    _gb_register_driver_debug(cport, driver, __FILE__)
 int gb_listen(unsigned int cport);
 int gb_stop_listening(unsigned int cport);
 
