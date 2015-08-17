@@ -15,6 +15,7 @@ struct mcache_slab {
     struct list_head list;
     size_t size;
     uintptr_t buffer;
+    unsigned refcount;
     uint8_t bitmap[0];
 };
 
@@ -70,7 +71,6 @@ static void *slab_alloc_object(struct mcache_slab *slab)
 {
     const size_t num_object = slab->size / slab->cache->size;
     void *buffer = NULL;
-    bool is_full = true;
 
     // XXX: force num_object per slab to be a multiple of 8 to avoid checking
     //      bit after bit and check the whole word?
@@ -78,17 +78,16 @@ static void *slab_alloc_object(struct mcache_slab *slab)
         unsigned byte = i / 8;
         unsigned bit = i % 8;
 
-        if (!(slab->bitmap[byte] & (1 << bit))) {
-            if (!buffer) {
-                slab->bitmap[byte] |= 1 << bit;
-                buffer = (void*) (slab->buffer + slab->cache->size * i);
-            } else {
-                is_full = false;
-            }
-        }
+        if (slab->bitmap[byte] & (1 << bit))
+            continue;
+
+        slab->bitmap[byte] |= 1 << bit;
+        buffer = (void*) (slab->buffer + slab->cache->size * i);
+        slab->refcount++;
+        break;
     }
 
-    if (is_full) {
+    if (slab->refcount == num_object) {
         list_del(&slab->list);
         list_add(&slab->cache->full_slabs_list, &slab->list);
     }
@@ -125,6 +124,11 @@ static struct mcache_slab *mcache_allocate_new_slab(struct mcache *cache)
     slab->buffer = (uintptr_t) buffer;
     list_init(&slab->list);
 
+    if (cache->ctor) {
+        for (int i = 0; i < num_objects; i++)
+            cache->ctor((char *) buffer + i * cache->size);
+    }
+
     return slab;
 }
 
@@ -147,10 +151,13 @@ mcache_move_empty_slab_to_partial_list(struct mcache *cache)
     return slab;
 }
 
-static void *mcache_allocate_buffer(struct mcache *cache)
+void *mcache_alloc(struct mcache *cache)
 {
     struct mcache_slab *slab;
     void *buffer = NULL;
+
+    if (!cache)
+        return NULL;
 
     spinlock_lock(&cache->lock);
 
@@ -171,32 +178,15 @@ out:
     return buffer;
 }
 
-void *mcache_alloc(struct mcache *cache)
-{
-    void *buffer;
-
-    if (!cache)
-        return NULL;
-
-    buffer = mcache_allocate_buffer(cache);
-    if (!buffer)
-        return NULL;
-
-    if (cache->ctor)
-        cache->ctor(buffer);
-
-    return buffer;
-}
-
 static void slab_free_object(struct mcache_slab *slab, void *buffer)
 {
-    const size_t num_object = slab->size / slab->cache->size;
     const uintptr_t offset = (uintptr_t) buffer - slab->buffer;
     const unsigned object = offset / slab->cache->size;
     uint8_t byte = object / 8;
     uint8_t bit = object % 8;
 
     slab->bitmap[byte] &= ~(1 << bit);
+    slab->refcount--;
 
     /*
      * no op if slab is already in partial_slabs_list, otherwise move slab
@@ -205,17 +195,11 @@ static void slab_free_object(struct mcache_slab *slab, void *buffer)
     list_del(&slab->list);
     list_add(&slab->cache->partial_slabs_list, &slab->list);
 
-    for (unsigned i = 0; i < num_object; i++) {
-        unsigned byte = i / 8;
-        unsigned bit = i % 8;
-
-        if (slab->bitmap[byte] & (1 << bit))
-            return;
-    }
-
     /* slab is now empty, move it to the empty slab list */
-    list_del(&slab->list);
-    list_add(&slab->cache->empty_slabs_list, &slab->list);
+    if (!slab->refcount) {
+        list_del(&slab->list);
+        list_add(&slab->cache->empty_slabs_list, &slab->list);
+    }
 }
 
 struct mcache_slab *find_buffer_slab_in_list(struct mcache *cache, void *buffer,
@@ -244,29 +228,21 @@ struct mcache_slab *find_buffer_slab(struct mcache *cache, void *buffer)
     return find_buffer_slab_in_list(cache, buffer, &cache->full_slabs_list);
 }
 
-static void mcache_deallocate_buffer(struct mcache *cache, void *buffer)
+void mcache_free(struct mcache *cache, void *ptr)
 {
     struct mcache_slab *slab;
 
-    spinlock_lock(&cache->lock);
-
-    slab = find_buffer_slab(cache, buffer);
-    if (!slab)
-        goto out;
-
-    slab_free_object(slab, buffer);
-
-out:
-    spinlock_unlock(&cache->lock);
-}
-
-void mcache_free(struct mcache *cache, void *ptr)
-{
     if (!cache || !ptr)
         return;
 
-    if (cache->dtor)
-        cache->dtor(ptr);
+    spinlock_lock(&cache->lock);
 
-    mcache_deallocate_buffer(cache, ptr);
+    slab = find_buffer_slab(cache, ptr);
+    if (!slab)
+        goto out;
+
+    slab_free_object(slab, ptr);
+
+out:
+    spinlock_unlock(&cache->lock);
 }
