@@ -109,7 +109,7 @@ static struct mm_buffer *find_buffer_in_bucket(int order, unsigned int flags)
 
     list_foreach(&mm_bucket[order], iter) {
         buffer = list_entry(iter, struct mm_buffer, list);
-        if (buffer->region->flags == flags)
+        if ((buffer->region->flags & flags) == flags)
             return buffer;
     }
 
