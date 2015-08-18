@@ -19,7 +19,7 @@ struct inode *inode_alloc(void)
     struct inode *inode;
     int retval;
 
-    inode = kmalloc(sizeof(*inode), 0);
+    inode = kmalloc(sizeof(*inode), MM_KERNEL);
     RET_IF_FAIL(inode, NULL);
 
     retval = inode_init(inode);

@@ -150,7 +150,7 @@ static int enumerate_hub(struct usb_device *hub)
     if (retval < 0)
         return retval; // FIXME: unpower device port
 
-    desc = kmalloc(sizeof(*desc), 0);
+    desc = kmalloc(sizeof(*desc), MM_KERNEL);
     RET_IF_FAIL(desc, -ENOMEM);
 
     retval = usb_control_msg(hub, USB_GET_HUB_DESCRIPTOR, 0, 0, sizeof(*desc),
@@ -442,7 +442,7 @@ static int device_probe_configuration(struct usb_device *device, unsigned id)
 
     config_size = le16_to_cpu(hdr.wTotalLength);
 
-    device->config = kmalloc(config_size, 0);
+    device->config = kmalloc(config_size, MM_KERNEL);
     if (!device->config)
         return -ENOMEM;
 

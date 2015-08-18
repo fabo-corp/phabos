@@ -1732,8 +1732,7 @@ int usbdev_apbinitialize(struct apbridge_usb_driver *driver)
 
     /* Allocate the structures needed */
 
-    alloc = (struct apbridge_alloc_s *)
-        kmalloc(sizeof(struct apbridge_alloc_s), 0);
+    alloc = kmalloc(sizeof(struct apbridge_alloc_s), MM_KERNEL);
     if (!alloc) {
         usbtrace(TRACE_CLSERROR(USBSER_TRACEERR_ALLOCDEVSTRUCT), 0);
         return -ENOMEM;
@@ -1749,7 +1748,8 @@ int usbdev_apbinitialize(struct apbridge_usb_driver *driver)
     memset(priv, 0, sizeof(struct apbridge_dev_s));
     priv->driver = driver;
 
-    priv->cport_to_epin_n = kmalloc(sizeof(int) * unipro_cport_count(), 0);
+    priv->cport_to_epin_n =
+        kmalloc(sizeof(int) * unipro_cport_count(), MM_KERNEL);
     if (!priv->cport_to_epin_n) {
         ret = -ENOMEM;
         goto errout_with_alloc;

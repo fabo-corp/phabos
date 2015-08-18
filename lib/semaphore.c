@@ -19,7 +19,7 @@ struct semaphore *semaphore_create(unsigned val)
 {
     struct semaphore *semaphore;
 
-    semaphore = kmalloc(sizeof(*semaphore), 0);
+    semaphore = kmalloc(sizeof(*semaphore), MM_KERNEL);
     if (!semaphore)
         return NULL;
     semaphore_init(semaphore, val);

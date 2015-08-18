@@ -58,7 +58,7 @@ struct mm_usage *mm_get_usage(void);
 
 static inline void *kzalloc(size_t size, unsigned int flags)
 {
-    void *ptr = kmalloc(size, 0);
+    void *ptr = kmalloc(size, flags);
     if (ptr)
         memset(ptr, 0, size);
     return ptr;
@@ -66,7 +66,7 @@ static inline void *kzalloc(size_t size, unsigned int flags)
 
 static inline void *zalloc(size_t size)
 {
-    return kzalloc(size, 0);
+    return kzalloc(size, MM_KERNEL);
 }
 
 #endif /* __MM_H__ */

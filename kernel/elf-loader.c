@@ -510,7 +510,7 @@ static int elf_load_segments(Elf32_Ehdr *hdr, int fd)
     if (!hdr->e_phnum)
         return -EINVAL;
 
-    phdr = kmalloc(sizeof(*phdr), 0);
+    phdr = kmalloc(sizeof(*phdr), MM_KERNEL);
     if (!phdr)
         return -ENOMEM;
 
@@ -559,7 +559,7 @@ int elf_exec(int fd)
 
     RET_IF_FAIL(fd >= 0, -EINVAL);
 
-    hdr = kmalloc(sizeof(*hdr), 0);
+    hdr = kmalloc(sizeof(*hdr), MM_KERNEL);
     if (!hdr)
         return -ENOMEM;
 

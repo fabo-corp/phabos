@@ -90,9 +90,9 @@ static void shell_history_add(char *command)
         kfree(cmd);
     }
 
-    cmd = kmalloc(sizeof(*cmd), 0);
+    cmd = kmalloc(sizeof(*cmd), MM_KERNEL);
     list_init(&cmd->list);
-    cmd->command = kmalloc(strlen(command) + 1, 0);
+    cmd->command = kmalloc(strlen(command) + 1, MM_KERNEL);
     strcpy(cmd->command, command);
     list_add(&history, &cmd->list);
 }

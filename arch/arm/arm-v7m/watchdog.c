@@ -150,7 +150,7 @@ void watchdog_init(struct watchdog *wd)
 
     RET_IF_FAIL(wd,);
     memset(wd, 0, sizeof(*wd));
-    wd->priv = wdog = kmalloc(sizeof(*wdog), 0);
+    wd->priv = wdog = kmalloc(sizeof(*wdog), MM_KERNEL);
     list_init(&wdog->list);
     wdog->wd = wd;
 }

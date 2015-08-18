@@ -9,7 +9,7 @@ char *astrcpy(const char *str)
 {
     char *copy;
 
-    copy = kmalloc(strlen(str) + 1, 0);
+    copy = kmalloc(strlen(str) + 1, MM_KERNEL);
     strcpy(copy, str);
 
     return copy;
@@ -48,7 +48,7 @@ char *adirname(const char *path)
     if (i == 0)
         return astrcpy("/");
 
-    dirname = kmalloc(i + 1, 0);
+    dirname = kmalloc(i + 1, MM_KERNEL);
     RET_IF_FAIL(dirname, NULL);
 
     memcpy(dirname, path, i);
@@ -86,7 +86,7 @@ char *abasename(const char *path)
     i += 1;
     j += 1;
 
-    dirname = kmalloc(i - j + 1, 0);
+    dirname = kmalloc(i - j + 1, MM_KERNEL);
     RET_IF_FAIL(dirname, NULL);
 
     memcpy(dirname, path + j, i - j);

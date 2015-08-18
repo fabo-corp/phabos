@@ -152,7 +152,7 @@ struct task *task_run(task_entry_t entry, void *data, uint32_t stack_addr)
         return NULL;
 
     if (!stack_addr) {
-        task->allocated_stack = kmalloc(DEFAULT_STACK_SIZE, 0);
+        task->allocated_stack = kmalloc(DEFAULT_STACK_SIZE, MM_KERNEL);
         if (!task->allocated_stack)
             goto error_stack;
 

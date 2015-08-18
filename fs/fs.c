@@ -81,7 +81,7 @@ struct inode *fs_walk(struct inode *cwd, const char *pathname)
     RET_IF_FAIL(pathname, NULL);
 
     length = strlen(pathname) + 1;
-    path = kmalloc(length, 0);
+    path = kmalloc(length, MM_KERNEL);
 
     RET_IF_FAIL(path, NULL);
 
