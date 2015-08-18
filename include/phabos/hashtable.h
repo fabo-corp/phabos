@@ -38,6 +38,7 @@ typedef struct hashtable
 
 void hashtable_init(hashtable_t *ht, hashtable_hash_fct_t hash,
                     hashtable_key_compare_fct_t compare);
+void hashtable_deinit(hashtable_t *ht);
 void hashtable_add(hashtable_t *ht, void *key, void *value);
 void *hashtable_get(hashtable_t *ht, void *key);
 bool hashtable_has(hashtable_t *ht, void *key);
