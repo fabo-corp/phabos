@@ -279,7 +279,6 @@ struct mm_region tsb_mm_regions[] = {
         .flags = MM_KERNEL | MM_DMA,
     },
 #else
-#if 0
     {
         .start = BUFRAM0_BASE,
         .size = 0x8000,
@@ -300,7 +299,6 @@ struct mm_region tsb_mm_regions[] = {
         .size = 0x4000,
         .flags = MM_KERNEL | MM_DMA,
     },
-#endif
     {
         .start = BUFRAM2_BASE,
         .size = 0x8000,
