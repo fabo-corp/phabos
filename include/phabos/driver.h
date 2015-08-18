@@ -64,10 +64,14 @@ int devnum_alloc(struct driver *driver, struct device *device, dev_t *devnum);
 int devfs_init(void);
 int devfs_mknod(const char *name, mode_t mode, dev_t dev);
 
-void dev_info(struct device *device, const char *format, ...);
-void dev_warn(struct device *device, const char *format, ...);
-void dev_error(struct device *device, const char *format, ...);
-void dev_debug(struct device *device, const char *format, ...);
+void dev_info(struct device *device, const char *format, ...)
+    __attribute__((format(printf, 2, 3)));
+void dev_warn(struct device *device, const char *format, ...)
+    __attribute__((format(printf, 2, 3)));
+void dev_error(struct device *device, const char *format, ...)
+    __attribute__((format(printf, 2, 3)));
+void dev_debug(struct device *device, const char *format, ...)
+    __attribute__((format(printf, 2, 3)));
 
 #endif /* __DRIVER_H__ */
 
