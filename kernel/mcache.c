@@ -159,7 +159,7 @@ static struct mcache_slab *mcache_allocate_new_slab(struct mcache *cache)
         return NULL;
 
     slab->cache = cache;
-    slab->size = num_objects * cache->size;
+    slab->size = buffer_size;
     slab->buffer = (uintptr_t) buffer;
     list_init(&slab->list);
 
