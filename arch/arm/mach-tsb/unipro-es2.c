@@ -40,6 +40,7 @@
 #include <phabos/scheduler.h>
 #include <phabos/kprintf.h>
 #include <phabos/utils.h>
+#include <phabos/mm.h>
 
 #include <asm/hwio.h>
 #include <asm/tsb-irq.h>
@@ -97,10 +98,7 @@ struct unipro_buffer {
     const void *data;
 };
 
-#define CPORT_RX_BUF_BASE         (0x20000000U)
-#define CPORT_RX_BUF_SIZE         (CPORT_BUF_SIZE)
-#define CPORT_RX_BUF(cport)       (void*)(CPORT_RX_BUF_BASE + \
-                                      (CPORT_RX_BUF_SIZE * cport))
+#define CPORT_RX_BUF_ORDER        size_to_order(CPORT_BUF_SIZE / PAGE_SIZE)
 #define CPORT_TX_BUF_BASE         (0x50000000U)
 #define CPORT_TX_BUF_SIZE         (0x20000U)
 #define CPORT_TX_BUF(cport)       (uint8_t*)(CPORT_TX_BUF_BASE + \
@@ -873,7 +871,7 @@ void unipro_init(void)
     for (i = 0; i < unipro_cport_count(); i++) {
         cport = &cporttable[i];
         cport->tx_buf = CPORT_TX_BUF(i);
-        cport->rx_buf = CPORT_RX_BUF(i);
+        cport->rx_buf = page_alloc(MM_DMA, CPORT_RX_BUF_ORDER);
         cport->cportid = i;
         cport->connected = 0;
         list_init(&cport->tx_fifo);
