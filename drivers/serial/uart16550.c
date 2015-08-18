@@ -128,7 +128,7 @@ static ssize_t uart16550_write(struct file *file, const void *buf, size_t count)
     mutex_lock(&dev->tx_mutex);
 
     while (nwrite < count) {
-        if (dev->tx_start == uart16550_get_next_tx_byte(dev->tx_end)) {
+        while (dev->tx_start == uart16550_get_next_tx_byte(dev->tx_end)) {
             irq_pend(dev->irq);
             semaphore_down(&dev->tx_semaphore);
         }
