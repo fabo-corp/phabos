@@ -63,8 +63,42 @@ struct mcache *mcache_create(const char *const name, size_t size, size_t align,
     return cache;
 }
 
+static void mcache_destroy_slab(struct mcache_slab *slab)
+{
+    const size_t num_object = slab->size / slab->cache->size;
+    void *buffer;
+    struct mm_usage *mm_usage;
+
+    if (slab->cache->dtor) {
+        for (unsigned i = 0; i < num_object; i++) {
+            buffer = (void*) (slab->buffer + slab->cache->size * i);
+            slab->cache->dtor(buffer);
+        }
+    }
+
+    mm_usage = mm_get_usage();
+    if (mm_usage)
+        atomic_add(&mm_usage->cached, -size_to_order(slab->size));
+
+    page_free((void*) slab->buffer, size_to_order(slab->size));
+    kfree(slab);
+}
+
 void mcache_destroy(struct mcache *cache)
 {
+    if (!cache)
+        return;
+
+    list_foreach(&cache->full_slabs_list, iter)
+        mcache_destroy_slab(list_entry(iter, struct mcache_slab, list));
+
+    list_foreach(&cache->partial_slabs_list, iter)
+        mcache_destroy_slab(list_entry(iter, struct mcache_slab, list));
+
+    list_foreach(&cache->empty_slabs_list, iter)
+        mcache_destroy_slab(list_entry(iter, struct mcache_slab, list));
+
+    kfree(cache);
 }
 
 static void *slab_alloc_object(struct mcache_slab *slab)
