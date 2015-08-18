@@ -1,4 +1,5 @@
-#include <phabos/kprintf.h>
+#include <stdio.h>
+
 #include <phabos/mm.h>
 #include <apps/shell.h>
 
@@ -16,8 +17,8 @@ static int free_main(int argc, char **argv)
     cached = (unsigned long) atomic_get(&usage->cached);
     free = total - used;
 
-    kprintf("      %12s %12s %12s %12s\n", "total", "used", "free", "cache");
-    kprintf("Mems: %12lu %12lu %12lu %12lu\n", total, used, free, cached);
+    printf("      %12s %12s %12s %12s\n", "total", "used", "free", "cache");
+    printf("Mems: %12lu %12lu %12lu %12lu\n", total, used, free, cached);
 
     return 0;
 }
