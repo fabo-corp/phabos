@@ -170,13 +170,13 @@ static struct uart_device stm32_usart_device = {
     },
 };
 
-static struct stm32_i2c_adapter_platform stm32_i2c_pdata = {
+static struct stm32_i2c_master_platform stm32_i2c_pdata = {
     .evt_irq = STM32_IRQ_I2C2_EV,
     .err_irq = STM32_IRQ_I2C2_ER,
     .clk = APB1_FREQ,
 };
 
-struct i2c_adapter stm32_i2c_adapter = {
+struct i2c_master stm32_i2c_master = {
     .device = {
         .name = "i2c-2",
         .description = "STM32 I2C-2",
@@ -205,21 +205,21 @@ struct spi_master stm32_spi_master = {
 static struct tca64xx_platform tca64xx_io_expander_pdata[] = {
     {
         .part = TCA6416_PART,
-        .adapter = &stm32_i2c_adapter,
+        .master = &stm32_i2c_master,
         .addr = 0x20,
         .reset_gpio = GPIO_PORTE | GPIO_PIN0,
         .irq = GPIO_PORTA | GPIO_PIN0,
     },
     {
         .part = TCA6416_PART,
-        .adapter = &stm32_i2c_adapter,
+        .master = &stm32_i2c_master,
         .addr = 0x21,
         .reset_gpio = GPIO_PORTE | GPIO_PIN1,
         .irq = U96_GPIO_CHIP_START + 7,
     },
     {
         .part = TCA6424_PART,
-        .adapter = &stm32_i2c_adapter,
+        .master = &stm32_i2c_master,
         .addr = 0x23,
         .reset_gpio = TCA64XX_IO_UNUSED,
         .irq = TCA64XX_IO_UNUSED,
@@ -412,7 +412,7 @@ void machine_init(void)
     for (int i = 0; i < ARRAY_SIZE(gpio_port); i++)
         device_register(&gpio_port[i].device);
     device_register(&stm32_usart_device.device);
-    device_register(&stm32_i2c_adapter.device);
+    device_register(&stm32_i2c_master.device);
     device_register(&stm32_spi_master.device);
     for (int i = 0; i < ARRAY_SIZE(tca64xx_io_expander); i++)
         device_register(&tca64xx_io_expander[i].device);

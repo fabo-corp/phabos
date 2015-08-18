@@ -126,7 +126,7 @@
 
 struct tca64xx_platform_data {
     tca64xx_part part;
-    struct i2c_adapter *adapter;
+    struct i2c_master *master;
     uint8_t addr;
     uint32_t reset;
     uint32_t irq;
@@ -300,7 +300,7 @@ static int i2c_get(void *driver_data, uint8_t regaddr, uint8_t *val)
 {
     int ret;
     struct tca64xx_platform_data *tca64xx = driver_data;
-    struct i2c_adapter *adapter = tca64xx->adapter;
+    struct i2c_master *master = tca64xx->master;
     uint8_t addr = tca64xx->addr;
     struct i2c_msg msg[] = {
         {
@@ -317,11 +317,11 @@ static int i2c_get(void *driver_data, uint8_t regaddr, uint8_t *val)
         },
     };
 
-    if (!adapter) {
+    if (!master) {
         return -EINVAL;
     }
 
-    ret = i2c_transfer(adapter, msg, 2);
+    ret = i2c_transfer(master, msg, 2);
     if (!ret) {
         lldbg("%s: addr=0x%02hhX, regaddr=0x%02hhX: read 0x%02hhX\n",
               __func__, addr, regaddr, *val);
@@ -337,7 +337,7 @@ static int i2c_set(void *driver_data, uint8_t regaddr, uint8_t val)
 {
     int ret;
     struct tca64xx_platform_data *tca64xx = driver_data;
-    struct i2c_adapter *adapter = tca64xx->adapter;
+    struct i2c_master *master = tca64xx->master;
     uint8_t cmd[2] = { regaddr, val };
     struct i2c_msg msg[] = {
         {
@@ -348,11 +348,11 @@ static int i2c_set(void *driver_data, uint8_t regaddr, uint8_t val)
         },
     };
 
-    if (!adapter) {
+    if (!master) {
         return -EINVAL;
     }
 
-    ret = i2c_transfer(adapter, msg, 1);
+    ret = i2c_transfer(master, msg, 1);
     if (ret == 0) {
         lldbg("%s: addr=0x%02hhX, regaddr=0x%02hhX, val=0x%02hhX\n",
               __func__, tca64xx->addr, regaddr, val);
@@ -927,7 +927,7 @@ static int tca64xx_probe(struct device *device)
         return -ENOMEM;
     }
 
-    tca64xx->adapter = pdata->adapter;
+    tca64xx->master = pdata->master;
     tca64xx->addr = pdata->addr;
     tca64xx->irq = pdata->irq;
     tca64xx->reset = pdata->reset_gpio;

@@ -34,21 +34,21 @@
 
 struct i2c_dev;
 struct i2c_msg;
-struct i2c_adapter;
+struct i2c_master;
 
-struct i2c_adapter_ops {
-    int (*transfer)(struct i2c_adapter *adt, struct i2c_msg *msg, size_t count);
-    int (*set_frequency)(struct i2c_adapter *adapter, unsigned long freq);
+struct i2c_master_ops {
+    int (*transfer)(struct i2c_master *adt, struct i2c_msg *msg, size_t count);
+    int (*set_frequency)(struct i2c_master *master, unsigned long freq);
 };
 
-struct i2c_adapter {
+struct i2c_master {
     struct device device;
     unsigned int id;
-    struct i2c_adapter_ops *ops;
+    struct i2c_master_ops *ops;
 };
 
 struct i2c_dev {
-    struct i2c_adapter *adapter;
+    struct i2c_master *master;
     unsigned address;
     unsigned long freq;
 };
@@ -60,15 +60,15 @@ struct i2c_msg {
     unsigned long flags;
 };
 
-static inline struct i2c_adapter *to_adapter(struct device *device)
+static inline struct i2c_master *to_master(struct device *device)
 {
-    return containerof(device, struct i2c_adapter, device);
+    return containerof(device, struct i2c_master, device);
 }
 
-int i2c_adapter_register(struct i2c_adapter *adapter, dev_t devnum);
-int i2c_adapter_unregister(struct i2c_adapter *adapter);
-int i2c_set_frequency(struct i2c_adapter *adapter, unsigned long freq);
-int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msg, size_t count);
+int i2c_master_register(struct i2c_master *master, dev_t devnum);
+int i2c_master_unregister(struct i2c_master *master);
+int i2c_set_frequency(struct i2c_master *master, unsigned long freq);
+int i2c_transfer(struct i2c_master *adap, struct i2c_msg *msg, size_t count);
 
 #endif /* __I2C_H__ */
 

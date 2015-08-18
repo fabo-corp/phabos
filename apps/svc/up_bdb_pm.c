@@ -195,7 +195,7 @@ static const uint8_t bdbpm_i2c_addr[DEV_MAX_RAIL_COUNT][DEV_COUNT] = {
     },
 };
 
-extern struct i2c_adapter stm32_i2c_adapter; // XXX port phabos
+extern struct i2c_master stm32_i2c_master; // XXX port phabos
 static uint32_t bdbpm_current_lsb;
 static ina230_conversion_time bdbpm_ct;
 static ina230_avg_count bdbpm_avg_count;
@@ -735,7 +735,7 @@ bdbpm_rail *bdbpm_init_rail(uint8_t dev, uint8_t rail)
     /* Init device */
     dbg_verbose("%s(): calling ina230_init() with addr=0x%02X, mohm=%u, lsb=%uuA, ct=%u, avg_count=%u, mode=%u\n",
                 __func__, addr, INA230_SHUNT_VALUE, bdbpm_current_lsb, bdbpm_ct, bdbpm_avg_count, ina230_shunt_bus_cont);
-    ina230_dev = ina230_init(&stm32_i2c_adapter, addr,
+    ina230_dev = ina230_init(&stm32_i2c_master, addr,
                            INA230_SHUNT_VALUE, bdbpm_current_lsb,
                            bdbpm_ct,
                            bdbpm_avg_count,

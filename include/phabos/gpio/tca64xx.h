@@ -46,7 +46,7 @@ typedef enum {
 #define TCA64XX_IO_UNUSED   (1 << 31)
 
 struct tca64xx_platform {
-    struct i2c_adapter *adapter;
+    struct i2c_master *master;
     tca64xx_part part;
     uint8_t addr;
     unsigned reset_gpio;

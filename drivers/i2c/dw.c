@@ -144,7 +144,7 @@ static void tsb_i2c_disable(void)
  */
 static void tsb_i2c_init(void)
 {
-    /* Disable the adapter */
+    /* Disable the master */
     tsb_i2c_disable();
 
     /* Set timings for Standard and Fast Speed mode */
@@ -181,7 +181,7 @@ static void tsb_i2c_start_transfer(void)
 {
     lldbg("\n");
 
-    /* Disable the adapter */
+    /* Disable the master */
     tsb_i2c_disable();
 
     /* write target address */
@@ -190,7 +190,7 @@ static void tsb_i2c_start_transfer(void)
     /* Disable the interrupts */
     tsb_i2c_disable_int();
 
-    /* Enable the adapter */
+    /* Enable the master */
     tsb_i2c_enable();
 
     /* Clear interrupts */
@@ -405,7 +405,7 @@ static int dw_transfer(struct i2c_dev *dev, struct i2c_msg *msg, size_t count)
     if (g_status == DW_I2C_STATUS_TIMEOUT) {
         lldbg("controller timed out\n");
 
-        /* Re-init the adapter */
+        /* Re-init the master */
         tsb_i2c_init();
         ret = -ETIMEDOUT;
         goto done;
