@@ -261,65 +261,65 @@ struct mm_region tsb_mm_regions[] = {
     {
         .start = BUFRAM0_BASE,
         .size = BUFRAM_SIZE,
-        .flags = MM_DMA,
+        .flags = MM_KERNEL | MM_DMA,
     },
     {
         .start = BUFRAM1_BASE,
         .size = BUFRAM_SIZE,
-        .flags = MM_DMA,
+        .flags = MM_KERNEL | MM_DMA,
     },
     {
         .start = BUFRAM2_BASE,
         .size = BUFRAM_SIZE,
-        .flags = MM_DMA,
+        .flags = MM_KERNEL | MM_DMA,
     },
     {
         .start = BUFRAM3_BASE,
         .size = BUFRAM_SIZE,
-        .flags = MM_DMA,
+        .flags = MM_KERNEL | MM_DMA,
     },
 #else
 #if 0
     {
         .start = BUFRAM0_BASE,
         .size = 0x8000,
-        .flags = MM_DMA,
+        .flags = MM_KERNEL | MM_DMA,
     },
     {
         .start = BUFRAM0_BASE + 0x8000,
         .size = 0x4000,
-        .flags = MM_DMA,
+        .flags = MM_KERNEL | MM_DMA,
     },
     {
         .start = BUFRAM1_BASE,
         .size = 0x8000,
-        .flags = MM_DMA,
+        .flags = MM_KERNEL | MM_DMA,
     },
     {
         .start = BUFRAM1_BASE + 0x8000,
         .size = 0x4000,
-        .flags = MM_DMA,
+        .flags = MM_KERNEL | MM_DMA,
     },
 #endif
     {
         .start = BUFRAM2_BASE,
         .size = 0x8000,
-        .flags = MM_DMA,
+        .flags = MM_KERNEL | MM_DMA,
     },
     {
         .start = BUFRAM2_BASE + 0x8000,
         .size = 0x4000,
-        .flags = MM_DMA,
+        .flags = MM_KERNEL | MM_DMA,
     },
     {
         .start = BUFRAM3_BASE,
         .size = 0x8000,
-        .flags = MM_DMA,
+        .flags = MM_KERNEL | MM_DMA,
     },
     {
         .start = BUFRAM3_BASE + 0x8000,
         .size = 0x4000,
-        .flags = MM_DMA,
+        .flags = MM_KERNEL | MM_DMA,
     },
 #endif
 };
