@@ -14,7 +14,9 @@
 #include <phabos/hashtable.h>
 #include <asm/spinlock.h>
 
+static bool is_probing_enabled;
 static struct list_head drivers = LIST_INIT(drivers);
+static struct list_head probed_devices = LIST_INIT(probed_devices);
 static struct list_head devices = LIST_INIT(devices);
 static hashtable_t driver_table;
 static struct spinlock driver_table_lock = SPINLOCK_INIT(driver_table_lock);
@@ -114,6 +116,10 @@ int device_register(struct device *dev)
     list_init(&dev->list);
     list_add(&devices, &dev->list);
 
+    if (is_probing_enabled) {
+        device_driver_probe_all();
+    }
+
     return 0;
 }
 
@@ -181,17 +187,43 @@ struct list_head *device_get_list(void)
     return &devices;
 }
 
+static int device_probe(struct device *dev)
+{
+    struct driver *drv = driver_lookup(dev->driver);
+    int retval;
+
+    if (!drv || !drv->probe)
+        return -EINVAL;
+
+    retval = drv->probe(dev);
+    if (retval)
+        return retval;
+
+    kprintf("%s: new %s device\n", dev->name, dev->description);
+    return 0;
+}
+
 void device_driver_probe_all(void)
 {
-    list_foreach(&devices, iter) {
-        struct device *dev = containerof(iter, struct device, list);
-        struct driver *drv = driver_lookup(dev->driver);
+    is_probing_enabled = true;
+    bool retry = true;
+    int retval;
 
-        if (!drv || !drv->probe)
-            continue;
+    while (!list_is_empty(&devices) && retry) {
+        retry = false;
 
-        if (!drv->probe(dev)) {
-            kprintf("%s: new %s device\n", dev->name, dev->description);
+        list_foreach_safe(&devices, iter) {
+            struct device *device = containerof(iter, struct device, list);
+            list_del(&device->list);
+
+            retval = device_probe(device);
+
+            if (!retval) {
+                retry = true;
+                list_add(&probed_devices, &device->list);
+            } else if (retval == -EAGAIN) {
+                list_add(&devices, &device->list);
+            }
         }
     }
 }
