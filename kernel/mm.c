@@ -13,12 +13,18 @@ static struct spinlock mm_lock = SPINLOCK_INIT(mm_lock);
 static struct list_head mm_bucket[MAX_ADDRESSABLE_MEM_ORDER + 1];
 static struct list_head mm_region_list = LIST_INIT(mm_region_list);
 static bool is_initialized;
+static struct mm_usage mm_usage;
 
 struct mm_buffer {
     uint32_t bucket;
     struct mm_region *region;
     struct list_head list;
 } __attribute__((packed)); // MUST be a multiple of 8 bytes
+
+struct mm_usage *mm_get_usage(void)
+{
+    return &mm_usage;
+}
 
 static size_t order_to_size(int order)
 {
@@ -68,6 +74,8 @@ int mm_add_region(struct mm_region *region)
                 region->size);
         return -EINVAL;
     }
+
+    atomic_add(&mm_usage.total, region->size);
 
     spinlock_lock(&mm_lock);
 
@@ -218,11 +226,7 @@ void *kmalloc(size_t size, unsigned int flags)
 
     size += sizeof(*buffer);
 
-#if 0
-    static size_t total_size = 0;
-    total_size += size;
-    kprintf("%s(%u) = %u\n", __func__, size, total_size);
-#endif
+    atomic_add(&mm_usage.used, size);
 
     order = size_to_order(size);
     if (order < 0)
@@ -262,6 +266,8 @@ void kfree(void *ptr)
 
     buffer = (struct mm_buffer*) ((char *) ptr - sizeof(*buffer));
     RET_IF_FAIL(buffer->list.prev == buffer->list.next,);
+
+    atomic_add(&mm_usage.used, -order_to_size(buffer->bucket));
 
     spinlock_lock(&mm_lock);
 

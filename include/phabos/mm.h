@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <asm/atomic.h>
 #include <phabos/list.h>
 
 #define PAGE_ORDER 8
@@ -30,6 +31,12 @@ struct mm_region {
     struct list_head list;
 };
 
+struct mm_usage {
+    atomic_t total;
+    atomic_t used;
+    atomic_t cached;
+};
+
 int mm_add_region(struct mm_region *region);
 
 void *kmalloc(size_t size, unsigned int flags);
@@ -45,6 +52,8 @@ struct mcache *mcache_create(const char *const name, size_t size, size_t align,
                              unsigned long flags, mcache_constructor_t ctor,
                              mcache_destructor_t dtor);
 void mcache_destroy(struct mcache *cache);
+
+struct mm_usage *mm_get_usage(void);
 
 static inline void *kzalloc(size_t size, unsigned int flags)
 {
