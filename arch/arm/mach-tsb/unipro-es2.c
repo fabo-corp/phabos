@@ -726,7 +726,7 @@ int unipro_init_cport(unsigned int cportid)
      *        pipelined zero-copy system.
      */
     unipro_write(AHM_ADDRESS_00 + (cportid * sizeof(uint32_t)),
-                 (uint32_t)CPORT_RX_BUF(cportid));
+                 (uint32_t)cport->rx_buf);
 
     /* Start the flow of received data */
     unipro_write(REG_RX_PAUSE_SIZE_00 + (cportid * sizeof(uint32_t)),
