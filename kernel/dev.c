@@ -20,49 +20,6 @@
 #include <apps/shell.h>
 #include <asm/delay.h>
 
-__attribute__((unused)) static void ls(const char *path)
-{
-    int fd;
-    int retval;
-    char buffer[128];
-    struct phabos_dirent *dirent = (struct phabos_dirent*) &buffer;
-
-    fd = open(path, 0);
-    if (fd < 0) {
-        kprintf("open failed: %s\n", strerror(errno));
-        return;
-    }
-
-    kprintf("%s:\n", path);
-    do {
-        retval = getdents(fd, dirent, ARRAY_SIZE(buffer));
-        if (retval < 0) {
-            kprintf("getdents failed: %s\n", strerror(errno));
-            goto end;
-        }
-
-        for (int bpos = 0; bpos < retval;) {
-            dirent = (struct phabos_dirent *) (buffer + bpos);
-            char d_type = d_type = *(buffer + bpos + dirent->d_reclen - 1);
-
-            kprintf("\t%s ", (d_type == DT_REG) ?  "regular" :
-                               (d_type == DT_DIR) ?  "directory" :
-                               (d_type == DT_FIFO) ? "FIFO" :
-                               (d_type == DT_SOCK) ? "socket" :
-                               (d_type == DT_LNK) ?  "symlink" :
-                               (d_type == DT_BLK) ?  "block dev" :
-                               (d_type == DT_CHR) ?  "char dev" : "???");
-            kprintf("%.4d %s\n", dirent->d_reclen, dirent->d_name);
-            bpos += dirent->d_reclen;
-        }
-    } while (retval > 0);
-
-end:
-    retval = close(fd);
-    if (retval < 0)
-        kprintf("close failed: %s\n", strerror(errno));
-}
-
 __attribute__((unused)) static void dev(void)
 {
     int fd, fd2;
@@ -217,8 +174,6 @@ int dev_main(int argc, char **argv)
         udelay(1);
     }
 #endif
-
-    ls("/dev");
 
 #if 0
     struct mcache *cache = mcache_create("test-cache", 32, 4, MM_DMA,
