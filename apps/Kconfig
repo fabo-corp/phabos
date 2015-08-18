@@ -32,6 +32,9 @@ config APP_UNIPRO
 config APP_FREE
     bool "free"
 
+config APP_LS
+    bool "ls"
+
 if MACH_TSB
 source apps/tsb/Kconfig
 endif
