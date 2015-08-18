@@ -17,8 +17,8 @@
 #include <sys/types.h>
 #include <signal.h>
 
-#define DEFAULT_STACK_SIZE              2048
-#define DEFAULT_STACK_ORDER             (DEFAULT_STACK_SIZE / PAGE_SIZE)
+#define DEFAULT_STACK_ORDER         3
+#define DEFAULT_STACK_SIZE          ((1 << DEFAULT_STACK_ORDER) << PAGE_ORDER)
 
 static hashtable_t task_table;
 static struct spinlock task_table_lock = SPINLOCK_INIT(task_table_lock);
