@@ -7,7 +7,9 @@
 
 .global __aeabi_uidivmod, __aeabi_idivmod
 .global __aeabi_memcpy
+.global __aeabi_memclr4
 .extern memcpy
+.extern memset
 .syntax unified
 
 __aeabi_uidivmod:
@@ -28,3 +30,8 @@ __aeabi_idivmod:
 
 __aeabi_memcpy:
     b memcpy
+
+__aeabi_memclr4:
+    mov r2, r1
+    mov r1, #0
+    b memset
