@@ -30,8 +30,8 @@ static const size_t history_size = 10;
 static struct list_head history = LIST_INIT(history);
 static struct list_head *history_iter;
 struct shell_history_command {
-    char *command;
     struct list_head list;
+    char command[0];
 };
 
 struct task_context {
@@ -85,15 +85,13 @@ static void shell_history_add(char *command)
 
     if (history_cmd_count >= history_size) {
         cmd = list_last_entry(&history, struct shell_history_command, list);
-        kfree(cmd->command);
         list_del(&cmd->list);
         kfree(cmd);
         history_cmd_count--;
     }
 
-    cmd = kmalloc(sizeof(*cmd), MM_KERNEL);
+    cmd = kmalloc(sizeof(*cmd) + strlen(command) + 1, MM_KERNEL);
     list_init(&cmd->list);
-    cmd->command = kmalloc(strlen(command) + 1, MM_KERNEL);
     strcpy(cmd->command, command);
     list_add(&history, &cmd->list);
     history_cmd_count++;
