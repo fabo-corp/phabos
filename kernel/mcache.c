@@ -152,7 +152,7 @@ static struct mcache_slab *mcache_allocate_new_slab(struct mcache *cache)
 
     mm_usage = mm_get_usage();
     if (mm_usage)
-        atomic_add(&mm_usage->cached, size_to_order(pages));
+        atomic_add(&mm_usage->cached, buffer_size);
 
     slab = kzalloc(sizeof(*slab) + bitmap_size, 0);
     if (!slab)
