@@ -164,12 +164,12 @@ void __aeabi_memcpy(void *dest, void *src, size_t n)
 
 void data_constructor(void *buffer)
 {
-    kprintf("%s(%X)\n", __func__, buffer);
+    kprintf("%s(%p)\n", __func__, buffer);
 }
 
 void data_destructor(void *buffer)
 {
-    kprintf("%s(%X)\n", __func__, buffer);
+    kprintf("%s(%p)\n", __func__, buffer);
 }
 
 int dev_main(int argc, char **argv)
