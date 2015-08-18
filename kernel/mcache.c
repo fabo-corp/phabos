@@ -99,6 +99,7 @@ static struct mcache_slab *mcache_allocate_new_slab(struct mcache *cache)
 {
     const size_t num_objects = 32; // XXX: find an algorith that will find
                                    // a good value for this
+    struct mm_usage *mm_usage;
 
     void *buffer;
     struct mcache_slab *slab;
@@ -114,6 +115,10 @@ static struct mcache_slab *mcache_allocate_new_slab(struct mcache *cache)
     buffer = page_alloc(cache->flags, size_to_order(pages));
     if (!buffer)
         return NULL;
+
+    mm_usage = mm_get_usage();
+    if (mm_usage)
+        atomic_add(&mm_usage->cached, size_to_order(pages));
 
     slab = kzalloc(sizeof(*slab) + bitmap_size, 0);
     if (!slab)
