@@ -11,6 +11,7 @@
 #include <phabos/utils.h>
 #include <phabos/panic.h>
 #include <phabos/syscall.h>
+#include <phabos/fs.h>
 
 #include <stdlib.h>
 #include <errno.h>
@@ -117,9 +118,17 @@ void task_cond_broadcast(struct task_cond* cond)
 
 static void task_destroy(struct task *task)
 {
+    struct hashtable_iterator iter = HASHTABLE_ITERATOR_INIT;
+
     // assert
     if (task->allocated_stack)
         page_free(task->allocated_stack, DEFAULT_STACK_ORDER);
+
+    while (hashtable_iterate(&task->fd, &iter)) {
+        task_free_fdnum(task, (int) iter.key);
+    }
+
+    hashtable_deinit(&task->fd);
     kfree(task);
 }
 
