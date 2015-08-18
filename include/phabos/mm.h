@@ -18,6 +18,7 @@
 #define PAGE_SIZE (1 << PAGE_ORDER)
 
 #define MM_DMA          (1 << 0)
+#define MM_KERNEL       (1 << 1)
 
 struct mcache;
 
