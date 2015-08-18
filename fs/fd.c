@@ -44,13 +44,9 @@ int allocate_fdnum(void)
     return -1;
 }
 
-int free_fdnum(int fdnum)
+int task_free_fdnum(struct task *task, int fdnum)
 {
-    struct task *task;
     struct fd *fd;
-
-    task = task_get_running();
-    RET_IF_FAIL(task,-1);
 
     fd = hashtable_get(&task->fd, (void*) fdnum);
     if (!fd)
@@ -64,4 +60,14 @@ int free_fdnum(int fdnum)
     kfree(fd);
 
     return 0;
+}
+
+int free_fdnum(int fdnum)
+{
+    struct task *task;
+
+    task = task_get_running();
+    RET_IF_FAIL(task,-1);
+
+    return task_free_fdnum(task, fdnum);
 }

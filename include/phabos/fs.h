@@ -24,6 +24,7 @@
 struct inode;
 struct file;
 struct phabos_dirent;
+struct task;
 
 struct file_operations {
     int (*ioctl)(struct file *file, unsigned long cmd, va_list vl);
@@ -100,6 +101,7 @@ int mknod(const char *pathname, mode_t mode, dev_t dev);
 struct fd *to_fd(int fdnum);
 int allocate_fdnum(void);
 int free_fdnum(int fdnum);
+int task_free_fdnum(struct task *task, int fd);
 
 static inline bool is_directory(struct inode *inode)
 {
