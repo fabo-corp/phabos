@@ -152,16 +152,6 @@ __attribute__((unused)) static void dev(void)
     printf("%s", buffer);
 }
 
-void __aeabi_memclr4(void *dest, size_t n)
-{
-    memset(dest, 0, n);
-}
-
-void __aeabi_memcpy(void *dest, void *src, size_t n)
-{
-    memcpy(dest, src, n);
-}
-
 void data_constructor(void *buffer)
 {
     kprintf("%s(%p)\n", __func__, buffer);
