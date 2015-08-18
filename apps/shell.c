@@ -140,7 +140,7 @@ static char shell_getc(void)
 
     do {
         c = getchar();
-    } while (c == '\r');
+    } while (c == '\r' || c == '\0');
 
     return c;
 }
