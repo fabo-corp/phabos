@@ -58,10 +58,16 @@ void hashtable_init(hashtable_t *ht, hashtable_hash_fct_t hash,
     RET_IF_FAIL(hash,);
 
     memset(ht, 0, sizeof(*ht));
-    ht->table = zalloc(HASHTABLE_MIN_SIZE * sizeof(struct hashtable_node));
+    ht->table = kzalloc(HASHTABLE_MIN_SIZE * sizeof(struct hashtable_node),
+                        MM_KERNEL);
     ht->hash = hash;
     ht->compare = compare;
     ht->size = HASHTABLE_MIN_SIZE;
+}
+
+void hashtable_deinit(hashtable_t *ht)
+{
+    kfree(ht->table);
 }
 
 void hashtable_add(hashtable_t *ht, void *key, void *value)
