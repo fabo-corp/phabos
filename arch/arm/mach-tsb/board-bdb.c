@@ -55,8 +55,6 @@
 #define UART_FCR_IIR_IID1_RFIFOR    (1 << 1)
 #define UART_FCR_IIR_IID1_XFIFOR    (1 << 2)
 
-extern struct driver uart16550_driver;
-
 #define HUB_LINE_N_RESET                    0
 #define HUB_RESET_ASSERTION_TIME_IN_USEC    5 /* us */
 #define HUB_RESET_DEASSERTION_TIME_IN_MSEC  1 /* ms */
