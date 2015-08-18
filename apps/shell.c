@@ -88,6 +88,7 @@ static void shell_history_add(char *command)
         kfree(cmd->command);
         list_del(&cmd->list);
         kfree(cmd);
+        history_cmd_count--;
     }
 
     cmd = kmalloc(sizeof(*cmd), MM_KERNEL);
@@ -95,6 +96,7 @@ static void shell_history_add(char *command)
     cmd->command = kmalloc(strlen(command) + 1, MM_KERNEL);
     strcpy(cmd->command, command);
     list_add(&history, &cmd->list);
+    history_cmd_count++;
 }
 
 static size_t shell_get_command_count(void)
