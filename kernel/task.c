@@ -18,6 +18,7 @@
 #include <signal.h>
 
 #define DEFAULT_STACK_SIZE              2048
+#define DEFAULT_STACK_ORDER             (DEFAULT_STACK_SIZE / PAGE_SIZE)
 
 static hashtable_t task_table;
 static struct spinlock task_table_lock = SPINLOCK_INIT(task_table_lock);
@@ -118,7 +119,7 @@ static void task_destroy(struct task *task)
 {
     // assert
     if (task->allocated_stack)
-        kfree(task->allocated_stack);
+        page_free(task->allocated_stack, DEFAULT_STACK_ORDER);
     kfree(task);
 }
 
@@ -152,7 +153,7 @@ struct task *task_run(task_entry_t entry, void *data, uint32_t stack_addr)
         return NULL;
 
     if (!stack_addr) {
-        task->allocated_stack = kmalloc(DEFAULT_STACK_SIZE, MM_KERNEL);
+        task->allocated_stack = page_alloc(MM_KERNEL, DEFAULT_STACK_ORDER);
         if (!task->allocated_stack)
             goto error_stack;
 
