@@ -226,11 +226,11 @@ void *kmalloc(size_t size, unsigned int flags)
 
     size += sizeof(*buffer);
 
-    atomic_add(&mm_usage.used, size);
-
     order = size_to_order(size);
     if (order < 0)
         return NULL;
+
+    atomic_add(&mm_usage.used, order_to_size(order));
 
     if (order > MAX_ADDRESSABLE_MEM_ORDER)
         return NULL;
