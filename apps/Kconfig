@@ -29,6 +29,9 @@ config APP_UNIPRO
     bool "UniPro"
     select UNIPRO
 
+config APP_FREE
+    bool "free"
+
 if MACH_TSB
 source apps/tsb/Kconfig
 endif
