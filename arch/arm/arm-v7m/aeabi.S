@@ -6,6 +6,8 @@
  */
 
 .global __aeabi_uidivmod, __aeabi_idivmod
+.global __aeabi_memcpy
+.extern memcpy
 .syntax unified
 
 __aeabi_uidivmod:
@@ -23,3 +25,6 @@ __aeabi_idivmod:
     sub r1, r0, r3
     mov r0, #0
     bx lr
+
+__aeabi_memcpy:
+    b memcpy
