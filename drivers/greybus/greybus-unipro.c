@@ -51,22 +51,7 @@ static struct unipro_driver greybus_driver = {
 
 static int gb_unipro_listen(unsigned int cport)
 {
-#if 0
-    int ret;
-
-    gb_debug("Connecting cport %d\n", cport);
-    do {
-        ret = unipro_init_cport(cport);
-        if (!ret)
-            ret = unipro_driver_register(&greybus_driver, cport);
-        else
-            mdelay(200);
-        kprintf("loop\n");
-    } while (ret == -ENOTCONN);
-    return ret;
-#else
     return unipro_driver_register(&greybus_driver, cport);
-#endif
 }
 
 static int gb_unipro_stop_listening(unsigned int cport)
