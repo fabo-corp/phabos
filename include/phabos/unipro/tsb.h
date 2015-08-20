@@ -104,4 +104,16 @@
 
 int tsb_unipro_mbox_set(uint32_t val, int peer);
 
+enum {
+    TSB_UNIPRO_APBRIDGE,
+    TSB_UNIPRO_GPBRIDGE,
+    TSB_UNIPRO_OTHER,
+};
+
+struct tsb_unipro_pdata {
+    unsigned product_id;
+    unsigned cport_irq_base;
+    uint32_t debug_0720;
+};
+
 #endif
