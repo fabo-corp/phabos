@@ -33,12 +33,3 @@ obj-$(CONFIG_ARA_BACKPORT) += driver.o
 obj-$(CONFIG_ARA_BACKPORT) += device-table.o
 obj-$(CONFIG_TSB_PLL) += pll.o
 obj-$(CONFIG_TSB_I2S) += i2s.o
-
-ifeq ($(CONFIG_TSB_ES2),y)
-obj-$(CONFIG_TSB_UNIPRO) += es2-mphy-fixups.o
-obj-$(CONFIG_TSB_UNIPRO) += unipro-es2.o
-endif
-
-ifeq ($(CONFIG_TSB_ES1),y)
-obj-$(CONFIG_TSB_UNIPRO) += unipro-es1.o
-endif
