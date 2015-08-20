@@ -6,7 +6,6 @@
 
 #include <errno.h>
 
-#define MIN_REGION_ORDER PAGE_ORDER
 #define MAX_ADDRESSABLE_MEM_ORDER 31
 
 static struct spinlock mm_lock = SPINLOCK_INIT(mm_lock);
@@ -122,7 +121,7 @@ static int fill_bucket(int order, unsigned int flags)
     struct mm_buffer *buffer2;
     int retval;
 
-    if (order >= 15)
+    if (order > MAX_ADDRESSABLE_MEM_ORDER)
         return -ENOMEM;
 
     buffer1 = find_buffer_in_bucket(order + 1, flags);

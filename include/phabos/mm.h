@@ -17,6 +17,8 @@
 #define PAGE_ORDER 8
 #define PAGE_SIZE (1 << PAGE_ORDER)
 
+#define MIN_REGION_ORDER PAGE_ORDER
+
 #define MM_DMA          (1 << 0)
 #define MM_KERNEL       (1 << 1)
 
