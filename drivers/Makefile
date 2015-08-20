@@ -11,6 +11,7 @@ subdirs-$(CONFIG_GPIO) += gpio
 subdirs-$(CONFIG_GREYBUS) += greybus
 subdirs-$(CONFIG_ARA_BACKPORT) += ara
 subdirs-$(CONFIG_SPI) += spi
+subdirs-$(CONFIG_UNIPRO) += unipro
 
 obj-y += core.o
 obj-y += log.o
