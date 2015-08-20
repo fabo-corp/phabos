@@ -39,6 +39,8 @@
 #include <phabos/serial/uart16550.h>
 #include <phabos/usb/hcd-dwc2.h>
 #include <phabos/greybus.h>
+#include <phabos/unipro.h>
+#include <phabos/unipro/tsb.h>
 
 #define UART_RBR_THR_DLL            (UART_BASE + 0x0)
 #define UART_IER_DLH                (UART_BASE + 0x4)
@@ -68,6 +70,9 @@
 #else
 #define TSB_I2C_PINSHARE (TSB_PIN_GPIO21 | TSB_PIN_GPIO22)
 #endif
+
+#define APBRIDGE_CPORT_MAX 44 // number of CPorts available on the APBridges
+#define GPBRIDGE_CPORT_MAX 16 // number of CPorts available on the GPBridges
 
 static int tsb_hcd_power_on(struct device *device)
 {
@@ -205,6 +210,23 @@ static struct gb_device gb_gpio_device = {
         .name = "gb-gpio",
         .description = "Greybus GPIO PHY device",
         .driver = "gb-gpio-phy",
+    },
+};
+
+static struct tsb_unipro_pdata tsb_unipro_pdata = {
+    .cport_irq_base = TSB_IRQ_UNIPRO_RX_EOM00,
+};
+
+static struct unipro_device tsb_unipro = {
+    .device = {
+        .name = "tsb-unipro",
+        .description = "Toshiba UniPro Controller",
+        .driver = "tsb-unipro-es2",
+
+        .reg_base = AIO_UNIPRO_BASE,
+        .irq = TSB_IRQ_UNIPRO,
+
+        .pdata = &tsb_unipro_pdata,
     },
 };
 
@@ -350,6 +372,23 @@ void machine_init(void)
     for (int i = 0; i < ARRAY_SIZE(tsb_mm_regions); i++)
         mm_add_region(&tsb_mm_regions[i]);
 
+    tsb_unipro_pdata.debug_0720 = tsb_get_debug_reg(0x0720);
+    switch (tsb_get_product_id()) {
+    case tsb_pid_apbridge:
+        tsb_unipro_pdata.product_id = TSB_UNIPRO_APBRIDGE;
+        tsb_unipro.cport_count = APBRIDGE_CPORT_MAX;
+        break;
+
+    case tsb_pid_gpbridge:
+        tsb_unipro_pdata.product_id = TSB_UNIPRO_GPBRIDGE;
+        tsb_unipro.cport_count = GPBRIDGE_CPORT_MAX;
+        break;
+
+    default:
+        tsb_unipro_pdata.product_id = TSB_UNIPRO_OTHER;
+        break;
+    }
+
 #if defined(CONFIG_ARA_BACKPORT)
     int tsb_device_table_register(void);
     tsb_device_table_register();
@@ -359,6 +398,7 @@ void machine_init(void)
     device_register(&uart16550_device.device);
     device_register(&usb_hcd_device.device);
     device_register(&dw_i2c_device.device);
+    device_register(&tsb_unipro.device);
 
     device_register(&gb_control_device.device);
     device_register(&gb_gpio_device.device);
