@@ -34,20 +34,6 @@ choice
         bool "AP"
 endchoice
 
-choice
-    prompt "Transport"
-    default GREYBUS_UNIPRO
-
-    config GREYBUS_UNIPRO
-        bool "UniPro"
-
-    config GREYBUS_USB
-        bool "USB"
-
-    config GREYBUS_NULL
-        bool "NULL"
-endchoice
-
 if GREYBUS_MODULE
 source drivers/greybus/module/Kconfig
 endif
