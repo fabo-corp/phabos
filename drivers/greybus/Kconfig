@@ -30,6 +30,9 @@ choice
     config GREYBUS_MODULE
         bool "Module"
 
+    config GREYBUS_SVC
+        bool "SVC"
+
     config GREYBUS_AP
         bool "AP"
 endchoice

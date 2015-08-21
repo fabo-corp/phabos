@@ -32,11 +32,10 @@
 #include <string.h>
 
 #include <phabos/greybus.h>
+#include <phabos/greybus/svc.h>
 
-#include "svc.h"
-#include "up_debug.h"
-#include "tsb_switch.h"
-#include "gb_svc.h"
+#include <apps/svc/tsb_switch.h> // FIXME
+#include <apps/svc/svc.h> // FIXME
 
 /*
  * FIXME: use the hardcoded endo id used in the kernel for now
@@ -75,11 +74,11 @@ int gb_svc_protocol_version(void) {
     version_response = gb_operation_get_request_payload(op_resp);
 
     if (version_response->major > GB_SVC_VERSION_MAJOR) {
-        dbg_error("unsupported major version: %u\n", version_response->major);
+        kprintf("unsupported major version: %u\n", version_response->major);
         gb_operation_destroy(op_req);
         return -EPROTO;
     }
-    dbg_info("SVC Protocol version_major = %u version_minor = %u\n",
+    kprintf("SVC Protocol version_major = %u version_minor = %u\n",
              version_response->major, version_response->minor);
 
     gb_operation_destroy(op_req);

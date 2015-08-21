@@ -37,6 +37,7 @@
 #include <phabos/scheduler.h>
 #include <phabos/unipro/tsb.h>
 #include <phabos/unipro/unipro.h>
+#include <phabos/greybus/svc.h>
 
 #include <apps/shell.h>
 #include <apps/apbridgea/utils.h>
@@ -51,7 +52,6 @@
 #include "tsb_switch_driver_es2.h"
 #include "svc.h"
 #include "vreg.h"
-#include "gb_svc.h"
 
 #define SVCD_PRIORITY      (60)
 #define SVCD_STACK_SIZE    (2048)
