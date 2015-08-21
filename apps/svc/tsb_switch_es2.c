@@ -914,18 +914,16 @@ int es2_switch_irq_handler(struct tsb_switch *sw)
  *
  * Posts a message in a list in order to defer the work to perform
  */
-static int switch_irq_handler(int irq, void *priv)
+static void switch_irq_handler(int irq, void *priv)
 {
     struct tsb_switch *sw = priv;
 
     if (!sw) {
         dbg_error("%s: no Switch context\n", __func__);
-        return -EINVAL;
+        return;
     }
 
     switch_post_irq(sw);
-
-    return 0;
 }
 
 /* Switch interrupt enable/disable */
