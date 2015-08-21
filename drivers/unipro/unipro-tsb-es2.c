@@ -501,7 +501,7 @@ static void irq_rx_eom(int irq, void *priv)
                cport->driver->name, xfer_size, data);
 
     if (cport->driver->rx_handler)
-        cport->driver->rx_handler(cport->id, data, xfer_size);
+        cport->driver->rx_handler(cport->driver, cport->id, data, xfer_size);
 }
 
 static void clear_int(struct unipro_cport *cport)
@@ -552,20 +552,6 @@ static int tsb_unipro_init_cport(struct unipro_cport *cport)
      */
     tsb_unipro_write(device, AHM_ADDRESS_00 + (cport->id * sizeof(uint32_t)),
                      (uint32_t) buffer);
-
-    /* Start the flow of received data */
-    tsb_unipro_write(device,
-                     REG_RX_PAUSE_SIZE_00 + (cport->id * sizeof(uint32_t)),
-                     (1 << 31) | CPORT_BUF_SIZE);
-
-    /*
-     * Clear any pending EOM interrupts, then enable them.
-     * TODO: Defer interrupt enable until driver registration?
-     */
-    irq_disable();
-    clear_int(cport);
-    enable_int(cport);
-    irq_enable();
 
 #ifdef UNIPRO_DEBUG
     unipro_info();
@@ -642,6 +628,17 @@ static int configure_connected_cport(struct unipro_device *dev,
     switch (rc) {
     case CPORT_STATUS_CONNECTED:
         dev->cports[cportid].is_connected = 1;
+
+        /* Start the flow of received data */
+        tsb_unipro_write(&dev->device,
+                         REG_RX_PAUSE_SIZE_00 + (cportid * sizeof(uint32_t)),
+                         (1 << 31) | CPORT_BUF_SIZE);
+
+        /* Clear any pending EOM interrupts, then enable them. */
+        irq_disable();
+        clear_int(&dev->cports[cportid]);
+        enable_int(&dev->cports[cportid]);
+        irq_enable();
         break;
 
     case CPORT_STATUS_UNCONNECTED:
