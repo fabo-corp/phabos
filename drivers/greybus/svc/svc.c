@@ -43,12 +43,13 @@
 #define GB_ENDO_ID         0x4755
 
 static unsigned int g_svc_cport;
-struct gb_device *dev;
+static struct gb_device *dev;
 
 /*
  * SVC Protocol Requests
  */
-int gb_svc_protocol_version(void) {
+int gb_svc_protocol_version(void)
+{
     struct gb_operation *op_req;
     struct gb_operation *op_resp;
     struct gb_svc_protocol_version_request *version_request;
@@ -57,9 +58,9 @@ int gb_svc_protocol_version(void) {
     op_req = gb_operation_create(dev->bus, g_svc_cport,
                                  GB_SVC_TYPE_PROTOCOL_VERSION,
                                  sizeof(*version_request));
-    if (!op_req) {
+    if (!op_req)
         return -ENOMEM;
-    }
+
     version_request = gb_operation_get_request_payload(op_req);
     version_request->major = GB_SVC_VERSION_MAJOR;
     version_request->minor = GB_SVC_VERSION_MINOR;
