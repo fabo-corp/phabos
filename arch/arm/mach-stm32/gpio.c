@@ -1,6 +1,5 @@
 #include <asm/gpio.h>
 #include <asm/hwio.h>
-#include <asm/irq.h>
 
 #include <phabos/utils.h>
 

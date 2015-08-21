@@ -2,6 +2,7 @@
 #define __STM32_GPIO_H__
 
 #include <stdbool.h>
+#include <asm/irq.h>
 
 /*
  * config[21:21] = EXTI
@@ -97,6 +98,10 @@
 
 int stm32_configgpio(unsigned long config);
 int stm32_gpiowrite(unsigned long port, bool high_level);
+
+int stm32_gpiosetevent_priv(unsigned long config, bool rising_edge,
+                            bool falling_edge, bool event,
+                            irq_handler_t handler, void *priv);
 
 #endif /* __STM32_GPIO_H__ */
 
