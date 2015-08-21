@@ -48,7 +48,8 @@ struct unipro_ops {
 
 struct unipro_cport_driver {
     void *(*get_buffer)(void);
-    void (*rx_handler)(unsigned cport, void *buffer, size_t len);
+    void (*rx_handler)(struct unipro_cport_driver *cport_driver, unsigned cport,
+                       void *buffer, size_t len);
 };
 
 struct unipro_cport {
@@ -115,6 +116,17 @@ static inline int unipro_attr_peer_write(struct unipro_device *device,
 {
     return device->ops->peer_attr_write(device, attr, val, selector,
                                         result_code);
+}
+
+inline ssize_t unipro_send(struct unipro_device *device, unsigned cportid,
+                           const void *buffer, size_t len)
+{
+    return device->ops->cport.send(&device->cports[cportid], buffer, len);
+}
+
+inline int unipro_unpause_rx(struct unipro_device *device, unsigned cportid)
+{
+    return device->ops->cport.unpause_rx(&device->cports[cportid]);
 }
 
 #endif /* __PHABOS_UNIPRO_H__ */

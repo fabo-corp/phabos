@@ -30,6 +30,7 @@
 
 
 #include <asm/hwio.h>
+#include <asm/delay.h>
 
 #include <phabos/driver.h>
 #include <phabos/assert.h>
@@ -538,9 +539,6 @@ static int tsb_unipro_init_cport(struct unipro_cport *cport)
     struct device *device = &cport->device->device;
     void *buffer;
 
-    if (cport->is_connected)
-        return 0;
-
     buffer = cport->driver->get_buffer();
     if (!buffer)
         return -ENOMEM;
@@ -663,8 +661,6 @@ static void irq_unipro(int irq, void *data)
     uint32_t e2efc;
     uint32_t val;
 
-    DBG_UNIPRO("mailbox interrupt received irq: %d \n", irq);
-
     irq_clear(device->irq);
 
     /*
@@ -679,11 +675,9 @@ static void irq_unipro(int irq, void *data)
      * the mailbox value - 1.
      */
     rc = unipro_attr_local_read(dev, TSB_MAILBOX, &cportid, 0, NULL);
-    if (rc)
+    if (rc || !cportid)
         return;
     cportid--;
-
-    DBG_UNIPRO("Enabling E2EFC on cport %u\n", cportid);
 
     uint32_t reg = CPB_RX_E2EFC_EN_0 + 4 * (cportid / 32);
     unsigned offset = cportid % 32;
@@ -709,6 +703,38 @@ static void irq_unipro(int irq, void *data)
     rc = unipro_attr_local_read(dev, TSB_MAILBOX, &cportid, 0, NULL);
     if (rc)
         return;
+}
+
+int tsb_unipro_mbox_set(struct unipro_device *device, uint32_t val, int peer)
+{
+    int rc;
+
+    rc = tsb_unipro_attr_access(device, TSB_MAILBOX, &val, 0, peer, 1, NULL);
+    if (rc) {
+        kprintf("TSB_MAILBOX write failed: %d\n", rc);
+        return rc;
+    }
+
+    /*
+     * Silicon bug?: There seems to be a problem in the switch regarding
+     * lost mailbox sets. It seems to happen when a bridge writes to the
+     * mailbox and immediately reads the value back.
+     *
+     * Workaround for now by inserting a small delay.
+     *
+     * @jira{ENG-436}
+     */
+    udelay(MBOX_RACE_HACK_DELAY);
+
+    do {
+        rc = tsb_unipro_attr_access(device, TSB_MAILBOX, &val, 0, peer,
+                                    0, NULL);
+        if (rc) {
+            kprintf("%s(): TSB_MAILBOX poll failed: %d\n", __func__, rc);
+        }
+    } while (!rc && val != TSB_MAIL_RESET);
+
+    return rc;
 }
 
 static int tsb_unipro_probe(struct device *device)

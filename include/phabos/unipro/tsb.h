@@ -102,7 +102,9 @@
 #define TSB_DEEPSTALLCFG           0xd0a2
 #define TSB_DEEPSTALLSTATUS        0xd0a3
 
-int tsb_unipro_mbox_set(uint32_t val, int peer);
+struct unipro_device;
+
+int tsb_unipro_mbox_set(struct unipro_device *device, uint32_t val, int peer);
 
 enum {
     TSB_UNIPRO_APBRIDGE,
