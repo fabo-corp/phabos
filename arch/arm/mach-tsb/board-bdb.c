@@ -191,9 +191,37 @@ static struct i2c_master dw_i2c_device = {
     },
 };
 
+static struct tsb_unipro_pdata tsb_unipro_pdata = {
+    .cport_irq_base = TSB_IRQ_UNIPRO_RX_EOM00,
+};
+
+struct unipro_device tsb_unipro = {
+    .device = {
+        .name = "tsb-unipro",
+        .description = "Toshiba UniPro Controller",
+        .driver = "tsb-unipro-es2",
+
+        .reg_base = AIO_UNIPRO_BASE,
+        .irq = TSB_IRQ_UNIPRO,
+
+        .pdata = &tsb_unipro_pdata,
+    },
+};
+
+static struct greybus greybus = {
+    .device = {
+        .name = "greybus",
+        .description = "Greybus",
+        .driver = "greybus",
+    },
+
+    .unipro = &tsb_unipro,
+};
+
 static struct gb_device gb_i2c_device = {
     .cport = 4,
-    .real_device = &dw_i2c_device.device,
+    .real_device = &dw_i2c_device,
+    .bus = &greybus,
 
     .device = {
         .name = "gb-dw-i2c",
@@ -204,29 +232,12 @@ static struct gb_device gb_i2c_device = {
 
 static struct gb_device gb_gpio_device = {
     .cport = 3,
-    .real_device = &dw_i2c_device.device,
+    .bus = &greybus,
 
     .device = {
         .name = "gb-gpio",
         .description = "Greybus GPIO PHY device",
         .driver = "gb-gpio-phy",
-    },
-};
-
-static struct tsb_unipro_pdata tsb_unipro_pdata = {
-    .cport_irq_base = TSB_IRQ_UNIPRO_RX_EOM00,
-};
-
-static struct unipro_device tsb_unipro = {
-    .device = {
-        .name = "tsb-unipro",
-        .description = "Toshiba UniPro Controller",
-        .driver = "tsb-unipro-es2",
-
-        .reg_base = AIO_UNIPRO_BASE,
-        .irq = TSB_IRQ_UNIPRO,
-
-        .pdata = &tsb_unipro_pdata,
     },
 };
 
@@ -252,6 +263,8 @@ static struct gb_manifest gb_bdb_manifest = {
 };
 
 static struct gb_device gb_control_device = {
+    .bus = &greybus,
+
     .device = {
         .name = "gb-control-all-protocols",
         .description = "Greybus Control Protocol",
@@ -400,6 +413,7 @@ void machine_init(void)
     device_register(&dw_i2c_device.device);
     device_register(&tsb_unipro.device);
 
+    device_register(&greybus.device);
     device_register(&gb_control_device.device);
     device_register(&gb_gpio_device.device);
     device_register(&gb_i2c_device.device);

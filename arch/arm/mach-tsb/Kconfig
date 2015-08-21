@@ -78,11 +78,6 @@ config TSB_GPIO
     select GPIO
     default y
 
-config TSB_UNIPRO
-    bool "TSB UniPro"
-    select UNIPRO
-    default y
-
 config TSB_CDSI
     bool "TSB CDSI"
     default y
