@@ -10,7 +10,6 @@ obj-y += svc.o
 obj-y += tsb_switch_es1.o
 obj-y += tsb_switch_es2.o
 obj-y += up_bdb_pm.o
-obj-y += unipro_svc.o
 obj-y += gb_svc.o
 
 obj-$(CONFIG_BOARD_ARA_SVC_BDB1B) += board-bdb1b.o

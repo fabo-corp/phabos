@@ -30,8 +30,8 @@
 
 #include <stddef.h>
 
-#include <phabos/greybus/unipro.h>
-#include <phabos/greybus/tsb_unipro.h>
+#include <phabos/unipro/unipro.h>
+#include <phabos/unipro/tsb.h>
 
 #define TO_ATTR_NAME(a) {.attr = a, .name = #a}
 

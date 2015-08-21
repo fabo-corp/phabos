@@ -34,7 +34,6 @@
 #include <config.h>
 
 #include <asm/delay.h>
-#include <phabos/greybus/unipro.h>
 #include <phabos/scheduler.h>
 #include <phabos/unipro/tsb.h>
 #include <phabos/unipro/unipro.h>
@@ -175,27 +174,6 @@ static int svc_event_init(void) {
     list_init(&svc_events);
     switch_event_register_listener(svc->sw, &evl);
     return 0;
-}
-
-static struct unipro_driver svc_greybus_driver = {
-    .name = "svcd-greybus",
-    .rx_handler = greybus_rx_handler,
-};
-
-static int svc_listen(unsigned int cport) {
-    return unipro_driver_register(&svc_greybus_driver, cport);
-}
-
-static struct gb_transport_backend svc_backend = {
-    .init   = unipro_init,
-    .send   = unipro_send,
-    .listen = svc_listen,
-};
-
-static int svc_gb_init(void) {
-    gb_init(&svc_backend);
-    gb_svc_register(SVC_PROTOCOL_CPORT_ID);
-    return gb_listen(SVC_PROTOCOL_CPORT_ID);
 }
 
 /**
@@ -497,13 +475,6 @@ static int svcd_startup(void) {
     /* Initialize event system */
     rc = svc_event_init();
     if (rc) {
-        goto error3;
-    }
-
-    /* Register svc protocol greybus driver*/
-    rc = svc_gb_init();
-    if (rc) {
-        dbg_error("%s: Failed to initialize SVC protocol\n", __func__);
         goto error3;
     }
 
