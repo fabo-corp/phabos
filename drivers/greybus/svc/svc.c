@@ -42,7 +42,6 @@
  */
 #define GB_ENDO_ID         0x4755
 
-static unsigned int g_svc_cport;
 static struct gb_device *dev;
 
 /*
@@ -55,7 +54,7 @@ int gb_svc_protocol_version(void)
     struct gb_svc_protocol_version_request *version_request;
     struct gb_svc_protocol_version_response *version_response;
 
-    op_req = gb_operation_create(dev->bus, g_svc_cport,
+    op_req = gb_operation_create(dev->bus, dev->cport,
                                  GB_SVC_TYPE_PROTOCOL_VERSION,
                                  sizeof(*version_request));
     if (!op_req)
@@ -91,7 +90,7 @@ int gb_svc_hello(uint8_t ap_intf_id) {
     struct gb_operation *op_req;
     struct gb_svc_hello_request *req;
 
-    op_req = gb_operation_create(dev->bus, g_svc_cport, GB_SVC_TYPE_HELLO,
+    op_req = gb_operation_create(dev->bus, dev->cport, GB_SVC_TYPE_HELLO,
                                  sizeof(*req));
     if (!op_req) {
         return -EPROTO;
@@ -113,8 +112,8 @@ int gb_svc_intf_hotplug(uint32_t intf_id, uint32_t unipro_mfg_id,
     struct gb_operation *op_req;
     struct gb_svc_intf_hotplug_request *req;
 
-    op_req = gb_operation_create(dev->bus, g_svc_cport,
-                                 GB_SVC_TYPE_INTF_HOTPLUG, sizeof(*req));
+    op_req = gb_operation_create(dev->bus, dev->cport, GB_SVC_TYPE_INTF_HOTPLUG,
+                                 sizeof(*req));
     if (!op_req) {
         return -ENOMEM;
     }
@@ -191,7 +190,6 @@ static int gb_svc_probe(struct device *device)
 
     RET_IF_FAIL(device, -EINVAL);
 
-    g_svc_cport = dev->cport;
     dev = containerof(device, struct gb_device, device);
 
     retval = gb_register_driver(dev->bus, dev->cport, &svc_driver);
