@@ -15,6 +15,8 @@
 #include <phabos/i2c/stm32-i2c.h>
 #include <phabos/spi.h>
 #include <phabos/spi/spi-stm32.h>
+#include <phabos/unipro.h>
+#include <phabos/greybus.h>
 
 #define STM32_USART1_BRR    (STM32_USART1_BASE + 0x08)
 #define STM32_USART1_CR1    (STM32_USART1_BASE + 0x0c)
@@ -277,6 +279,37 @@ static struct gpio_device tca64xx_io_expander[] = {
     },
 };
 
+struct unipro_device t6wt_device = {
+    .cport_count = 5,
+
+    .device = {
+        .name = "t6wt0xbg-unipro-switch",
+        .description = "Toshiba Switch UniPro Controller",
+        .driver = "t6wt0xbg-unipro",
+    },
+};
+
+static struct greybus greybus = {
+    .device = {
+        .name = "greybus",
+        .description = "Greybus",
+        .driver = "greybus",
+    },
+
+    .unipro = &t6wt_device,
+};
+
+static struct gb_device gb_svc_device = {
+    .bus = &greybus,
+    .cport = 4,
+
+    .device = {
+        .name = "gb-svc",
+        .description = "Greybus SVC Protocol",
+        .driver = "gb-svc",
+    },
+};
+
 static void uart_init(void)
 {
     stm32_clk_enable(STM32_CLK_USART1);
@@ -479,4 +512,7 @@ void machine_init(void)
     device_register(&stm32_spi_master.device);
     for (int i = 0; i < ARRAY_SIZE(tca64xx_io_expander); i++)
         device_register(&tca64xx_io_expander[i].device);
+    device_register(&t6wt_device.device);
+    device_register(&greybus.device);
+    device_register(&gb_svc_device.device);
 }
