@@ -6,3 +6,4 @@
 obj-y += core.o
 obj-$(CONFIG_UNIPRO_TSB) += unipro-tsb-es2.o
 obj-$(CONFIG_UNIPRO_TSB) += unipro-tsb-es2-mphy-fixups.o
+obj-$(CONFIG_UNIPRO_T6WT0XBG) += unipro-t6wt0xbg.o

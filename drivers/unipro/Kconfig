@@ -1,2 +1,5 @@
 config UNIPRO_TSB
     bool "TSB UniPro Support"
+
+config UNIPRO_T6WT0XBG
+    bool "TSB T6WT0XBG Unipro"
