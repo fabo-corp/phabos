@@ -37,6 +37,7 @@
 #define GB_GPIO_VERSION_MINOR 1
 
 static unsigned int gpio_cport;
+struct gb_device *gb_device;
 
 static uint8_t gb_gpio_protocol_version(struct gb_operation *operation)
 {
@@ -210,8 +211,8 @@ void gb_gpio_irq_event(int irq)
     struct gb_gpio_irq_event_request *request;
     struct gb_operation *operation;
 
-    operation = gb_operation_create(gpio_cport, GB_GPIO_TYPE_IRQ_EVENT,
-                                    sizeof(*request));
+    operation = gb_operation_create(gb_device->bus, gpio_cport,
+                                    GB_GPIO_TYPE_IRQ_EVENT, sizeof(*request));
     if (!operation)
         return;
 
@@ -288,10 +289,10 @@ struct gb_driver gpio_driver = {
 
 static int gb_gpio_probe(struct device *device)
 {
-    struct gb_device *dev = containerof(device, struct gb_device, device);
+    gb_device = containerof(device, struct gb_device, device);
 
-    gpio_cport = dev->cport;
-    return gb_register_driver(dev->cport, &gpio_driver);
+    gpio_cport = gb_device->cport;
+    return gb_register_driver(gb_device->bus, gb_device->cport, &gpio_driver);
 }
 
 __driver__ struct driver gb_gpio_driver = {

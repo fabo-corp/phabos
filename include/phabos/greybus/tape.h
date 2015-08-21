@@ -33,6 +33,8 @@
 
 #include <sys/types.h>
 
+struct greybus;
+
 enum {
     GB_TAPE_RDONLY,
     GB_TAPE_WRONLY,
@@ -46,12 +48,13 @@ struct gb_tape_mechanism {
     ssize_t (*read)(int fd, void *data, size_t size);
 };
 
-int gb_tape_register_mechanism(struct gb_tape_mechanism *mechanism);
+int gb_tape_register_mechanism(struct greybus *bus,
+                               struct gb_tape_mechanism *mechanism);
 int gb_tape_arm_semihosting_register(void);
 
-int gb_tape_communication(const char *pathname);
-int gb_tape_stop(void);
-int gb_tape_replay(const char *pathname);
+int gb_tape_communication(struct greybus *bus, const char *pathname);
+int gb_tape_stop(struct greybus *bus);
+int gb_tape_replay(struct greybus *bus, const char *pathname);
 
 #endif /* __GREYBUS_TAPE_H__ */
 

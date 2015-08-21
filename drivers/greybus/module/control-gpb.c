@@ -102,7 +102,7 @@ static uint8_t gb_control_connected(struct gb_operation *operation)
 
     kprintf("%s()\n", __func__);
 
-    retval = gb_listen(le16_to_cpu(request->cport_id));
+    retval = gb_listen(operation->greybus, le16_to_cpu(request->cport_id));
     if (retval) {
         gb_error("Can not connect cport %d: error %d\n",
                  le16_to_cpu(request->cport_id), retval);
@@ -120,7 +120,8 @@ static uint8_t gb_control_disconnected(struct gb_operation *operation)
 
     kprintf("%s()\n", __func__);
 
-    retval = gb_stop_listening(le16_to_cpu(request->cport_id));
+    retval = gb_stop_listening(operation->greybus,
+                               le16_to_cpu(request->cport_id));
     if (retval) {
         gb_error("Can not disconnect cport %d: error %d\n",
                  le16_to_cpu(request->cport_id), retval);
@@ -147,17 +148,18 @@ static struct gb_driver control_driver = {
 static int gb_control_probe(struct device *device)
 {
     int retval;
+    struct gb_device *dev = containerof(device, struct gb_device, device);
 
     RET_IF_FAIL(device, -EINVAL);
     RET_IF_FAIL(device->priv, -EINVAL);
 
     manifest = device->priv;
 
-    retval = gb_register_driver(CONTROL_CPORT, &control_driver);
+    retval = gb_register_driver(dev->bus, CONTROL_CPORT, &control_driver);
     if (retval)
         return retval;
 
-    return gb_listen(CONTROL_CPORT);
+    return gb_listen(dev->bus, CONTROL_CPORT);
 }
 
 __driver__ struct driver gb_control_driver = {

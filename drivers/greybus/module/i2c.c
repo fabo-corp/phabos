@@ -29,6 +29,8 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#include <asm/byteordering.h>
+
 #include <phabos/i2c.h>
 #include <phabos/greybus.h>
 
@@ -42,7 +44,7 @@
 #define I2C_FUNC_SMBUS_WRITE_BYTE       0x00040000
 #define I2C_M_RD                        0x0001
 
-static struct i2c_dev *i2c_dev;
+static struct i2c_master *i2c_master;
 
 static uint8_t gb_i2c_protocol_version(struct gb_operation *operation)
 {
@@ -95,8 +97,7 @@ static uint8_t gb_i2c_protocol_transfer(struct gb_operation *operation)
     struct gb_i2c_transfer_req *request;
     struct gb_i2c_transfer_rsp *response;
 
-    request = (struct gb_i2c_transfer_req *)
-                  gb_operation_get_request_payload(operation);
+    request = gb_operation_get_request_payload(operation);
     op_count = le16_to_cpu(request->op_count);
     write_data = (uint8_t *)&request->desc[op_count];
 
@@ -133,7 +134,7 @@ static uint8_t gb_i2c_protocol_transfer(struct gb_operation *operation)
         }
         msg[i].length = le16_to_cpu(desc->size);
     }
-    ret = i2c_transfer(i2c_dev, msg, op_count);
+    ret = i2c_transfer(i2c_master, msg, op_count);
     free(msg);
     if (ret == -EIO)
       return GB_OP_NONEXISTENT;
@@ -166,14 +167,14 @@ static int gb_i2c_probe(struct device *device)
     int retval;
     struct gb_device *dev = containerof(device, struct gb_device, device);
 
-    if (i2c_dev)
+    if (i2c_master)
         return -ENOTSUP;
 
-    i2c_dev = containerof(dev->real_device, struct gb_device, device);
-    retval = gb_register_driver(dev->cport, &gb_i2c_driver);
+    i2c_master = dev->real_device;
+    retval = gb_register_driver(dev->bus, dev->cport, &gb_i2c_driver);
 
     if (retval)
-        i2c_dev = NULL;
+        i2c_master = NULL;
 
     return retval;
 }

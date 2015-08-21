@@ -36,13 +36,21 @@
 #include <pthread.h>
 
 #include <asm/atomic.h>
+
+#include <phabos/unipro.h>
 #include <phabos/driver.h>
 #include <phabos/list.h>
 #include <phabos/utils.h>
 #include <phabos/semaphore.h>
 #include <phabos/greybus-types.h>
+#include <phabos/hashtable.h>
+
+#define GREYBUS_MTU 2048
 
 struct gb_operation;
+struct gb_transport_backend;
+struct gb_cport_driver;
+struct gb_tape_mechanism;
 
 typedef void (*gb_operation_callback)(struct gb_operation *operation);
 typedef uint8_t (*gb_operation_handler_t)(struct gb_operation *operation);
@@ -76,6 +84,19 @@ typedef void (*gb_operation_fast_handler_t)(unsigned int cport, void *data);
     }
 #endif
 
+struct greybus {
+    struct device device;
+    struct unipro_device *unipro;
+
+    struct unipro_cport_driver unipro_cport_driver;
+    struct hashtable cport_map;
+    atomic_t request_id;
+    struct gb_cport_driver *cport;
+    struct gb_transport_backend *transport;
+    struct gb_tape_mechanism *tape;
+    int tape_fd;
+};
+
 struct gb_manifest {
     void *data;
     size_t size;
@@ -85,19 +106,19 @@ struct gb_operation_handler {
     uint8_t type;
     gb_operation_handler_t handler;
     gb_operation_fast_handler_t fast_handler;
-#ifdef CONFIG_GREYBUS_DEBUG
-    const char *name;
-#endif
 };
 
 struct gb_transport_backend {
-    void (*init)(void);
-    int (*listen)(unsigned int cport);
-    int (*stop_listening)(unsigned int cport);
-    int (*send)(unsigned int cport, const void *buf, size_t len);
+    void (*init)(struct greybus *greybus);
+    int (*listen)(struct greybus *greybus, unsigned int cport);
+    int (*stop_listening)(struct greybus *greybus, unsigned int cport);
+    int (*send)(struct greybus *greybus, unsigned int cport, const void *buf,
+                size_t len);
 };
 
 struct gb_operation {
+    struct greybus *greybus;
+
     unsigned int cport;
     bool has_responded;
     atomic_t ref_count;
@@ -117,9 +138,10 @@ struct gb_operation {
 
 struct gb_device {
     struct device device;
+    struct greybus *bus;
 
     unsigned int cport;
-    struct device *real_device;
+    void *real_device;
 };
 
 struct gb_driver {
@@ -127,9 +149,7 @@ struct gb_driver {
     void (*exit)(unsigned int cport);
     struct gb_operation_handler *op_handlers;
 
-    size_t stack_size;
     size_t op_handlers_count;
-    const char *name;
 };
 
 struct gb_operation_hdr {
@@ -166,39 +186,17 @@ gb_operation_get_request_payload(struct gb_operation *operation)
     return (char*)operation->request_buffer + sizeof(struct gb_operation_hdr);
 }
 
-static inline struct gb_operation *gb_operation_get_response_op(struct gb_operation *op) {
+static inline struct gb_operation*
+gb_operation_get_response_op(struct gb_operation *op)
+{
     return op->response;
 }
 
-static inline const char *gb_driver_name(struct gb_driver *driver)
-{
-    return driver->name;
-}
-
-static inline const char *gb_handler_name(struct gb_operation_handler *handler)
-{
-#ifdef CONFIG_GREYBUS_DEBUG
-    return handler->name;
-#else
-    return "unknown";
-#endif
-}
-
-int gb_init(struct gb_transport_backend *transport);
-int _gb_register_driver(unsigned int cport, struct gb_driver *driver);
-
-static inline int _gb_register_driver_debug(unsigned int cport,
-                                            struct gb_driver *driver,
-                                            const char *file)
-{
-    driver->name = file;
-    return _gb_register_driver(cport, driver);
-}
-
-#define gb_register_driver(cport, driver) \
-    _gb_register_driver_debug(cport, driver, __FILE__)
-int gb_listen(unsigned int cport);
-int gb_stop_listening(unsigned int cport);
+int gb_register(struct greybus *greybus);
+int gb_register_driver(struct greybus *greybus, unsigned int cport,
+                       struct gb_driver *driver);
+int gb_listen(struct greybus *greybus, unsigned int cport);
+int gb_stop_listening(struct greybus *greybus, unsigned int cport);
 
 void gb_operation_destroy(struct gb_operation *operation);
 void *gb_operation_alloc_response(struct gb_operation *operation, size_t size);
@@ -207,13 +205,12 @@ int gb_operation_send_request_sync(struct gb_operation *operation);
 int gb_operation_send_request(struct gb_operation *operation,
                               gb_operation_callback callback,
                               bool need_response);
-struct gb_operation *gb_operation_create(unsigned int cport, uint8_t type,
-                                         uint32_t req_size);
+struct gb_operation *gb_operation_create(struct greybus *bus, unsigned cport,
+                                         uint8_t type, uint32_t req_size);
 void gb_operation_ref(struct gb_operation *operation);
 void gb_operation_unref(struct gb_operation *operation);
 size_t gb_operation_get_request_payload_size(struct gb_operation *operation);
 uint8_t gb_operation_get_request_result(struct gb_operation *operation);
-int greybus_rx_handler(unsigned int, void*, size_t);
 
 uint8_t gb_errno_to_op_result(int err);
 
