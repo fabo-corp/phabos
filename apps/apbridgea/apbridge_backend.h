@@ -29,7 +29,7 @@
 #ifndef APBRIDGE_BACKEND_H
 #define APBRIDGE_BACKEND_H
 
-#include <phabos/unipro/unipro.h>
+#include <phabos/unipro.h>
 #include "svc.h"
 
 struct apbridge_backend {
@@ -40,7 +40,8 @@ struct apbridge_backend {
     void (*init)(void);
 };
 
-int recv_from_unipro(unsigned int cportid, void *buf, size_t len);
+void recv_from_unipro(struct unipro_cport_driver *cport_drv,
+                      unsigned int cportid, void *buf, size_t len);
 void apbridge_backend_register(struct apbridge_backend *apbridge_backend);
 
 #endif /* APBRIDGE_BACKEND_H */

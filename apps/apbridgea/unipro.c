@@ -28,8 +28,9 @@
 
 #include <errno.h>
 
-#include <phabos/unipro/unipro.h>
-//#include <nuttx/usb/apb_es1.h>
+#include <phabos/unipro.h>
+#include <phabos/greybus.h>
+#include <phabos/mm.h>
 
 #include "apbridge_backend.h"
 
@@ -42,10 +43,12 @@
 #define CPORTID_CDSI0    (16)
 #define CPORTID_CDSI1    (17)
 
+extern struct unipro_device tsb_unipro;
+
 static int unipro_usb_to_unipro(unsigned int cportid, void *buf, size_t len,
                                 unipro_send_completion_t callback, void *priv)
 {
-    return unipro_send_async(cportid, buf, len, callback, priv);
+    return unipro_send_async(&tsb_unipro, cportid, buf, len, callback, priv);
 }
 
 static int unipro_usb_to_svc(void *buf, size_t len)
@@ -53,24 +56,24 @@ static int unipro_usb_to_svc(void *buf, size_t len)
     return svc_handle(buf, len);
 }
 
-static struct unipro_driver unipro_driver = {
-    .name = "APBridge",
+static void *unipro_get_buffer(void)
+{
+    return page_alloc(MM_DMA, size_to_order(GREYBUS_MTU / PAGE_SIZE));
+}
+
+static struct unipro_cport_driver unipro_driver = {
+    .get_buffer = unipro_get_buffer,
     .rx_handler = recv_from_unipro,
 };
 
 static void unipro_backend_init(void)
 {
-    int i;
-
-    /* unipro_init() will initialize any non-display, non-camera CPorts */
-    unipro_init();
-
     /* Now register a driver for those CPorts */
-    for (i = 0; i < unipro_cport_count(); i++) {
+    for (int i = 0; i < tsb_unipro.cport_count; i++) {
         /* These cports are already allocated for display and camera */
         if (i == CPORTID_CDSI0 || i == CPORTID_CDSI1)
             continue;
-        unipro_driver_register(&unipro_driver, i);
+        unipro_register_cport_driver(&tsb_unipro, i, &unipro_driver);
     }
 }
 

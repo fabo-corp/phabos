@@ -62,6 +62,7 @@
 #include "usbdev_trace.h"
 
 /** XXX port to phabos phabos **/
+extern struct unipro_device tsb_unipro;
 #define ESHUTDOWN 110  /* Can't send after socket shutdown */
 #define DEBUGASSERT(x)
 #define CONFIG_APBRIDGE_VENDORID 0xffff
@@ -525,7 +526,7 @@ static int _to_usb_submit(struct usbdev_ep_s *ep, struct usbdev_req_s *req,
     /* Unpause unipro only if the request come from unipro */
     if (USB_EPNO(ep->eplog) != CONFIG_APBRIDGE_EPINTIN) {
         cportid = get_cportid(payload);
-        unipro_unpause_rx(cportid);
+        unipro_unpause_rx(&tsb_unipro, cportid);
     }
 
     /* Then submit the request to the endpoint */
@@ -1749,13 +1750,13 @@ int usbdev_apbinitialize(struct apbridge_usb_driver *driver)
     priv->driver = driver;
 
     priv->cport_to_epin_n =
-        kmalloc(sizeof(int) * unipro_cport_count(), MM_KERNEL);
+        kmalloc(sizeof(int) * tsb_unipro.cport_count, MM_KERNEL);
     if (!priv->cport_to_epin_n) {
         ret = -ENOMEM;
         goto errout_with_alloc;
     }
 
-    for (i = 0; i < unipro_cport_count(); i++) {
+    for (i = 0; i < tsb_unipro.cport_count; i++) {
         priv->cport_to_epin_n[i] = CONFIG_APBRIDGE_EPBULKIN;
     }
     semaphore_init(&priv->config_sem, 0);

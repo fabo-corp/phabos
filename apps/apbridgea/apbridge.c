@@ -35,7 +35,7 @@
 #include <phabos/greybus.h>
 #include <phabos/greybus/debug.h>
 #include <phabos/scheduler.h>
-#include <phabos/unipro/unipro.h>
+#include <phabos/unipro.h>
 #include <phabos/unipro/tsb.h>
 #include <apps/shell.h>
 
@@ -72,7 +72,8 @@ static int usb_to_unipro(struct apbridge_dev_s *dev, void *buf, size_t len)
                                           release_buffer, dev);
 }
 
-int recv_from_unipro(unsigned int cportid, void *buf, size_t len)
+void recv_from_unipro(struct unipro_cport_driver *cport_drv,
+                      unsigned int cportid, void *buf, size_t len)
 {
     struct gb_operation_hdr *hdr = (void *)buf;
 
@@ -89,7 +90,7 @@ int recv_from_unipro(unsigned int cportid, void *buf, size_t len)
         hdr->pad[1] = (cportid >> 8) & 0xff;
     }
 
-    return unipro_to_usb(g_usbdev, buf, len);
+    unipro_to_usb(g_usbdev, buf, len);
 }
 
 static void svc_sim_fn(void *p_data)
@@ -101,7 +102,8 @@ static void svc_sim_fn(void *p_data)
     /*
      * Tell the SVC that the AP Module is ready
      */
-    tsb_unipro_mbox_set(TSB_MAIL_READY_AP, true);
+    extern struct unipro_device tsb_unipro;
+    tsb_unipro_mbox_set(&tsb_unipro, TSB_MAIL_READY_AP, true);
 }
 
 static int svc_sim_init(struct apbridge_dev_s *priv)
