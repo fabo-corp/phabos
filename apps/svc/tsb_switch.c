@@ -108,19 +108,6 @@ static inline uint8_t dev_ids_port_to_dev(struct tsb_switch *sw,
     return sw->dev_ids[port_id];
 }
 
-static inline uint8_t dev_ids_dev_to_port(struct tsb_switch *sw,
-                                          uint8_t dev_id) {
-    int i;
-
-    for (i = 0; i < SWITCH_PORT_MAX; i++) {
-        if (sw->dev_ids[i] == dev_id) {
-             return i;
-        }
-    }
-
-    return INVALID_PORT;
-}
-
 static void dev_ids_destroy(struct tsb_switch *sw) {
     memset(sw->dev_ids, INVALID_PORT, sizeof(sw->dev_ids));
 }
