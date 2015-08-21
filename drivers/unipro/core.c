@@ -13,6 +13,8 @@
 int unipro_register_cport_driver(struct unipro_device *device, unsigned cport,
                                  struct unipro_cport_driver *driver)
 {
+    int retval;
+
     if (!device || !device->cports || !driver)
         return -EINVAL;
 
@@ -21,7 +23,16 @@ int unipro_register_cport_driver(struct unipro_device *device, unsigned cport,
 
     device->cports[cport].driver = driver;
 
+    retval = device->ops->cport.init(&device->cports[cport]);
+    if (retval)
+        goto err_cport_init;
+
+    dev_info(&device->device, "registered driver on cport %u\n", cport);
     return 0;
+
+err_cport_init:
+    device->cports[cport].driver = NULL;
+    return retval;
 }
 
 int unipro_unregister_cport_driver(struct unipro_device *device, unsigned cport)
@@ -34,6 +45,7 @@ int unipro_unregister_cport_driver(struct unipro_device *device, unsigned cport)
 
     device->cports[cport].driver = NULL;
 
+    dev_info(&device->device, "unregistered driver on cport %u\n", cport);
     return 0;
 }
 
@@ -51,8 +63,11 @@ int unipro_register_device(struct unipro_device *device, struct unipro_ops *ops)
     device->cports = cports;
     device->ops = ops;
 
-    for (unsigned i = 0; i < device->cport_count; i++)
+    for (unsigned i = 0; i < device->cport_count; i++) {
         cports[i].id = i;
+        cports[i].device = device;
+        list_init(&cports[i].tx_fifo);
+    }
 
     return 0;
 }
