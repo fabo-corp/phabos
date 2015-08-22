@@ -46,9 +46,24 @@ static uint8_t gb_svc_hello(struct gb_operation *op)
     return GB_OP_SUCCESS;
 }
 
+static uint8_t gb_svc_intf_hotplug(struct gb_operation *op)
+{
+    struct gb_svc_intf_hotplug_request *req =
+        gb_operation_get_request_payload(op);
+
+    if (gb_operation_get_request_payload_size(op) < sizeof(*req))
+        return GB_OP_INVALID;
+
+    dev_info(&op->greybus->device, "new module on interface %hhu\n",
+             req->intf_id);
+
+    return GB_OP_SUCCESS;
+}
+
 static struct gb_operation_handler gb_svc_handlers[] = {
     GB_HANDLER(GB_SVC_TYPE_PROTOCOL_VERSION, gb_svc_protocol_version),
     GB_HANDLER(GB_SVC_TYPE_HELLO, gb_svc_hello),
+    GB_HANDLER(GB_SVC_TYPE_INTF_HOTPLUG, gb_svc_intf_hotplug),
 };
 
 static struct gb_driver svc_driver = {
