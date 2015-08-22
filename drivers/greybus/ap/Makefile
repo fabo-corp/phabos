@@ -6,5 +6,6 @@
 CFLAGS += -Idrivers/greybus/
 
 obj-y += ap.o
-obj-y += dev.o
 obj-y += svc.o
+obj-y += control.o
+obj-y += gpio.o

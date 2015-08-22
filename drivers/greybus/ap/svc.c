@@ -20,12 +20,97 @@ static uint16_t next_cport;
 static struct workqueue *svc_wq;
 static struct gb_device *dev;
 
+static uint16_t control_cport;
+static uint16_t gpio_cport;
+
+static void gpio_connected_cb(struct gb_operation *op)
+{
+    dev_info(&op->greybus->device, "%s(): %hhu\n", __func__,
+             gb_operation_get_request_result(op));
+
+    if (gb_operation_get_request_result(op) != GB_OP_SUCCESS) {
+        // TODO: destroy interface
+        return;
+    }
+
+    dev_debug(&op->greybus->device, "gpio connected\n");
+
+    int gb_gpio_connected(struct greybus *bus, unsigned cport);
+    gb_gpio_connected(op->greybus, gpio_cport);
+}
+
+#include "../control-gb.h"
+
+static void svc_create_gpio_connection_cb(struct gb_operation *op)
+{
+    struct gb_control_connected_request *req;
+    struct greybus *bus = op->greybus;
+
+    dev_info(&op->greybus->device, "%s(): %hhu\n", __func__,
+             gb_operation_get_request_result(op));
+
+    if (gb_operation_get_request_result(op) != GB_OP_SUCCESS) {
+        // TODO: destroy interface
+        return;
+    }
+
+    gb_listen(op->greybus, gpio_cport);
+
+    dev_debug(&op->greybus->device, "gpio connection created\n");
+
+    op = gb_operation_create(dev->bus, control_cport,
+                             GB_CONTROL_TYPE_CONNECTED,
+                             sizeof(*req));
+    if (!op) {
+        dev_error(&bus->device, "couldn't create operation\n");
+        return;
+    }
+
+    req = gb_operation_get_request_payload(op);
+    req->cport_id = cpu_to_le16(3);
+
+    dev_debug(&bus->device, "connecting gpio on peer device...\n");
+    gb_operation_send_request(op, gpio_connected_cb, true);
+    gb_operation_destroy(op);
+}
+
+static void svc_create_gpio_connection(void *data)
+{
+    struct gb_interface *iface = data;
+    struct gb_svc_conn_create_request *req;
+    struct gb_operation *op;
+
+    op = gb_operation_create(dev->bus, GB_SVC_CPORT, GB_SVC_TYPE_CONN_CREATE,
+                             sizeof(*req));
+
+    if (!op) {
+        // TODO: destroy interface
+        return;
+    }
+
+    gpio_cport = next_cport++;
+
+    req = gb_operation_get_request_payload(op);
+    req->intf1_id = iface_id;
+    req->cport1_id = cpu_to_le16(gpio_cport);
+    req->intf2_id = iface->id;
+    req->cport2_id = cpu_to_le16(3);
+    req->flags = 0x7;
+
+    op->priv_data = iface;
+
+    gb_operation_send_request(op, svc_create_gpio_connection_cb, true);
+    gb_operation_destroy(op);
+}
+
 static void svc_create_control_connection_cb(struct gb_operation *op)
 {
     if (gb_operation_get_request_result(op) != GB_OP_SUCCESS) {
         // TODO: destroy interface
         return;
     }
+
+    gb_listen(op->greybus, control_cport);
 
     dev_debug(&op->greybus->device, "control connection created\n");
 }
@@ -44,11 +129,14 @@ static void svc_create_control_connection(void *data)
         return;
     }
 
+    control_cport = next_cport++;
+
     req = gb_operation_get_request_payload(op);
     req->intf1_id = iface_id;
-    req->cport1_id = cpu_to_le16(next_cport++);
+    req->cport1_id = cpu_to_le16(control_cport);
     req->intf2_id = iface->id;
     req->cport2_id = cpu_to_le16(GB_CONTROL_CPORT);
+    req->flags = 0x7;
 
     op->priv_data = iface;
 
@@ -68,6 +156,7 @@ static void svc_create_route_cb(struct gb_operation *op)
     dev_debug(&op->greybus->device, "route created\n");
 
     workqueue_queue(svc_wq, svc_create_control_connection, op->priv_data);
+    workqueue_queue(svc_wq, svc_create_gpio_connection, op->priv_data); // XXX
 }
 
 static void svc_create_route(void *data)
