@@ -274,6 +274,16 @@ static struct gb_device gb_control_device = {
     },
 };
 
+static struct gb_device gb_ap_svc_device = {
+    .bus = &greybus,
+
+    .device = {
+        .name = "gb-ap-svc",
+        .description = "Greybus AP SVC Protocol",
+        .driver = "gb-ap-svc",
+    },
+};
+
 static struct gpio_device gpio_device = {
     .base = -1,
 #if defined(CONFIG_TSB_ES1)
@@ -417,4 +427,5 @@ void machine_init(void)
     device_register(&gb_control_device.device);
     device_register(&gb_gpio_device.device);
     device_register(&gb_i2c_device.device);
+    device_register(&gb_ap_svc_device.device);
 }
