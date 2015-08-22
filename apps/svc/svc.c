@@ -579,7 +579,7 @@ int svc_init(int argc, char **argv) {
     /*
      * Now start the shell.
      */
-    return 0; //shell_main(argc, argv);
+    return shell_main(argc, argv);
 }
 
 int svcd_start(void) {
