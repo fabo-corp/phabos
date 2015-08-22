@@ -118,22 +118,25 @@ static inline int unipro_attr_peer_write(struct unipro_device *device,
                                         result_code);
 }
 
-inline ssize_t unipro_send(struct unipro_device *device, unsigned cportid,
-                           const void *buffer, size_t len)
+static inline ssize_t unipro_send(struct unipro_device *device,
+                                  unsigned cportid, const void *buffer,
+                                  size_t len)
 {
     return device->ops->cport.send(&device->cports[cportid], buffer, len);
 }
 
-inline ssize_t unipro_send_async(struct unipro_device *device, unsigned cportid,
-                                 const void *buf, size_t len,
-                                 unipro_send_completion_t callback,
-                                 void *user_priv)
+static inline ssize_t unipro_send_async(struct unipro_device *device,
+                                        unsigned cportid, const void *buf,
+                                        size_t len,
+                                        unipro_send_completion_t callback,
+                                        void *user_priv)
 {
     return device->ops->cport.send_async(&device->cports[cportid], buf, len,
                                          callback, user_priv);
 }
 
-inline int unipro_unpause_rx(struct unipro_device *device, unsigned cportid)
+static inline int unipro_unpause_rx(struct unipro_device *device,
+                                    unsigned cportid)
 {
     return device->ops->cport.unpause_rx(&device->cports[cportid]);
 }
