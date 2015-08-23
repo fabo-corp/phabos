@@ -7,4 +7,4 @@ CFLAGS += -Idrivers/greybus/
 
 obj-y += svc.o
 obj-y += control.o
-obj-y += gpio.o
+obj-$(CONFIG_GREYBUS_AP_GPIO) += gpio.o

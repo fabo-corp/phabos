@@ -5,4 +5,8 @@
 
 menu "AP"
 
+config GREYBUS_AP_GPIO
+    bool "GPIO PHY"
+    select GPIO
+
 endmenu
