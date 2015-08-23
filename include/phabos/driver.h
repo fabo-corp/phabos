@@ -61,6 +61,10 @@ struct list_head *device_get_list(void);
 struct device *devnum_get_device(dev_t dev);
 int devnum_alloc(struct driver *driver, struct device *device, dev_t *devnum);
 
+void dev_log_init(void);
+void dev_debug_add(struct device *device);
+void dev_debug_add_name(const char *name);
+
 int devfs_init(void);
 int devfs_mknod(const char *name, mode_t mode, dev_t dev);
 

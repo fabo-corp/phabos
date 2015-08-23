@@ -234,6 +234,7 @@ void driver_init(void)
     extern uint32_t _edriver;
     struct driver *drv;
 
+    dev_log_init();
     hashtable_init_uint(&driver_table);
 
     for (drv = (struct driver*) &_driver;
