@@ -74,12 +74,13 @@ void irq_enable_line(int line)
 {
     irq_disable();
 
-    RET_IF_FAIL(line < CPU_NUM_IRQ,);
-    RET_IF_FAIL(irq_state[line] != 0,);
+    GOTO_IF_FAIL(line < CPU_NUM_IRQ, out);
+    GOTO_IF_FAIL(irq_state[line] != 0, out);
 
     if (--irq_state[line] == 0)
         write32(SETENA0 + 4 * (line / 32), 1 << (line % 32));
 
+out:
     irq_enable();
 }
 
