@@ -3,10 +3,8 @@
 #include <phabos/driver.h>
 #include <phabos/greybus.h>
 #include <phabos/greybus/svc.h>
-#include <phabos/unipro/tsb.h>
 
 #include "interface.h"
-#include "cport.h"
 
 #include <errno.h>
 
@@ -224,14 +222,7 @@ static int gb_svc_probe(struct device *device)
 
     RET_IF_FAIL(device, -EINVAL);
 
-    dev_debug_add_name("greybus");
-    dev_debug_add_name("gb-ap-svc");
-    dev_debug_add_name("gb-ap-gpio-phy");
-    dev_debug_add_name("gb-ap-gpio-control");
-
     dev = containerof(device, struct gb_device, device);
-
-    gb_cport_init(dev->bus);
 
     retval = gb_register_driver(dev->bus, GB_SVC_CPORT, &svc_driver);
     if (retval)
@@ -240,10 +231,6 @@ static int gb_svc_probe(struct device *device)
     retval = gb_listen(dev->bus, GB_SVC_CPORT);
     if (retval)
         return retval;
-
-    dev_info(device, "AP is ready\n");
-    extern struct unipro_device tsb_unipro;
-    tsb_unipro_mbox_set(&tsb_unipro, TSB_MAIL_READY_AP, true);
 
     return 0;
 }
