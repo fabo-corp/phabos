@@ -5,6 +5,13 @@
 
 CFLAGS += -Idrivers/greybus/
 
+obj-y += ap.o
 obj-y += svc.o
 obj-y += control.o
+obj-y += manifest.o
+obj-y += bundle.o
+obj-y += cport.o
+obj-y += connection.o
+obj-y += interface.o
+
 obj-$(CONFIG_GREYBUS_AP_GPIO) += gpio.o
