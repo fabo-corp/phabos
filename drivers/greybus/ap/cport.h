@@ -21,6 +21,7 @@ struct gb_cport *gb_cport_create(unsigned id);
 void gb_cport_destroy(struct gb_cport *cport);
 int gb_cport_allocate(struct greybus *bus);
 void gb_cport_deallocate(struct greybus *bus, unsigned cport);
+int gb_cport_connect(struct gb_cport *cport);
 
 #endif /* __GREYBUS_AP_CPORT_H__ */
 

@@ -17,15 +17,10 @@ void gb_gpio_line_count_cb(struct gb_operation *op)
     struct gpio_device *gpio;
     int retval;
 
-    dev_debug(&op->greybus->device, "line count received: %hhu\n",
-             gb_operation_get_request_result(op));
-
     if (gb_operation_get_request_result(op) != GB_OP_SUCCESS) {
         retval = -EPROTO; // TODO write gb_op_result_to_errno
         goto error_operation_failed;
     }
-
-    dev_debug(&op->greybus->device, "line count received OK\n");
 
     resp = gb_operation_get_request_payload(op->response);
 
@@ -59,11 +54,9 @@ static int gb_gpio_connected(struct greybus *bus, unsigned cport)
     if (!op)
         return -ENOMEM;
 
-    dev_debug(&bus->device, "gpio line count sent\n");
-
     gb_operation_send_request(op, gb_gpio_line_count_cb, true);
-
     gb_operation_destroy(op);
+
     return 0;
 }
 
@@ -97,8 +90,17 @@ static struct gb_protocol gpio_protocol = {
 
 static int gb_gpio_probe(struct device *device)
 {
+    int retval;
     gb_device = containerof(device, struct gb_device, device);
-    return gb_register_driver(gb_device->bus, gb_device->cport, &gpio_driver);
+
+    retval = gb_register_driver(gb_device->bus, gb_device->cport, &gpio_driver);
+    if (retval)
+        return retval;
+
+    gb_listen(gb_device->bus, gb_device->cport);
+    gb_gpio_connected(gb_device->bus, gb_device->cport);
+
+    return 0;
 }
 
 static int gb_gpio_init(struct driver *driver)

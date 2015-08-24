@@ -4,6 +4,8 @@
 #include "cport.h"
 #include "bundle.h"
 #include "interface.h"
+#include "svc.h"
+#include "control.h"
 
 #include <errno.h>
 

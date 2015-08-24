@@ -33,6 +33,7 @@ enum {
 
 struct gb_bundle *gb_bundle_create(unsigned id);
 void gb_bundle_destroy(struct gb_bundle *bundle);
+int gb_bundle_init(struct gb_bundle *bundle);
 
 #endif /* __GREYBUS_AP_BUNDLE_H__ */
 
