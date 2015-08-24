@@ -39,6 +39,7 @@
 #include <phabos/serial/uart16550.h>
 #include <phabos/usb/hcd-dwc2.h>
 #include <phabos/greybus.h>
+#include <phabos/greybus/ap.h>
 #include <phabos/unipro.h>
 #include <phabos/unipro/tsb.h>
 
@@ -274,13 +275,13 @@ static struct gb_device gb_control_device = {
     },
 };
 
-static struct gb_device gb_ap_svc_device = {
+static struct gb_ap gb_ap_device = {
     .bus = &greybus,
 
     .device = {
-        .name = "gb-ap-svc",
-        .description = "Greybus AP SVC Protocol",
-        .driver = "gb-ap-svc",
+        .name = "gb-ap",
+        .description = "Greybus AP",
+        .driver = "gb-ap",
     },
 };
 
@@ -427,5 +428,5 @@ void machine_init(void)
     device_register(&gb_control_device.device);
     device_register(&gb_gpio_device.device);
     device_register(&gb_i2c_device.device);
-    device_register(&gb_ap_svc_device.device);
+    device_register(&gb_ap_device.device);
 }
