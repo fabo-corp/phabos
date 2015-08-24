@@ -86,7 +86,7 @@ int gb_cport_connect(struct gb_cport *cport)
         goto error_create_device;
     }
 
-    protocol->init_device(device);
+    protocol->init_device(&device->device);
 
     cport->connection.interface1 = gb_interface_self(bus);
     cport->connection.interface2 = cport->bundle->interface;
@@ -101,10 +101,20 @@ int gb_cport_connect(struct gb_cport *cport)
         goto error_create_connection;
     }
 
+    retval = gb_control_connect_cport(cport->bundle->interface, cport->id);
+    if (retval) {
+        dev_error(&bus->device,
+                  "cannot create connection to interface %u\n",
+                  cport->bundle->interface->id);
+        goto error_create_connection2;
+    }
+
     device_register(&device->device);
 
     return 0;
 
+error_create_connection2:
+    gb_svc_destroy_connection(&cport->connection);
 error_create_connection:
     kfree(device);
 error_create_device:
