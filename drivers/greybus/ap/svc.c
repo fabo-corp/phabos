@@ -47,6 +47,37 @@ out:
     return retval;
 }
 
+int gb_svc_destroy_connection(struct gb_connection *connection)
+{
+    struct gb_svc_conn_destroy_request *req;
+    struct gb_operation *op;
+    int retval = 0;
+
+    op = gb_operation_create(dev->bus, GB_SVC_CPORT, GB_SVC_TYPE_CONN_DESTROY,
+                             sizeof(*req));
+    if (!op)
+        return -ENOMEM;
+
+    req = gb_operation_get_request_payload(op);
+    req->intf1_id = connection->interface1->id;
+    req->cport1_id = cpu_to_le16(connection->cport1);
+    req->intf2_id = connection->interface2->id;
+    req->cport2_id = cpu_to_le16(connection->cport2);
+
+    retval = gb_operation_send_request_sync(op);
+    if (retval)
+        goto out;
+
+    if (gb_operation_get_request_result(op) != GB_OP_SUCCESS) {
+        retval = -EIO;
+        goto out;
+    }
+
+out:
+    gb_operation_destroy(op);
+    return retval;
+}
+
 int gb_svc_create_route(struct gb_interface *iface)
 {
     struct gb_svc_route_create_request *req;
