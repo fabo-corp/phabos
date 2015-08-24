@@ -118,9 +118,4 @@ struct gb_svc_conn_destroy_request {
 } __packed;
 /* connection destroy response has no payload */
 
-int gb_svc_protocol_version(void);
-int gb_svc_hello(uint8_t ap_intf_id);
-int gb_svc_intf_hotplug(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-void gb_svc_register(int cport);
-
 #endif

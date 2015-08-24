@@ -66,6 +66,10 @@ int svc_connect_interfaces(struct interface *iface1, uint16_t cportid1,
                            struct interface *iface2, uint16_t cportid2,
                            uint8_t tc, uint8_t flags);
 
+int gb_svc_protocol_version(void);
+int gb_svc_hello(uint8_t ap_intf_id);
+int gb_svc_intf_hotplug(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+
 #endif
 
 
