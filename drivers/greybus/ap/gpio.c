@@ -8,7 +8,231 @@
 
 static struct gb_device *gb_device;
 
+static int gb_gpio_get_direction(struct gpio_device *dev, unsigned int line)
+{
+    struct gb_operation *op;
+    struct gb_gpio_get_direction_request *req;
+    struct gb_gpio_get_direction_response *resp;
+    int retval;
+
+    op = gb_operation_create(gb_device->bus, gb_device->cport,
+                             GB_GPIO_TYPE_GET_DIRECTION, sizeof(*req));
+    if (!op)
+        return -ENOMEM;
+
+    req = gb_operation_get_request_payload(op);
+    req->which = line;
+
+    retval = gb_operation_send_request_sync(op);
+    if (retval)
+        goto out;
+
+    if (gb_operation_get_request_result(op) != GB_OP_SUCCESS) {
+        retval = -EPROTO; // TODO write gb_op_result_to_errno
+        goto out;
+    }
+
+    resp = gb_operation_get_request_payload(op->response);
+    retval = resp->direction;
+
+out:
+    gb_operation_destroy(op);
+
+    return retval;
+}
+
+static int gb_gpio_direction_in(struct gpio_device *dev, unsigned int line)
+{
+    struct gb_operation *op;
+    struct gb_gpio_direction_in_request *req;
+    int retval = 0;
+
+    op = gb_operation_create(gb_device->bus, gb_device->cport,
+                             GB_GPIO_TYPE_DIRECTION_IN, sizeof(*req));
+    if (!op)
+        return -ENOMEM;
+
+    req = gb_operation_get_request_payload(op);
+    req->which = line;
+
+    retval = gb_operation_send_request_sync(op);
+    if (retval)
+        goto out;
+
+    if (gb_operation_get_request_result(op) != GB_OP_SUCCESS) {
+        retval = -EPROTO; // TODO write gb_op_result_to_errno
+        goto out;
+    }
+
+out:
+    gb_operation_destroy(op);
+
+    return retval;
+}
+
+static int gb_gpio_direction_out(struct gpio_device *dev, unsigned int line,
+                                 unsigned int value)
+{
+    struct gb_operation *op;
+    struct gb_gpio_direction_out_request *req;
+    int retval = 0;
+
+    op = gb_operation_create(gb_device->bus, gb_device->cport,
+                             GB_GPIO_TYPE_DIRECTION_OUT, sizeof(*req));
+    if (!op)
+        return -ENOMEM;
+
+    req = gb_operation_get_request_payload(op);
+    req->which = line;
+    req->value = value;
+
+    retval = gb_operation_send_request_sync(op);
+    if (retval)
+        goto out;
+
+    if (gb_operation_get_request_result(op) != GB_OP_SUCCESS) {
+        retval = -EPROTO; // TODO write gb_op_result_to_errno
+        goto out;
+    }
+
+out:
+    gb_operation_destroy(op);
+
+    return retval;
+}
+
+static int gb_gpio_activate(struct gpio_device *dev, unsigned int line)
+{
+    struct gb_operation *op;
+    struct gb_gpio_activate_request *req;
+    int retval = 0;
+
+    op = gb_operation_create(gb_device->bus, gb_device->cport,
+                             GB_GPIO_TYPE_ACTIVATE, sizeof(*req));
+    if (!op)
+        return -ENOMEM;
+
+    req = gb_operation_get_request_payload(op);
+    req->which = line;
+
+    retval = gb_operation_send_request_sync(op);
+    if (retval)
+        goto out;
+
+    if (gb_operation_get_request_result(op) != GB_OP_SUCCESS) {
+        retval = -EPROTO; // TODO write gb_op_result_to_errno
+        goto out;
+    }
+
+out:
+    gb_operation_destroy(op);
+
+    return retval;
+}
+
+static int gb_gpio_deactivate(struct gpio_device *dev, unsigned int line)
+{
+    struct gb_operation *op;
+    struct gb_gpio_deactivate_request *req;
+    int retval = 0;
+
+    op = gb_operation_create(gb_device->bus, gb_device->cport,
+                             GB_GPIO_TYPE_DEACTIVATE, sizeof(*req));
+    if (!op)
+        return -ENOMEM;
+
+    req = gb_operation_get_request_payload(op);
+    req->which = line;
+
+    retval = gb_operation_send_request_sync(op);
+    if (retval)
+        goto out;
+
+    if (gb_operation_get_request_result(op) != GB_OP_SUCCESS) {
+        retval = -EPROTO; // TODO write gb_op_result_to_errno
+        goto out;
+    }
+
+out:
+    gb_operation_destroy(op);
+
+    return retval;
+}
+
+static int gb_gpio_set_value(struct gpio_device *dev, unsigned int line,
+                             unsigned int value)
+{
+    struct gb_operation *op;
+    struct gb_gpio_set_value_request *req;
+    int retval = 0;
+
+    op = gb_operation_create(gb_device->bus, gb_device->cport,
+                             GB_GPIO_TYPE_SET_VALUE, sizeof(*req));
+    if (!op)
+        return -ENOMEM;
+
+    req = gb_operation_get_request_payload(op);
+    req->which = line;
+    req->value = value;
+
+    retval = gb_operation_send_request_sync(op);
+    if (retval)
+        goto out;
+
+    if (gb_operation_get_request_result(op) != GB_OP_SUCCESS) {
+        retval = -EPROTO; // TODO write gb_op_result_to_errno
+        goto out;
+    }
+
+out:
+    gb_operation_destroy(op);
+
+    return retval;
+}
+
+static int gb_gpio_get_value(struct gpio_device *dev, unsigned int line)
+{
+    struct gb_operation *op;
+    struct gb_gpio_get_value_request *req;
+    struct gb_gpio_get_value_response *resp;
+    int retval = 0;
+
+    op = gb_operation_create(gb_device->bus, gb_device->cport,
+                             GB_GPIO_TYPE_GET_VALUE, sizeof(*req));
+    if (!op)
+        return -ENOMEM;
+
+    req = gb_operation_get_request_payload(op);
+    req->which = line;
+
+    retval = gb_operation_send_request_sync(op);
+    if (retval)
+        goto out;
+
+    if (gb_operation_get_request_result(op) != GB_OP_SUCCESS) {
+        retval = -EPROTO; // TODO write gb_op_result_to_errno
+        goto out;
+    }
+
+    resp = gb_operation_get_request_payload(op->response);
+    retval = resp->value;
+
+out:
+    gb_operation_destroy(op);
+
+    return retval;
+}
+
 static struct gpio_ops gb_gpio_device_ops = {
+    .get_direction = gb_gpio_get_direction,
+    .direction_in = gb_gpio_direction_in,
+    .direction_out = gb_gpio_direction_out,
+
+    .activate = gb_gpio_activate,
+    .deactivate = gb_gpio_deactivate,
+
+    .get_value = gb_gpio_get_value,
+    .set_value = gb_gpio_set_value,
 };
 
 void gb_gpio_line_count_cb(struct gb_operation *op)
