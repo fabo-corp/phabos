@@ -1,4 +1,5 @@
 #include <phabos/greybus.h>
+#include <phabos/greybus/ap.h>
 #include <phabos/gpio.h>
 
 #include "../gpio-gb.h"
@@ -16,7 +17,7 @@ void gb_gpio_line_count_cb(struct gb_operation *op)
     struct gpio_device *gpio;
     int retval;
 
-    dev_info(&op->greybus->device, "line count received: %hhu\n",
+    dev_debug(&op->greybus->device, "line count received: %hhu\n",
              gb_operation_get_request_result(op));
 
     if (gb_operation_get_request_result(op) != GB_OP_SUCCESS) {
@@ -24,7 +25,7 @@ void gb_gpio_line_count_cb(struct gb_operation *op)
         goto error_operation_failed;
     }
 
-    dev_info(&op->greybus->device, "line count received OK\n");
+    dev_debug(&op->greybus->device, "line count received OK\n");
 
     resp = gb_operation_get_request_payload(op->response);
 
@@ -50,7 +51,7 @@ error_operation_failed:
     return;
 }
 
-int gb_gpio_connected(struct greybus *bus, unsigned cport) // TODO static
+static int gb_gpio_connected(struct greybus *bus, unsigned cport)
 {
     struct gb_operation *op;
 
@@ -75,18 +76,38 @@ static struct gb_operation_handler gb_gpio_handlers[] = {
     GB_HANDLER(GB_GPIO_TYPE_IRQ_EVENT, gb_gpio_irq_event),
 };
 
-struct gb_driver gpio_driver = {
+static struct gb_driver gpio_driver = {
     .op_handlers = (struct gb_operation_handler*) gb_gpio_handlers,
     .op_handlers_count = ARRAY_SIZE(gb_gpio_handlers),
+};
+
+int gb_gpio_init_device(struct device *device)
+{
+    device->name = "gb-ap-gpio";
+    device->description = "Greybus AP GPIO PHY Protocol";
+    device->driver = "gb-ap-gpio-phy";
+
+    return 0;
+}
+
+static struct gb_protocol gpio_protocol = {
+    .id = GB_PROTOCOL_GPIO,
+    .init_device = gb_gpio_init_device,
 };
 
 static int gb_gpio_probe(struct device *device)
 {
     gb_device = containerof(device, struct gb_device, device);
-    return gb_register_driver(gb_device->bus, 2, &gpio_driver);
+    return gb_register_driver(gb_device->bus, gb_device->cport, &gpio_driver);
+}
+
+static int gb_gpio_init(struct driver *driver)
+{
+    return gb_protocol_register(&gpio_protocol);
 }
 
 __driver__ struct driver gb_gpio_driver = {
     .name = "gb-ap-gpio-phy",
+    .init = gb_gpio_init,
     .probe = gb_gpio_probe,
 };

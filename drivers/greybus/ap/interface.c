@@ -66,6 +66,16 @@ void gb_interface_destroy(struct gb_interface *iface)
     kfree(iface);
 }
 
+static int gb_interface_initialize_bundles(struct gb_interface *iface)
+{
+    struct hashtable_iterator iter = HASHTABLE_ITERATOR_INIT;
+
+    while (hashtable_iterate(&iface->bundles, &iter))
+        gb_bundle_init(iter.value);
+
+    return 0;
+}
+
 int gb_interface_init(struct gb_interface *iface)
 {
     static unsigned next_devid = 2;
@@ -131,6 +141,8 @@ int gb_interface_init(struct gb_interface *iface)
     }
 
     dev_debug(&iface->bus->device, "parsed manifest successfully\n");
+
+    gb_interface_initialize_bundles(iface);
 
     return 0;
 }

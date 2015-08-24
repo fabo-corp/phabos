@@ -48,6 +48,7 @@ static ssize_t manifest_parse_bundle(struct gb_interface *iface,
         goto out;
 
     bundle->class = desc->class;
+    bundle->interface = iface;
     hashtable_add(&iface->bundles, (void*) bundle->id, bundle);
 
 out:
@@ -77,7 +78,8 @@ static ssize_t manifest_parse_cport(struct gb_interface *iface,
         goto out;
 
     cport->protocol = desc->protocol;
-    cport->bundle = desc->bundle;
+    cport->bundle_id = desc->bundle;
+    cport->bundle = bundle;
     hashtable_add(&bundle->cports, (void*) cport->id, cport);
 
 out:

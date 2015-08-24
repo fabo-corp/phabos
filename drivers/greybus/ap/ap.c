@@ -1,8 +1,13 @@
 #include <phabos/greybus.h>
 #include <phabos/greybus/ap.h>
 #include <phabos/unipro/tsb.h>
+#include <phabos/hashtable.h>
 
 #include "cport.h"
+#include "bundle.h"
+
+static struct hashtable protocol_map;
+static bool is_protocol_map_initialized;
 
 struct gb_device *gb_ap_create_device(struct greybus *bus, unsigned cport)
 {
@@ -16,10 +21,23 @@ struct gb_device *gb_ap_create_device(struct greybus *bus, unsigned cport)
     return dev;
 }
 
-int gb_ap_register_driver(struct gb_device *device, unsigned protocol,
-                          struct gb_driver *driver)
+int gb_protocol_register(struct gb_protocol *protocol)
 {
+    if (!is_protocol_map_initialized) {
+        hashtable_init_uint(&protocol_map);
+        is_protocol_map_initialized = true;
+    }
+
+    hashtable_add(&protocol_map, (void*) protocol->id, protocol);
     return 0;
+}
+
+struct gb_protocol *gb_protocol_find(unsigned id)
+{
+    if (!is_protocol_map_initialized)
+        return NULL;
+
+    return hashtable_get(&protocol_map, (void*) id);
 }
 
 static int gb_ap_probe(struct device *device)

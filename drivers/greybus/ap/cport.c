@@ -1,6 +1,9 @@
 #include <phabos/greybus.h>
+#include <phabos/greybus/ap.h>
 
 #include "cport.h"
+#include "bundle.h"
+#include "interface.h"
 
 #include <errno.h>
 
@@ -54,4 +57,58 @@ void gb_cport_destroy(struct gb_cport *cport)
         return;
 
     kfree(cport);
+}
+
+int gb_cport_connect(struct gb_cport *cport)
+{
+    struct greybus *bus = cport->bundle->interface->bus;
+    struct gb_protocol *protocol;
+    struct gb_device *device;
+    int cportid;
+    int retval;
+
+    if (!cport)
+        return -EINVAL;
+
+    protocol = gb_protocol_find(cport->protocol);
+    if (!protocol)
+        return -ENOTSUP;
+
+    cportid = gb_cport_allocate(bus);
+    if (cportid < 0) {
+        dev_warn(&bus->device, "ran out of cports\n");
+        return cportid;
+    }
+
+    device = gb_ap_create_device(bus, cportid);
+    if (!device) {
+        retval = -ENOMEM;
+        goto error_create_device;
+    }
+
+    protocol->init_device(device);
+
+    cport->connection.interface1 = gb_interface_self(bus);
+    cport->connection.interface2 = cport->bundle->interface;
+    cport->connection.cport1 = cportid;
+    cport->connection.cport2 = cport->id;
+
+    retval = gb_svc_create_connection(&cport->connection);
+    if (retval) {
+        dev_error(&bus->device,
+                  "cannot create connection to interface %u\n",
+                  cport->bundle->interface->id);
+        goto error_create_connection;
+    }
+
+    device_register(&device->device);
+
+    return 0;
+
+error_create_connection:
+    kfree(device);
+error_create_device:
+    gb_cport_deallocate(bus, cportid);
+
+    return retval;
 }

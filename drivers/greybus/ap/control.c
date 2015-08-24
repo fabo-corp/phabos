@@ -1,10 +1,10 @@
 #include <asm/byteordering.h>
 #include <phabos/greybus.h>
+#include <phabos/greybus/ap.h>
 
 #include "../control-gb.h"
 #include "control.h"
 #include "interface.h"
-#include "ap.h"
 
 #include <errno.h>
 

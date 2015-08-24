@@ -8,8 +8,9 @@
 struct gb_cport {
     unsigned id;
     unsigned protocol;
-    unsigned bundle;
+    unsigned bundle_id;
 
+    struct gb_bundle *bundle;
     struct gb_connection connection;
 };
 

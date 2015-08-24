@@ -7,6 +7,7 @@ struct gb_bundle {
     unsigned id;
     unsigned class;
 
+    struct gb_interface *interface;
     struct hashtable cports;
 };
 
