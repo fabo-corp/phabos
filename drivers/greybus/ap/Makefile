@@ -15,3 +15,4 @@ obj-y += connection.o
 obj-y += interface.o
 
 obj-$(CONFIG_GREYBUS_AP_GPIO) += gpio.o
+obj-$(CONFIG_GREYBUS_AP_I2C) += i2c.o

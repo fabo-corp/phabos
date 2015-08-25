@@ -9,4 +9,8 @@ config GREYBUS_AP_GPIO
     bool "GPIO PHY"
     select GPIO
 
+config GREYBUS_AP_I2C
+    bool "I2C PHY"
+    select I2C
+
 endmenu
