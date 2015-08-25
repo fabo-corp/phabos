@@ -48,7 +48,9 @@
 #undef lldbg
 #define lldbg(x...)
 
-static struct i2c_dev   *g_dev;        /* Generic Nuttx I2C device */
+extern struct driver dw_i2c_driver;
+
+static struct i2c_master *g_dev;        /* Generic Nuttx I2C device */
 static struct i2c_msg   *g_msgs;      /* Generic messages array */
 static struct mutex     g_mutex;      /* Only one thread can access at a time */
 static struct semaphore g_wait;       /* Wait for state machine completion */
@@ -263,7 +265,7 @@ static void tsb_i2c_transfer_msg(void)
                 lldbg("RESTART\n");
             }
 
-            if (g_msgs[g_tx_index].flags & I2C_READ) {
+            if (g_msgs[g_tx_index].flags & I2C_M_READ) {
                 if (rx_avail - g_rx_outstanding <= 0)
                     break;
 
@@ -315,7 +317,7 @@ static void tsb_dw_read(void)
         uint32_t len;
         uint8_t *buffer;
 
-        if (!(g_msgs[g_rx_index].flags & I2C_READ))
+        if (!(g_msgs[g_rx_index].flags & I2C_M_READ))
             continue;
 
         if (!(g_status & DW_I2C_STATUS_READ_IN_PROGRESS)) {
@@ -366,7 +368,8 @@ static int tsb_i2c_handle_tx_abort(void)
 }
 
 /* Perform a sequence of I2C transfers */
-static int dw_transfer(struct i2c_dev *dev, struct i2c_msg *msg, size_t count)
+static int dw_transfer(struct i2c_master *dev, struct i2c_msg *msg,
+                       size_t count)
 {
     int ret;
 
@@ -532,12 +535,20 @@ static void dw_timeout(struct watchdog *wd)
     irq_enable();
 }
 
-static struct i2c_ops dev_i2c_ops = {
+static struct i2c_master_ops dev_i2c_ops = {
     .transfer   = dw_transfer,
 };
 
 static int dw_probe(struct device *device)
 {
+    struct i2c_master *master = containerof(device, struct i2c_master, device);
+    int retval;
+    dev_t devnum;
+
+    retval = devnum_alloc(&dw_i2c_driver, device, &devnum);
+    if (retval)
+        return -ENOMEM;
+
     mutex_init(&g_mutex);
     semaphore_init(&g_wait, 0);
 
@@ -546,20 +557,29 @@ static int dw_probe(struct device *device)
     g_timeout.timeout = dw_timeout;
 
     /* Install our operations */
-    g_dev = containerof(device, struct i2c_dev, device);
+    g_dev = containerof(device, struct i2c_master, device);
     g_dev->ops = &dev_i2c_ops;
 
     irq_attach(device->irq, dw_interrupt, device);
     irq_enable_line(device->irq);
 
+    master->ops = &dev_i2c_ops;
+
+    if (device->power_on)
+        device->power_on(device);
+
     tsb_i2c_init();
 
-    return 0;
+    return i2c_master_register(master, devnum);
 }
 
 static int dw_remove(struct device *device)
 {
     watchdog_delete(&g_timeout);
+
+    if (device->power_off)
+        device->power_off(device);
+
     return 0;
 }
 
