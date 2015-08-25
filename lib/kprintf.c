@@ -173,7 +173,12 @@ static ssize_t katoi(const char** specifier, int *x)
 static ssize_t pr_string(struct format_specifier *fs, const char *str)
 {
     size_t nwritten = 0;
-    size_t len = strlen(str);
+    size_t len;
+
+    if (!str)
+        str = "(null)";
+
+    len = strlen(str);
 
     for (int i = len; i < fs->width; i++)
         kputc(' ');
