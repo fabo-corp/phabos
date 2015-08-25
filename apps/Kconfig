@@ -38,6 +38,9 @@ config APP_LS
 config APP_YES
     bool "yes"
 
+config APP_I2CDETECT
+    bool "i2cdetect"
+
 if MACH_TSB
 source apps/tsb/Kconfig
 endif

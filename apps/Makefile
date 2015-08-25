@@ -11,3 +11,4 @@ obj-$(CONFIG_APP_GREYBUS_LOOPBACK) += gb-loopback.o
 obj-$(CONFIG_APP_FREE) += free.o
 obj-$(CONFIG_APP_LS) += ls.o
 obj-$(CONFIG_APP_YES) += yes.o
+obj-$(CONFIG_APP_I2CDETECT) += i2c.o
