@@ -318,3 +318,46 @@ void page_free(void *ptr, int order)
 
     kfree((char *) buffer + sizeof(*buffer));
 }
+
+void *malloc(size_t size)
+{
+    return kmalloc(size, 0);
+}
+
+void free(void *ptr)
+{
+    return kfree(ptr);
+}
+
+void *__wrap__malloc_r(struct _reent *reent, size_t size)
+{
+    return kmalloc(size, 0);
+}
+
+void *__wrap__free_r(struct _reent *reent, size_t size)
+{
+    return kmalloc(size, 0);
+}
+
+void *__wrap__realloc_r(struct _reent *reent, void *ptr, size_t size)
+{
+    struct mm_buffer *buffer;
+    void *newptr = kmalloc(size, 0);
+    size_t old_size;
+
+    if (!ptr)
+        return newptr;
+
+    if (!newptr)
+        return NULL;
+
+    buffer = (struct mm_buffer*) ((char *) ptr - sizeof(*buffer));
+    RET_IF_FAIL(buffer->list.prev == buffer->list.next, NULL);
+
+    old_size = order_to_size(buffer->bucket) - sizeof(*buffer);
+
+    memcpy(newptr, ptr, MIN(old_size, size));
+    kfree(ptr);
+
+    return newptr;
+}

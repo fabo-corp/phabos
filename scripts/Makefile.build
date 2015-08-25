@@ -36,7 +36,8 @@ ifeq (${MAKELEVEL}, 0)
 	            -Iarch/$(ARCH)/include/ \
 	            -Ilibc/$(ARCH_ID)/include/ \
 	            -Iinclude/
-	LDFLAGS  += -nostartfiles -nostdlib
+	LDFLAGS  += -nostartfiles -nostdlib \
+	            --wrap=_malloc_r --wrap=_free_r --wrap=_realloc_r
 	ifndef CONFIG_DEBUG
 		LDFLAGS += -gc-sections
 	endif
