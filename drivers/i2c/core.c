@@ -10,7 +10,7 @@
 
 #define DRIVER_NAME "i2c-core"
 
-static struct hashtable master_table;
+static struct hashtable *master_table;
 static struct spinlock master_table_lock;
 
 int i2c_transfer(struct i2c_master *master, struct i2c_msg *msg, size_t count)
@@ -67,11 +67,11 @@ int i2c_master_register(struct i2c_master *master, dev_t devnum)
 
     spinlock_lock(&master_table_lock);
 
-    for (i = 0; hashtable_has(&master_table, (void*) i); i++)
+    for (i = 0; hashtable_has(master_table, (void*) i); i++)
         ;
 
     master->id = i;
-    hashtable_add(&master_table, (void*) i, master);
+    hashtable_add(master_table, (void*) i, master);
 
     spinlock_unlock(&master_table_lock);
 
@@ -90,7 +90,7 @@ int i2c_master_unregister(struct i2c_master *master)
     RET_IF_FAIL(master, -EINVAL);
 
     spinlock_lock(&master_table_lock);
-    hashtable_remove(&master_table, (void*) master->id);
+    hashtable_remove(master_table, (void*) master->id);
     spinlock_unlock(&master_table_lock);
 
     return 0;
@@ -98,7 +98,7 @@ int i2c_master_unregister(struct i2c_master *master)
 
 static int i2c_core_init(struct driver *driver)
 {
-    hashtable_init_uint(&master_table);
+    master_table = hashtable_create_uint();
     spinlock_init(&master_table_lock);
     return 0;
 }

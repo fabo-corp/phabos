@@ -15,13 +15,13 @@
 #define O_CLOEXEC 0x80000
 
 static struct inode *root;
-static struct hashtable fs_table;
+static struct hashtable *fs_table;
 
 int sys_open(const char *pathname, int flags, mode_t mode);
 
 void fs_init(void)
 {
-    hashtable_init_string(&fs_table);
+    fs_table = hashtable_create_string();
 
     root = inode_alloc();
     RET_IF_FAIL(root,);
@@ -31,7 +31,7 @@ void fs_init(void)
 
 int fs_register(struct fs *fs)
 {
-    hashtable_add(&fs_table, (void*) fs->name, fs);
+    hashtable_add(fs_table, (void*) fs->name, fs);
     return 0;
 }
 
@@ -103,7 +103,7 @@ int sys_mount(const char *source, const char *target,
 
     RET_IF_FAIL(root || !target, -EINVAL);
 
-    fs = hashtable_get(&fs_table, (char*) filesystemtype);
+    fs = hashtable_get(fs_table, (char*) filesystemtype);
     if (!fs)
         return -ENODEV;
 
@@ -271,7 +271,7 @@ int sys_open(const char *pathname, int flags, mode_t mode)
     task = task_get_running();
     RET_IF_FAIL(task, -1);
 
-    fd = hashtable_get(&task->fd, (void*) fdnum);
+    fd = hashtable_get(task->fd, (void*) fdnum);
 
     if (flags & O_CLOEXEC)
         fd->flags |= O_CLOEXEC;

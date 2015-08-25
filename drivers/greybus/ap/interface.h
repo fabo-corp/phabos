@@ -12,7 +12,7 @@ struct gb_interface {
 
     unsigned id;
     unsigned device_id;
-    struct hashtable bundles;
+    struct hashtable *bundles;
     struct workqueue *wq;
 
     struct gb_connection control_connection;

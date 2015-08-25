@@ -2,6 +2,7 @@
 #include <phabos/fs.h>
 #include <phabos/utils.h>
 #include <phabos/scheduler.h>
+#include <phabos/hashtable.h>
 
 #include <errno.h>
 
@@ -17,7 +18,7 @@ struct fd *to_fd(int fdnum)
     task = task_get_running();
     RET_IF_FAIL(task, NULL);
 
-    return hashtable_get(&task->fd, (void*) fdnum);
+    return hashtable_get(task->fd, (void*) fdnum);
 }
 
 int allocate_fdnum(void)
@@ -29,7 +30,7 @@ int allocate_fdnum(void)
     RET_IF_FAIL(task, -1);
 
     for (int i = 0; i < TASK_FD_MAX; i++) {
-        fd = hashtable_get(&task->fd, (void*) i);
+        fd = hashtable_get(task->fd, (void*) i);
         if (fd)
             continue;
 
@@ -37,7 +38,7 @@ int allocate_fdnum(void)
         if (!fd)
             return -ENOMEM;
 
-        hashtable_add(&task->fd, (void*) i, fd);
+        hashtable_add(task->fd, (void*) i, fd);
         return i;
     }
 
@@ -48,13 +49,13 @@ int task_free_fdnum(struct task *task, int fdnum)
 {
     struct fd *fd;
 
-    fd = hashtable_get(&task->fd, (void*) fdnum);
+    fd = hashtable_get(task->fd, (void*) fdnum);
     if (!fd)
         return -EBADF;
 
     if (is_directory(fd->file->inode))
         mutex_unlock(&fd->file->inode->dlock); // FIXME safety checks
-    hashtable_remove(&task->fd, (void*) fdnum);
+    hashtable_remove(task->fd, (void*) fdnum);
 
     kfree(fd->file);
     kfree(fd);

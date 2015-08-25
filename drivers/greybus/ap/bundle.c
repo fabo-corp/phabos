@@ -12,7 +12,7 @@ struct gb_bundle *gb_bundle_create(unsigned id)
         return NULL;
 
     bundle->id = id;
-    hashtable_init_uint(&bundle->cports);
+    bundle->cports = hashtable_create_uint();
 
     return bundle;
 }
@@ -24,10 +24,10 @@ void gb_bundle_destroy(struct gb_bundle *bundle)
     if (!bundle)
         return;
 
-    while (hashtable_iterate(&bundle->cports, &iter))
+    while (hashtable_iterate(bundle->cports, &iter))
         gb_cport_destroy(iter.value);
 
-    hashtable_deinit(&bundle->cports);
+    hashtable_destroy(bundle->cports);
     kfree(bundle);
 }
 
@@ -38,7 +38,7 @@ int gb_bundle_init(struct gb_bundle *bundle)
     if (!bundle)
         return -EINVAL;
 
-    while (hashtable_iterate(&bundle->cports, &iter))
+    while (hashtable_iterate(bundle->cports, &iter))
         gb_cport_connect(iter.value);
 
     return 0;

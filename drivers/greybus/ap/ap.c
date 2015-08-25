@@ -6,8 +6,9 @@
 #include "cport.h"
 #include "bundle.h"
 
-static struct hashtable protocol_map;
-static bool is_protocol_map_initialized;
+#include <errno.h>
+
+static struct hashtable *protocol_map;
 
 struct gb_device *gb_ap_create_device(struct greybus *bus, unsigned cport)
 {
@@ -23,21 +24,22 @@ struct gb_device *gb_ap_create_device(struct greybus *bus, unsigned cport)
 
 int gb_protocol_register(struct gb_protocol *protocol)
 {
-    if (!is_protocol_map_initialized) {
-        hashtable_init_uint(&protocol_map);
-        is_protocol_map_initialized = true;
+    if (!protocol_map) {
+        protocol_map = hashtable_create_uint();
+        if (!protocol_map)
+            return -ENOMEM;
     }
 
-    hashtable_add(&protocol_map, (void*) protocol->id, protocol);
+    hashtable_add(protocol_map, (void*) protocol->id, protocol);
     return 0;
 }
 
 struct gb_protocol *gb_protocol_find(unsigned id)
 {
-    if (!is_protocol_map_initialized)
+    if (!protocol_map)
         return NULL;
 
-    return hashtable_get(&protocol_map, (void*) id);
+    return hashtable_get(protocol_map, (void*) id);
 }
 
 static int gb_ap_probe(struct device *device)

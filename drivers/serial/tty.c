@@ -9,7 +9,7 @@
 
 #define DRIVER_NAME "tty"
 
-static struct hashtable tty_table;
+static struct hashtable *tty_table;
 static struct spinlock tty_table_lock;
 
 int tty_register(struct tty_device *dev, dev_t devnum)
@@ -22,11 +22,11 @@ int tty_register(struct tty_device *dev, dev_t devnum)
 
     spinlock_lock(&tty_table_lock);
 
-    for (i = 0; hashtable_has(&tty_table, (void*) i); i++)
+    for (i = 0; hashtable_has(tty_table, (void*) i); i++)
         ;
 
     dev->id = i;
-    hashtable_add(&tty_table, (void*) i, dev);
+    hashtable_add(tty_table, (void*) i, dev);
 
     spinlock_unlock(&tty_table_lock);
 
@@ -47,7 +47,7 @@ int tty_unregister(struct tty_device *dev)
     RET_IF_FAIL(dev, -EINVAL);
 
     spinlock_lock(&tty_table_lock);
-    hashtable_remove(&tty_table, (void*) dev->id);
+    hashtable_remove(tty_table, (void*) dev->id);
     spinlock_unlock(&tty_table_lock);
 
     return 0;
@@ -55,7 +55,7 @@ int tty_unregister(struct tty_device *dev)
 
 int tty_init(struct driver *driver)
 {
-    hashtable_init_uint(&tty_table);
+    tty_table = hashtable_create_uint();
     spinlock_init(&tty_table_lock);
     return 0;
 }

@@ -4,16 +4,16 @@
 
 #include <stdarg.h>
 
-static struct hashtable debug_map;
+static struct hashtable *debug_map;
 
 void dev_log_init(void)
 {
-    hashtable_init_string(&debug_map);
+    debug_map = hashtable_create_string();
 }
 
 void dev_debug_add_name(const char *name)
 {
-    hashtable_add(&debug_map, (void*) name, (void*) 1);
+    hashtable_add(debug_map, (void*) name, (void*) 1);
 }
 
 void dev_debug_add(struct device *device)
@@ -38,7 +38,7 @@ void dev_debug(struct device *device, const char *format, ...)
 {
     va_list vl;
 
-    if (!hashtable_has(&debug_map, (void*) device->driver))
+    if (!hashtable_has(debug_map, (void*) device->driver))
         return;
 
     va_start(vl, format);

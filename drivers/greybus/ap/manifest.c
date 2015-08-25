@@ -49,7 +49,7 @@ static ssize_t manifest_parse_bundle(struct gb_interface *iface,
 
     bundle->class = desc->class;
     bundle->interface = iface;
-    hashtable_add(&iface->bundles, (void*) bundle->id, bundle);
+    hashtable_add(iface->bundles, (void*) bundle->id, bundle);
 
 out:
     return le16_to_cpu(desc->size);
@@ -69,7 +69,7 @@ static ssize_t manifest_parse_cport(struct gb_interface *iface,
         goto out;
 
     uintptr_t bundle_id = desc->bundle;
-    bundle = hashtable_get(&iface->bundles, (void*) bundle_id);
+    bundle = hashtable_get(iface->bundles, (void*) bundle_id);
     if (!bundle)
         goto out;
 
@@ -80,7 +80,7 @@ static ssize_t manifest_parse_cport(struct gb_interface *iface,
     cport->protocol = desc->protocol;
     cport->bundle_id = desc->bundle;
     cport->bundle = bundle;
-    hashtable_add(&bundle->cports, (void*) cport->id, cport);
+    hashtable_add(bundle->cports, (void*) cport->id, cport);
 
 out:
     return le16_to_cpu(desc->size);

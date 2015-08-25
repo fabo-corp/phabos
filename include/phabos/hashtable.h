@@ -36,19 +36,20 @@ typedef struct hashtable
     hashtable_key_compare_fct_t compare;
 } hashtable_t;
 
-void hashtable_init(hashtable_t *ht, hashtable_hash_fct_t hash,
-                    hashtable_key_compare_fct_t compare);
-void hashtable_deinit(hashtable_t *ht);
+struct hashtable *hashtable_create(hashtable_hash_fct_t hash,
+                                   hashtable_key_compare_fct_t compare);
+void hashtable_destroy(struct hashtable *ht);
+
 void hashtable_add(hashtable_t *ht, void *key, void *value);
 void *hashtable_get(hashtable_t *ht, void *key);
 bool hashtable_has(hashtable_t *ht, void *key);
 void hashtable_remove(hashtable_t *ht, void *key);
 bool hashtable_iterate(hashtable_t *ht, struct hashtable_iterator *iter);
 
-#define hashtable_init_uint(ht) hashtable_init((ht), hash_uint, \
-                                               hashtable_key_compare_uint)
-#define hashtable_init_string(ht) hashtable_init((ht), hash_string, \
-                                                 hashtable_key_compare_string)
+#define hashtable_create_uint() \
+    hashtable_create(hash_uint, hashtable_key_compare_uint)
+#define hashtable_create_string() \
+    hashtable_create(hash_string, hashtable_key_compare_string)
 
 unsigned int hash_uint(hashtable_t *ht, void *key);
 unsigned int hash_string(hashtable_t *ht, void *key);

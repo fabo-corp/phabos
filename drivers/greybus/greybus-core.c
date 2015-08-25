@@ -140,7 +140,7 @@ static int gb_compare_handlers(const void *data1, const void *data2)
 
 static struct gb_cport *gb_get_cport(struct greybus *bus, unsigned cportid)
 {
-    return hashtable_get(&bus->cport_map, (void*) cportid);
+    return hashtable_get(bus->cport_map, (void*) cportid);
 }
 
 static struct gb_operation_handler*
@@ -441,7 +441,7 @@ int gb_register_driver(struct greybus *greybus, unsigned int cportid,
     if (!cport->thread)
         goto task_run_error;
 
-    hashtable_add(&greybus->cport_map, (void*) cportid, cport);
+    hashtable_add(greybus->cport_map, (void*) cportid, cport);
     dev_info(&greybus->device, "registered driver on cport %u\n", cportid);
 
     return 0;
@@ -863,7 +863,7 @@ static int gb_probe(struct device *device)
 {
     struct greybus *greybus = containerof(device, struct greybus, device);
 
-    hashtable_init_uint(&greybus->cport_map);
+    greybus->cport_map = hashtable_create_uint();
     atomic_init(&greybus->request_id, 0);
     greybus->tape_fd = -EBADF;
 

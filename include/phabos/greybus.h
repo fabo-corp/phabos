@@ -89,7 +89,7 @@ struct greybus {
     struct unipro_device *unipro;
 
     struct unipro_cport_driver unipro_cport_driver;
-    struct hashtable cport_map;
+    struct hashtable *cport_map;
     atomic_t request_id;
     struct gb_cport_driver *cport;
     struct gb_transport_backend *transport;

@@ -20,8 +20,8 @@ struct ramfs_inode {
     char *name;
 
     struct inode inode;
-    struct hashtable files;
-    struct hashtable blocks;
+    struct hashtable *files;
+    struct hashtable *blocks;
 };
 
 struct ramfs_inode *ramfs_create_inode(const char *name)
@@ -41,8 +41,8 @@ struct ramfs_inode *ramfs_create_inode(const char *name)
     inode_init(&inode->inode);
     inode->inode.inode = inode;
 
-    hashtable_init_uint(&inode->blocks);
-    hashtable_init_string(&inode->files);
+    inode->blocks = hashtable_create_uint();
+    inode->files = hashtable_create_string();
 
     return inode;
 
@@ -60,7 +60,7 @@ int ramfs_mkdir(struct inode *cwd, const char *name, mode_t mode)
     RET_IF_FAIL(is_directory(cwd), -EINVAL);
     RET_IF_FAIL(name, -EINVAL);
 
-    ramfs_inode = hashtable_get(&cwd_inode->files, (void*) name);
+    ramfs_inode = hashtable_get(cwd_inode->files, (void*) name);
     RET_IF_FAIL(!ramfs_inode, -EEXIST);
 
     ramfs_inode = ramfs_create_inode(name);
@@ -69,7 +69,7 @@ int ramfs_mkdir(struct inode *cwd, const char *name, mode_t mode)
     ramfs_inode->inode.fs = cwd->fs;
     ramfs_inode->inode.flags = S_IFDIR;
 
-    hashtable_add(&cwd_inode->files, ramfs_inode->name, &ramfs_inode->inode);
+    hashtable_add(cwd_inode->files, ramfs_inode->name, &ramfs_inode->inode);
 
     return 0;
 }
@@ -93,7 +93,7 @@ struct inode *ramfs_lookup(struct inode *cwd, const char *name)
     RET_IF_FAIL(name, NULL);
 
     // TODO: check name size and truncate if necessary
-    return hashtable_get(&inode->files, (void*) name);
+    return hashtable_get(inode->files, (void*) name);
 }
 
 int ramfs_getdents(struct file *file, struct phabos_dirent *dirp, size_t count)
@@ -109,7 +109,7 @@ int ramfs_getdents(struct file *file, struct phabos_dirent *dirp, size_t count)
     inode = file->inode->inode;
     iter.i = file->offset;
 
-    while (hashtable_iterate(&inode->files, &iter)) {
+    while (hashtable_iterate(inode->files, &iter)) {
         size_t name_length = strlen(iter.key) + 1;
         size_t dirent_length = sizeof(*dirp) + name_length + 2;
         char *d_type;
@@ -155,7 +155,7 @@ int ramfs_mknod(struct inode *cwd, const char *name, mode_t mode, dev_t dev)
     RET_IF_FAIL(is_directory(cwd), -EINVAL);
     RET_IF_FAIL(name, -EINVAL);
 
-    ramfs_inode = hashtable_get(&cwd_inode->files, (void*) name);
+    ramfs_inode = hashtable_get(cwd_inode->files, (void*) name);
     RET_IF_FAIL(!ramfs_inode, -EEXIST);
 
     ramfs_inode = ramfs_create_inode(name);
@@ -182,7 +182,7 @@ int ramfs_mknod(struct inode *cwd, const char *name, mode_t mode, dev_t dev)
         goto error;
     }
 
-    hashtable_add(&cwd_inode->files, ramfs_inode->name, &ramfs_inode->inode);
+    hashtable_add(cwd_inode->files, ramfs_inode->name, &ramfs_inode->inode);
 
     return 0;
 
@@ -208,12 +208,12 @@ ssize_t ramfs_write(struct file *file, const void *buf, size_t count)
     while (count) {
         size_t transfer_size = MIN(RAMFS_DATA_BLOCK_SIZE - offset, count);
 
-        block = hashtable_get(&inode->blocks, (void*) block_id);
+        block = hashtable_get(inode->blocks, (void*) block_id);
         if (!block) {
             block = zalloc(sizeof(*block));
             RET_IF_FAIL(block, wcount == 0 ? -ENOSPC : wcount);
 
-            hashtable_add(&inode->blocks, (void*) block_id, block);
+            hashtable_add(inode->blocks, (void*) block_id, block);
         }
 
         memcpy(&block->data, buf, transfer_size);
@@ -244,7 +244,7 @@ ssize_t ramfs_read(struct file *file, void *buf, size_t count)
     while (count) {
         size_t transfer_size = MIN(RAMFS_DATA_BLOCK_SIZE - offset, count);
 
-        block = hashtable_get(&inode->blocks, (void*) block_id);
+        block = hashtable_get(inode->blocks, (void*) block_id);
 
         /**
          * FIXME

@@ -18,12 +18,12 @@ static bool is_probing_enabled;
 static struct list_head drivers = LIST_INIT(drivers);
 static struct list_head probed_devices = LIST_INIT(probed_devices);
 static struct list_head devices = LIST_INIT(devices);
-static hashtable_t driver_table;
+static struct hashtable *driver_table;
 static struct spinlock driver_table_lock = SPINLOCK_INIT(driver_table_lock);
 
 struct devnum {
     struct driver *driver;
-    hashtable_t device_table;
+    struct hashtable *device_table;
 };
 
 static dev_t makedev(unsigned int major, unsigned int minor)
@@ -54,7 +54,7 @@ int devnum_alloc(struct driver *driver, struct device *device, dev_t *devnum)
     spinlock_lock(&driver_table_lock);
 
     for (unsigned i = 0; i < (sizeof(dev_t) / 2) << 8; i++) {
-        struct devnum *dev = hashtable_get(&driver_table, (void*) i);
+        struct devnum *dev = hashtable_get(driver_table, (void*) i);
 
         if (dev && dev->driver != driver)
             continue;
@@ -67,15 +67,15 @@ int devnum_alloc(struct driver *driver, struct device *device, dev_t *devnum)
             }
 
             dev->driver = driver;
-            hashtable_init_uint(&dev->device_table);
-            hashtable_add(&driver_table, (void*) i, dev);
+            dev->device_table = hashtable_create_uint();
+            hashtable_add(driver_table, (void*) i, dev);
         }
 
         for (unsigned j = 0; j < (sizeof(dev_t) / 2) << 8; j++) {
-            if (hashtable_has(&dev->device_table, (void*) j))
+            if (hashtable_has(dev->device_table, (void*) j))
                 continue;
 
-            hashtable_add(&dev->device_table, (void*) j, device);
+            hashtable_add(dev->device_table, (void*) j, device);
 
             *devnum = makedev(i, j);
             retval = 0;
@@ -98,11 +98,11 @@ struct device *devnum_get_device(dev_t dev)
 
     spinlock_lock(&driver_table_lock);
 
-    devnum = hashtable_get(&driver_table, (void*) major(dev));
+    devnum = hashtable_get(driver_table, (void*) major(dev));
     if (!devnum)
         return NULL;
 
-    device = hashtable_get(&devnum->device_table, (void*) minor(dev));
+    device = hashtable_get(devnum->device_table, (void*) minor(dev));
 
     spinlock_unlock(&driver_table_lock);
 
@@ -235,7 +235,7 @@ void driver_init(void)
     struct driver *drv;
 
     dev_log_init();
-    hashtable_init_uint(&driver_table);
+    driver_table = hashtable_create_uint();
 
     for (drv = (struct driver*) &_driver;
          drv != (struct driver*) &_edriver; drv++) {

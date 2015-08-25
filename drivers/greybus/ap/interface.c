@@ -37,7 +37,7 @@ struct gb_interface *gb_interface_create(struct greybus *bus, unsigned id)
     iface->control_connection.interface2 = iface;
     iface->control_connection.cport2 = GB_CONTROL_CPORT;
 
-    hashtable_init_uint(&iface->bundles);
+    iface->bundles = hashtable_create_uint();
 
     return iface;
 
@@ -54,14 +54,14 @@ void gb_interface_destroy(struct gb_interface *iface)
     if (!iface)
         return;
 
-    while (hashtable_iterate(&iface->bundles, &iter))
+    while (hashtable_iterate(iface->bundles, &iter))
         gb_bundle_destroy(iter.value);
 
     // TODO destroy all connections
 
     gb_cport_deallocate(iface->bus, iface->control_connection.cport1);
     workqueue_destroy(iface->wq);
-    hashtable_deinit(&iface->bundles);
+    hashtable_destroy(iface->bundles);
 
     kfree(iface);
 }
@@ -70,7 +70,7 @@ static int gb_interface_initialize_bundles(struct gb_interface *iface)
 {
     struct hashtable_iterator iter = HASHTABLE_ITERATOR_INIT;
 
-    while (hashtable_iterate(&iface->bundles, &iter))
+    while (hashtable_iterate(iface->bundles, &iter))
         gb_bundle_init(iter.value);
 
     return 0;

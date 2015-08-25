@@ -51,23 +51,35 @@ static void hashtable_resize(hashtable_t *ht, size_t size)
     kfree(table);
 }
 
-void hashtable_init(hashtable_t *ht, hashtable_hash_fct_t hash,
-                    hashtable_key_compare_fct_t compare)
+struct hashtable *hashtable_create(hashtable_hash_fct_t hash,
+                                   hashtable_key_compare_fct_t compare)
 {
-    RET_IF_FAIL(ht,);
-    RET_IF_FAIL(hash,);
+    struct hashtable *ht;
 
-    memset(ht, 0, sizeof(*ht));
+    ht = kzalloc(sizeof(*ht), MM_KERNEL);
+    if (!ht)
+        return NULL;
+
     ht->table = kzalloc(HASHTABLE_MIN_SIZE * sizeof(struct hashtable_node),
                         MM_KERNEL);
+    if (!ht->table)
+        goto error_alloc_table;
+
     ht->hash = hash;
     ht->compare = compare;
     ht->size = HASHTABLE_MIN_SIZE;
+
+    return ht;
+
+error_alloc_table:
+    kfree(ht);
+    return NULL;
 }
 
-void hashtable_deinit(hashtable_t *ht)
+void hashtable_destroy(struct hashtable *ht)
 {
     kfree(ht->table);
+    kfree(ht);
 }
 
 void hashtable_add(hashtable_t *ht, void *key, void *value)

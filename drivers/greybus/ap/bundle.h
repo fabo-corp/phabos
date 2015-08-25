@@ -8,7 +8,7 @@ struct gb_bundle {
     unsigned class;
 
     struct gb_interface *interface;
-    struct hashtable cports;
+    struct hashtable *cports;
 };
 
 enum {

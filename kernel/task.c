@@ -12,6 +12,7 @@
 #include <phabos/panic.h>
 #include <phabos/syscall.h>
 #include <phabos/fs.h>
+#include <phabos/hashtable.h>
 
 #include <stdlib.h>
 #include <errno.h>
@@ -21,13 +22,13 @@
 #define DEFAULT_STACK_ORDER         3
 #define DEFAULT_STACK_SIZE          ((1 << DEFAULT_STACK_ORDER) << PAGE_ORDER)
 
-static hashtable_t task_table;
+static struct hashtable *task_table;
 static struct spinlock task_table_lock = SPINLOCK_INIT(task_table_lock);
 static int next_task_id;
 
 void task_init(void)
 {
-    hashtable_init_uint(&task_table);
+    task_table = hashtable_create_uint();
 }
 
 struct task *find_task_by_id(int id)
@@ -37,7 +38,7 @@ struct task *find_task_by_id(int id)
     RET_IF_FAIL(id >= 0, NULL);
 
     spinlock_lock(&task_table_lock);
-    task = hashtable_get(&task_table, (void*) id);
+    task = hashtable_get(task_table, (void*) id);
     spinlock_unlock(&task_table_lock);
 
     return task;
@@ -82,7 +83,7 @@ struct task *task_create(void)
     mutex_init(&task->wait_mutex);
 
     list_init(&task->list);
-    hashtable_init_uint(&task->fd);
+    task->fd = hashtable_create_uint();
 
     irq_disable();
     task->id = next_task_id++;
@@ -124,11 +125,11 @@ static void task_destroy(struct task *task)
     if (task->allocated_stack)
         page_free(task->allocated_stack, DEFAULT_STACK_ORDER);
 
-    while (hashtable_iterate(&task->fd, &iter)) {
+    while (hashtable_iterate(task->fd, &iter)) {
         task_free_fdnum(task, (int) iter.key);
     }
 
-    hashtable_deinit(&task->fd);
+    hashtable_destroy(task->fd);
     kfree(task);
 }
 

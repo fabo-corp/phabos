@@ -15,12 +15,13 @@
 #include <asm/scheduler.h>
 #include <phabos/list.h>
 #include <phabos/mutex.h>
-#include <phabos/hashtable.h>
 
 extern struct task *current;
 extern bool kill_task;
 
 #define TASK_RUNNING                    (1 << 1)
+
+struct hashtable;
 
 struct task_cond {
     struct list_head wait_list;
@@ -31,7 +32,7 @@ struct task {
     pid_t ppid;
     int priority;
     uint16_t state;
-    hashtable_t fd;
+    struct hashtable *fd;
 
     register_t registers[MAX_REG];
     void *allocated_stack;
