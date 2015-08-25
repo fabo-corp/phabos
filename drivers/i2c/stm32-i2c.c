@@ -153,7 +153,7 @@ static inline int stm32_i2c_generate_start_condition(struct device *device)
     do {
         sr1 = read32(device->reg_base + I2C_SR1);
         if (sr1 & SR1_ERROR_MASK) {
-            dev_error(device, "%s() = %X\n", __func__, sr1);
+            dev_debug(device, "%s() = %X\n", __func__, sr1);
             return -EIO;
         }
     } while (!(sr1 & I2C_SR1_SB));
@@ -202,7 +202,7 @@ static inline int stm32_i2c_send_rx_address(struct device *device,
     do {
         sr1 = read32(device->reg_base + I2C_SR1);
         if (sr1 & SR1_ERROR_MASK) {
-            dev_error(device, "%s(%X) = %X\n", __func__, addr, sr1);
+            dev_debug(device, "%s(%X) = %X\n", __func__, addr, sr1);
             return -EIO;
         }
 
@@ -224,7 +224,7 @@ static inline int stm32_i2c_send_tx_address(struct device *device,
     do {
         sr1 = read32(device->reg_base + I2C_SR1);
         if (sr1 & SR1_ERROR_MASK) {
-            dev_error(device, "%s(%X) = %X\n", __func__, addr, sr1);
+            dev_debug(device, "%s(%X) = %X\n", __func__, addr, sr1);
             return -EIO;
         }
 
