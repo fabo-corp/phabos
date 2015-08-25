@@ -35,6 +35,9 @@ config APP_FREE
 config APP_LS
     bool "ls"
 
+config APP_YES
+    bool "yes"
+
 if MACH_TSB
 source apps/tsb/Kconfig
 endif
