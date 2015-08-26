@@ -13,4 +13,8 @@ config GREYBUS_AP_I2C
     bool "I2C PHY"
     select I2C
 
+config GREYBUS_AP_UART
+    bool "UART PHY"
+    select SERIAL
+
 endmenu
