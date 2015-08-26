@@ -12,3 +12,4 @@ obj-$(CONFIG_APP_FREE) += free.o
 obj-$(CONFIG_APP_LS) += ls.o
 obj-$(CONFIG_APP_YES) += yes.o
 obj-$(CONFIG_APP_I2CDETECT) += i2c.o
+obj-$(CONFIG_APP_TERM) += term.o
