@@ -316,7 +316,7 @@ void gb_loopback_register(int cport)
     if (gb_loopback) {
         gb_loopback->cportid = cport;
         list_add(&gb_loopbacks, &gb_loopback->list);
-        task_run(gb_loopback_fn, gb_loopback, 0);
+        task_run("gb-loopback", gb_loopback_fn, gb_loopback, 0);
     }
     gb_register_driver(cport, &loopback_driver);
 }

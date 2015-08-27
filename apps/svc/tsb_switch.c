@@ -1563,7 +1563,7 @@ static int create_switch_irq_worker(struct tsb_switch *sw)
 {
     struct task *task;
 
-    task = task_run(switch_irq_pending_worker, sw, 0);
+    task = task_run("switch-irq", switch_irq_pending_worker, sw, 0);
     if (!task) {
         dbg_error("%s: Failed to create IRQ worker\n", __func__);
         return -EINVAL;

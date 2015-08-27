@@ -437,7 +437,8 @@ int gb_register_driver(struct greybus *greybus, unsigned int cportid,
     cport->bus = greybus;
     cport->id = cportid;
     cport->driver = driver;
-    cport->thread = task_run(gb_pending_message_worker, cport, 0);
+    cport->thread = task_run("gb-core-worker",
+                             gb_pending_message_worker, cport, 0);
     if (!cport->thread)
         goto task_run_error;
 

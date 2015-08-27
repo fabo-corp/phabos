@@ -73,7 +73,7 @@ struct workqueue *workqueue_create(const char *name)
     atomic_init(&wq->work_count, 0);
     spinlock_init(&wq->lock);
 
-    wq->task = task_run(workqueue_thread, wq, 0);
+    wq->task = task_run(name, workqueue_thread, wq, 0);
     if (!wq->task)
         goto task_run_error;
 

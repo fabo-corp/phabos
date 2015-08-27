@@ -474,6 +474,7 @@ struct dwc_tasklet {
     struct task *task;
     dwc_tasklet_callback_t cb;
     void *data;
+    const char *name;
 };
 
 dwc_tasklet_t *DWC_TASK_ALLOC(char *name, dwc_tasklet_callback_t cb, void *data)
@@ -484,6 +485,7 @@ dwc_tasklet_t *DWC_TASK_ALLOC(char *name, dwc_tasklet_callback_t cb, void *data)
 
     t->cb = cb;
     t->data = data;
+    t->name = name;
 
     return t;
 }
@@ -497,7 +499,7 @@ void DWC_TASK_FREE(dwc_tasklet_t *task)
 
 void DWC_TASK_SCHEDULE(dwc_tasklet_t *task)
 {
-    task->task = task_run(task->cb, task->data, 0);
+    task->task = task_run(task->name, task->cb, task->data, 0);
 }
 
 /* workqueues

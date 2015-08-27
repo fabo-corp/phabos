@@ -1079,7 +1079,8 @@ static int gb_i2s_mgmt_init(unsigned int cport)
     semaphore_init(&info->tx_rb_sem, 0);
     atomic_init(&info->tx_rb_count, 0);
 
-    info->tx_rb_thread = task_run(gb_i2s_tx_rb_thread, info, 0);
+    info->tx_rb_thread = task_run("gb-i2s-rx-thread",
+                                  gb_i2s_tx_rb_thread, info, 0);
     if (!info->tx_rb_thread) {
         ret = -ENOMEM;
         goto err_free_resources;

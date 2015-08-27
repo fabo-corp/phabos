@@ -38,7 +38,7 @@ int sys_spawn(pid_t *restrict pid, const char *restrict path,
 {
     int retval = 0;
 
-    struct task *task = task_create();
+    struct task *task = task_create("something");
     if (!task)
         return -ENOMEM;
 

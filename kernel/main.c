@@ -91,5 +91,5 @@ void main(void)
     task_init();
     sched_init();
 
-    task_run(init, NULL, 0);
+    task_run("init", init, NULL, 0);
 }

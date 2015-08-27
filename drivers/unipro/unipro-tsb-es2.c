@@ -757,7 +757,8 @@ static int tsb_unipro_probe(struct device *device)
         goto error_register_device;
 
     semaphore_init(&priv->tx_fifo_lock, 0);
-    priv->tx_worker = task_run(tsb_unipro_tx_worker, device, 0);
+    priv->tx_worker = task_run("tsb-unipro-tx-worker", tsb_unipro_tx_worker,
+                               device, 0);
     if (!priv->tx_worker) {
         retval = -ENOMEM;
         goto error_task_run;

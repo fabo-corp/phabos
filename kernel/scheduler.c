@@ -42,7 +42,7 @@ void sched_init(void)
 {
     struct task *task;
 
-    task = task_create();
+    task = task_create("idle");
     if (!task)
         panic("scheduler: cannot allocate memory.\n");
 

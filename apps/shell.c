@@ -334,7 +334,7 @@ static void shell_process_line(char *line)
     for (int i = 0; i < size; i++) {
         if (!strcmp(task_ctx.argv[0], cmd[i].name)) {
             task_ctx.entry = cmd[i].entry;
-            struct task *task = task_run(exec_task, &task_ctx, 0);
+            struct task *task = task_run(cmd[i].name, exec_task, &task_ctx, 0);
             task_wait(task);
             return;
         }

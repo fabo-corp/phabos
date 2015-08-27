@@ -962,7 +962,7 @@ static int tca64xx_probe(struct device *device)
 
         /* Create polling worker */
         tca64xx->worker_exit = false;
-        task = task_run(tca64xx_polling_worker, tca64xx, 0);
+        task = task_run("tca64xx-worker", tca64xx_polling_worker, tca64xx, 0);
         if (!task) {
             lldbg_error("%s: Failed to create polling worker\n", __func__);
             return -EINVAL;

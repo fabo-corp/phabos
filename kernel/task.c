@@ -13,13 +13,14 @@
 #include <phabos/syscall.h>
 #include <phabos/fs.h>
 #include <phabos/hashtable.h>
+#include <phabos/string.h>
 
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <signal.h>
 
-#define DEFAULT_STACK_ORDER         3
+#define DEFAULT_STACK_ORDER         4
 #define DEFAULT_STACK_SIZE          ((1 << DEFAULT_STACK_ORDER) << PAGE_ORDER)
 
 static struct hashtable *task_table;
@@ -72,11 +73,11 @@ void _exit(int code)
     panic("_exit: reach unreachable...\n");
 }
 
-struct task *task_create(void)
+struct task *task_create(const char *name)
 {
     struct task *task;
 
-    task = zalloc(sizeof(*task));
+    task = kzalloc(sizeof(*task), MM_KERNEL);
     RET_IF_FAIL(task, NULL);
 
     task_cond_init(&task->wait_cond);
@@ -89,7 +90,17 @@ struct task *task_create(void)
     task->id = next_task_id++;
     irq_enable();
 
+    task->name = astrcpy(name);
+    if (!task->name)
+        goto error_alloc_task_name;
+
     return task;
+
+error_alloc_task_name:
+    hashtable_destroy(task->fd);
+    kfree(task);
+
+    return NULL;
 }
 
 void task_cond_init(struct task_cond* cond)
@@ -156,9 +167,10 @@ void task_remove_from_wait_list(struct task *task)
     sched_add_to_runqueue(task);
 }
 
-struct task *task_run(task_entry_t entry, void *data, uint32_t stack_addr)
+struct task *task_run(const char *name, task_entry_t entry, void *data,
+                      uint32_t stack_addr)
 {
-    struct task *task = task_create();
+    struct task *task = task_create(name);
     if (!task)
         return NULL;
 

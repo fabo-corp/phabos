@@ -109,7 +109,7 @@ static void svc_sim_fn(void *p_data)
 static int svc_sim_init(struct apbridge_dev_s *priv)
 {
     g_usbdev = priv;
-    g_svc_thread = task_run(svc_sim_fn, priv, 0);
+    g_svc_thread = task_run("svc-sim", svc_sim_fn, priv, 0);
     return g_svc_thread ? 0 : -1;
 }
 

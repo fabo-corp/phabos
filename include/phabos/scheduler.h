@@ -28,6 +28,8 @@ struct task_cond {
 };
 
 struct task {
+    const char *name;
+
     int id;
     pid_t ppid;
     int priority;
@@ -59,7 +61,7 @@ struct sched_policy {
 
 typedef void (*task_entry_t)(void *data);
 
-struct task *task_create(void);
+struct task *task_create(const char *name);
 
 /**
  * Initialize the scheduler
@@ -101,7 +103,8 @@ void task_remove_from_wait_list(struct task *task);
  * data: data shared with the new task
  * stack_addr: top of the stack for the task
  */
-struct task *task_run(task_entry_t task, void *data, uint32_t stack_addr);
+struct task *task_run(const char *name, task_entry_t task, void *data,
+                      uint32_t stack_addr);
 
 /**
  * Get the task ID of the running task

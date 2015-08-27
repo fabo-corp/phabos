@@ -322,7 +322,7 @@ void enumerate_everything(void *data)
 int usb_hcd_register(struct usb_hcd *hcd)
 {
     atomic_init(&dev_id, 1);
-    task_run(enumerate_everything, hcd, 0);
+    task_run("usb-hcd", enumerate_everything, hcd, 0);
     return 0;
 }
 

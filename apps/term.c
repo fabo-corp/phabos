@@ -41,7 +41,7 @@ static int term_main(int argc, char **argv)
         return fd_out;
     }
 
-    task_in = task_run(term_main_in, argv[1], 0);
+    task_in = task_run("term-in", term_main_in, argv[1], 0);
 
     while (1) {
         int c = getchar();

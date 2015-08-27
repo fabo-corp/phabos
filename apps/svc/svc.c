@@ -589,7 +589,7 @@ int svcd_start(void) {
         return -EBUSY;
     }
 
-    task = task_run(svcd_main, NULL, 0);
+    task = task_run("svcd", svcd_main, NULL, 0);
     if (!task) {
         dbg_error("failed to start svcd\n");
         return -ENOMEM;
