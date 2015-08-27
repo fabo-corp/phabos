@@ -287,6 +287,10 @@ static size_t shell_readline(char *buffer, size_t size)
             eol -= 1;
             break;
 
+        case '\t':
+            eol--;
+            break;
+
         default:
             for (int i = eol; i >= cursor_pos; i--)
                 buffer[i + 1] = buffer[i];
