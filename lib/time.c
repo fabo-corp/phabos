@@ -15,7 +15,7 @@
 
 static int clock_monotonic_gettime(struct timespec *tp)
 {
-    uint32_t ticks = get_ticks(); // FIXME uint64_t
+    uint64_t ticks = get_ticks();
 
     RET_IF_FAIL(tp, -EINVAL);
 
