@@ -495,7 +495,7 @@ static void gb_operation_timeout(struct watchdog *wdog)
     irq_disable();
 
     /* timedout operation could potentially already been queued */
-    if (list_is_empty(&cport->timedout_operation.list)) {
+    if (!list_is_empty(&cport->timedout_operation.list)) {
         irq_enable();
         return;
     }
