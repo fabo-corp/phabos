@@ -103,6 +103,9 @@ static struct mm_buffer *find_buffer_in_bucket(int order, unsigned int flags)
 {
     struct mm_buffer *buffer;
 
+    if (order > MAX_ADDRESSABLE_MEM_ORDER)
+        return NULL;
+
     if (list_is_empty(&mm_bucket[order]))
         return NULL;
 
