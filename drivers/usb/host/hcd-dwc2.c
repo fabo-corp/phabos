@@ -281,6 +281,16 @@ static int hcd_stop(struct usb_hcd *hcd)
     return 0;
 }
 
+int endpoint_reset(struct usb_hcd *hcd, void *ep)
+{
+    return dwc_otg_hcd_endpoint_reset(g_dev->hcd, ep);
+}
+
+int endpoint_disable(struct usb_hcd *hcd, void *ep, int retry)
+{
+    return dwc_otg_hcd_endpoint_disable(g_dev->hcd, ep, retry);
+}
+
 static int urb_enqueue(struct usb_hcd *hcd, struct urb *urb)
 {
     int retval;
@@ -288,7 +298,7 @@ static int urb_enqueue(struct usb_hcd *hcd, struct urb *urb)
     int number_of_packets = 0;
     dwc_otg_hcd_urb_t *dwc_urb;
 
-    switch (usb_host_pipetype(urb->pipe)) {
+    switch (urb->pipe.type) {
     case USB_HOST_PIPE_CONTROL:
         ep_type = USB_HOST_ENDPOINT_XFER_CONTROL;
         break;
@@ -309,26 +319,23 @@ static int urb_enqueue(struct usb_hcd *hcd, struct urb *urb)
         return -EINVAL;
     }
 
-    dwc_urb = dwc_otg_hcd_urb_alloc(g_dev->hcd, number_of_packets, 0);
+    dwc_urb = dwc_otg_hcd_urb_alloc(g_dev->hcd, number_of_packets, 1);
     if (!dwc_urb) {
         return -ENOMEM;
     }
 
     urb->hcpriv = dwc_urb;
 
-    dwc_otg_hcd_urb_set_pipeinfo(dwc_urb,
-                                 usb_host_pipedevice(urb->pipe),
-                                 usb_host_pipeendpoint(urb->pipe), ep_type,
-                                 usb_host_pipein(urb->pipe),
-                                 urb->maxpacket);
+    dwc_otg_hcd_urb_set_pipeinfo(dwc_urb, urb->pipe.device, urb->pipe.endpoint,
+                                 ep_type, urb->pipe.direction, urb->maxpacket);
 
     dwc_otg_hcd_urb_set_params(dwc_urb, urb, urb->buffer,
                                (dwc_dma_t) urb->buffer, urb->length,
                                &urb->setup_packet,
                                (dwc_dma_t) &urb->setup_packet,
-                               urb->flags, urb->interval);
+                               urb->flags, 0);
 
-    retval = dwc_otg_hcd_urb_enqueue(g_dev->hcd, dwc_urb, &urb->hcpriv_ep, 0);
+    retval = dwc_otg_hcd_urb_enqueue(g_dev->hcd, dwc_urb, &urb->hcpriv_ep, 1);
     if (retval) {
         goto error_enqueue;
     }

@@ -57,31 +57,10 @@
 #define USB_HOST_PIPE_CONTROL           2
 #define USB_HOST_PIPE_BULK              3
 
-#define usb_host_pipein(pipe)           ((pipe) & USB_HOST_DIR_IN)
-#define usb_host_pipeout(pipe)          (!usb_host_pipein(pipe))
-
-#define usb_host_pipedevice(pipe)       (((pipe) >> 8) & 0x7f)
-#define usb_host_pipeendpoint(pipe)     (((pipe) >> 15) & 0xf)
-
-#define usb_host_pipetype(pipe)         (((pipe) >> 30) & 3)
-#define usb_host_pipeisoc(pipe) \
-    (usb_host_pipetype((pipe)) == USB_HOST_PIPE_ISOCHRONOUS)
-#define usb_host_pipeint(pipe) \
-    (usb_host_pipetype((pipe)) == USB_HOST_PIPE_INTERRUPT)
-#define usb_host_pipecontrol(pipe) \
-    (usb_host_pipetype((pipe)) == USB_HOST_PIPE_CONTROL)
-#define usb_host_pipebulk(pipe) \
-    (usb_host_pipetype((pipe)) == USB_HOST_PIPE_BULK)
-
 #define USB_HOST_ENDPOINT_XFER_CONTROL  0
 #define USB_HOST_ENDPOINT_XFER_ISOC     1
 #define USB_HOST_ENDPOINT_XFER_BULK     2
 #define USB_HOST_ENDPOINT_XFER_INT      3
-
-#define URB_DIRECTION_SHIFT 0
-#define URB_DEVICE_SHIFT    8
-#define URB_ENDPOINT_SHIFT  15
-#define URB_XFER_TYPE_SHIFT 30
 
 struct urb;
 typedef void (*urb_complete_t)(struct urb *urb);
@@ -105,8 +84,13 @@ struct urb {
     struct semaphore semaphore;
     urb_complete_t complete;
 
-    void *urb;
-    unsigned int pipe;
+    struct {
+        unsigned int type;
+        unsigned int device;
+        unsigned int endpoint;
+        unsigned int direction;
+    } pipe;
+
     unsigned int flags;
 
     int status;
@@ -115,8 +99,6 @@ struct urb {
     size_t actual_length;
 
     unsigned int maxpacket;
-
-    int interval;
 
     uint8_t setup_packet[8];
     void *buffer;
@@ -127,6 +109,7 @@ struct urb {
     void *hcpriv_ep;
 };
 
+int urb_submit(struct urb *urb);
 int usb_control_msg(struct usb_device *dev, uint16_t typeReq, uint16_t wValue,
                     uint16_t wIndex, uint16_t wLength, void *buffer);
 struct usb_device *usb_device_create(struct usb_hcd *hcd,

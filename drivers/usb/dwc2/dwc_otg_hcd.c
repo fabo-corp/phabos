@@ -624,7 +624,6 @@ done:
 	return retval;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,30)
 int dwc_otg_hcd_endpoint_reset(dwc_otg_hcd_t * hcd, void *ep_handle)
 {
 	int retval = 0;
@@ -635,7 +634,6 @@ int dwc_otg_hcd_endpoint_reset(dwc_otg_hcd_t * hcd, void *ep_handle)
 	qh->data_toggle = DWC_OTG_HC_PID_DATA0;
 	return retval;
 }
-#endif
 
 /**
  * HCD Callback structure for handling mode switching.

@@ -112,7 +112,9 @@ ssize_t usb_control_msg(struct usb_device *dev, uint16_t typeReq,
     direction = (typeReq & 0x8000) ? USB_HOST_DIR_IN : USB_HOST_DIR_OUT;
 
     urb->complete = usb_control_msg_callback;
-    urb->pipe = (USB_HOST_PIPE_CONTROL << 30) | (dev->address << 8) | direction;
+    urb->pipe.type = USB_HOST_PIPE_CONTROL;
+    urb->pipe.device = dev->address;
+    urb->pipe.direction = direction;
     urb->buffer = buffer;
     urb->maxpacket = 0x40;
     urb->length = wLength;
@@ -136,6 +138,14 @@ ssize_t usb_control_msg(struct usb_device *dev, uint16_t typeReq,
 out:
     urb_destroy(urb);
     return retval;
+}
+
+int urb_submit(struct urb *urb)
+{
+    if (!urb || !urb->device)
+        return -EINVAL;
+
+    return urb->device->hcd->driver->urb_enqueue(urb->device->hcd, urb);
 }
 
 static int enumerate_hub(struct usb_device *hub)
@@ -213,7 +223,7 @@ int enumerate_device(struct usb_device *dev)
     int address;
 
     address = atomic_inc(&dev_id);
-    kprintf("new usb device: %u (speed: %d)\n", dev->address, dev->speed);
+    kprintf("new usb device: %u (speed: %d)\n", address, dev->speed);
 
     size = usb_control_msg(dev, USB_DEVICE_SET_ADDRESS, address, 0, 0, NULL);
     if (size < 0) {

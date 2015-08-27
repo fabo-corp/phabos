@@ -284,8 +284,10 @@ static void gb_process_response(struct gb_operation_hdr *hdr,
         if (op->callback)
             op->callback(op);
         gb_operation_unref(op);
-        break;
+        return;
     }
+
+    kprintf("XXX: response not matching a request\n");
 }
 
 static void gb_pending_message_worker(void *data)
