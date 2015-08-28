@@ -76,6 +76,12 @@ static int gb_interface_initialize_bundles(struct gb_interface *iface)
     return 0;
 }
 
+void stop_test(struct watchdog *wd)
+{
+    volatile bool *exit = wd->user_priv;
+    *exit = true;
+}
+
 int gb_interface_init(struct gb_interface *iface)
 {
     static unsigned next_devid = 2;
@@ -143,6 +149,27 @@ int gb_interface_init(struct gb_interface *iface)
     dev_debug(&iface->bus->device, "parsed manifest successfully\n");
 
     gb_interface_initialize_bundles(iface);
+
+    volatile bool exit = false;
+
+    struct watchdog wd;
+    watchdog_init(&wd);
+
+    wd.timeout = stop_test;
+    wd.user_priv = &exit;
+
+    size_t req_sent = 0;
+
+    watchdog_start_msec(&wd, 50);
+    while (!exit) {
+        req_sent++;
+        struct gb_operation *op = gb_operation_create(iface->bus, 0, 2, 504);
+
+        gb_operation_send_request(op, NULL, false);
+        gb_operation_destroy(op);
+    }
+
+    dev_debug(&iface->bus->device, "%zu requests sent\n", req_sent);
 
     return 0;
 }
