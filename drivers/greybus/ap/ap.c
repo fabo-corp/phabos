@@ -62,7 +62,7 @@ static int gb_ap_probe(struct device *device)
 
     dev_info(device, "AP is ready\n");
     extern struct unipro_device tsb_unipro;
-    tsb_unipro_mbox_set(&tsb_unipro, TSB_MAIL_READY_AP, true);
+//    tsb_unipro_mbox_set(&tsb_unipro, TSB_MAIL_READY_AP, true);
 
     return 0;
 }

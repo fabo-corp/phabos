@@ -163,15 +163,13 @@ int gb_interface_init(struct gb_interface *iface)
     watchdog_start_msec(&wd, 50);
     while (!exit) {
         req_sent++;
-        struct gb_operation *op = gb_operation_create(iface->bus, 0, 2, 2040);
+        struct gb_operation *op = gb_operation_create(iface->bus, 0, 2, 504);
 
         gb_operation_send_request(op, NULL, false);
         gb_operation_destroy(op);
     }
 
-    irq_disable();
     dev_debug(&iface->bus->device, "%zu requests sent\n", req_sent);
-    irq_enable();
 
     return 0;
 }
