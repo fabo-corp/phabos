@@ -287,7 +287,7 @@ static void gb_process_response(struct gb_operation_hdr *hdr,
         return;
     }
 
-//    kprintf("XXX: response not matching a request\n");
+    kprintf("XXX: response not matching a request\n");
 }
 
 static void gb_pending_message_worker(void *data)

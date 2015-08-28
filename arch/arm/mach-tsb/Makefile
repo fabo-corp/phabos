@@ -33,4 +33,4 @@ obj-$(CONFIG_ARA_BACKPORT) += driver.o
 obj-$(CONFIG_ARA_BACKPORT) += device-table.o
 obj-$(CONFIG_TSB_PLL) += pll.o
 obj-$(CONFIG_TSB_I2S) += i2s.o
-#obj-y += apba-usb-unipro.o
+obj-y += apba-usb-unipro.o

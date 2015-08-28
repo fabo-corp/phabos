@@ -432,11 +432,11 @@ void machine_init(void)
     device_register(&usb_hcd_device.device);
     device_register(&dw_i2c_device.device);
     device_register(&tsb_unipro.device);
-//    device_register(&apba_usb_unipro.device);
+    device_register(&apba_usb_unipro.device);
 
-    device_register(&greybus.device);
+//    device_register(&greybus.device);
     device_register(&gb_control_device.device);
     device_register(&gb_gpio_device.device);
     device_register(&gb_i2c_device.device);
-    device_register(&gb_ap_device.device);
+    //device_register(&gb_ap_device.device);
 }
