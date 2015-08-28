@@ -76,10 +76,13 @@ static int gb_interface_initialize_bundles(struct gb_interface *iface)
     return 0;
 }
 
+#include <asm/scheduler.h> // FIXME
+
 void stop_test(struct watchdog *wd)
 {
     volatile bool *exit = wd->user_priv;
     *exit = true;
+    kprintf("done: %u\n", (unsigned int) get_ticks());
 }
 
 int gb_interface_init(struct gb_interface *iface)
@@ -160,18 +163,27 @@ int gb_interface_init(struct gb_interface *iface)
 
     size_t req_sent = 0;
 
-    watchdog_start_msec(&wd, 50);
+    kprintf("starting: %u\n", (unsigned int) get_ticks());
+#if 1
+    watchdog_start_sec(&wd, 10);
     while (!exit) {
         req_sent++;
-        struct gb_operation *op = gb_operation_create(iface->bus, 0, 2, 2040);
+        struct gb_operation *op = gb_operation_create(iface->bus, 1, 2, 504);
 
         gb_operation_send_request(op, NULL, false);
         gb_operation_destroy(op);
     }
+#else
+    for (int i = 0; i < 1000; i++) {
+        struct gb_operation *op = gb_operation_create(iface->bus, 1, 2, 504);
 
-    irq_disable();
+        gb_operation_send_request(op, NULL, false);
+        gb_operation_destroy(op);
+    }
+#endif
+    kprintf("ending: %u\n", (unsigned int) get_ticks());
+
     dev_debug(&iface->bus->device, "%zu requests sent\n", req_sent);
-    irq_enable();
 
     return 0;
 }

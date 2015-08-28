@@ -522,8 +522,6 @@ int gb_operation_send_request(struct gb_operation *operation,
 
     hdr->id = 0;
 
-    spinlock_lock(&cport->tx_fifo_lock);
-
     if (need_response) {
         hdr->id = cpu_to_le16(atomic_inc(&greybus->request_id));
         if (hdr->id == 0) /* ID 0 is for request with no response */
@@ -531,22 +529,27 @@ int gb_operation_send_request(struct gb_operation *operation,
         clock_gettime(CLOCK_MONOTONIC, &operation->time);
         operation->callback = callback;
         gb_operation_ref(operation);
+
+        spinlock_lock(&cport->tx_fifo_lock);
         list_add(&cport->tx_fifo, &operation->list);
 
         if (!watchdog_is_active(&cport->timeout_wd))
             watchdog_start_msec(&cport->timeout_wd, TIMEOUT_IN_MS);
+
+        spinlock_unlock(&cport->tx_fifo_lock);
     }
 
     gb_dump(operation->request_buffer, hdr->size);
     retval = unipro_send(greybus->unipro, operation->cport,
                          operation->request_buffer, le16_to_cpu(hdr->size));
+
     if (need_response && retval < 0) {
+        spinlock_lock(&cport->tx_fifo_lock);
         list_del(&operation->list);
         gb_watchdog_update(cport);
         gb_operation_unref(operation);
+        spinlock_unlock(&cport->tx_fifo_lock);
     }
-
-    spinlock_unlock(&cport->tx_fifo_lock);
 
     return retval < 0 ? retval : 0;
 }
