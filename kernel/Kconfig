@@ -46,4 +46,9 @@ config INIT_TASK_NAME
     string "Init task name"
     default "shell_main"
 
+menu "Binary loaders"
+    config ELF
+        bool "ELF Binary loader"
+endmenu
+
 endmenu
