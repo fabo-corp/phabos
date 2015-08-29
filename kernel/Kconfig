@@ -42,13 +42,18 @@ menu "Scheduler"
     endchoice
 endmenu
 
-config INIT_TASK_NAME
-    string "Init task name"
-    default "shell_main"
-
 menu "Binary loaders"
     config ELF
         bool "ELF Binary loader"
 endmenu
+
+menu "Memory"
+    config MCACHE
+        bool "mcache SLAB allocator"
+endmenu
+
+config INIT_TASK_NAME
+    string "Init task name"
+    default "shell_main"
 
 endmenu

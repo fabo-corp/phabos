@@ -5,7 +5,7 @@
 
 obj-y := main.o
 obj-y += mm.o
-obj-y += mcache.o
+obj-$(CONFIG_MCACHE) += mcache.o
 obj-y += spawn.o
 obj-y += libc-support.o
 obj-y += scheduler.o
