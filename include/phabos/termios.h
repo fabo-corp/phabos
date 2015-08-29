@@ -3,8 +3,8 @@
 
 #define TCGETS      0
 #define TCSETS      1
-#define TSETSW      2
-#define TSETSF      3
+#define TCSETSW     2
+#define TCSETSF     3
 
 #define CSIZE       (3 << 0)
 #define CBAUD       (31 << 7)
