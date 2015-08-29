@@ -40,6 +40,7 @@ struct mm_usage {
     atomic_t cached;
 };
 
+void mm_init(unsigned long flags);
 int mm_add_region(struct mm_region *region);
 
 void *kmalloc(size_t size, unsigned int flags);

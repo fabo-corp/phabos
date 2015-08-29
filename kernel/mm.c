@@ -364,3 +364,64 @@ void *__wrap__realloc_r(struct _reent *reent, void *ptr, size_t size)
 
     return newptr;
 }
+
+static struct mm_region stm32_mm_regions[10];
+
+int find_msb(unsigned int x)
+{
+    for (int i = 31; i >= 0; i--) {
+        if (x & (1 << i))
+            return i;
+    }
+
+    return -EINVAL;
+}
+
+void mm_init(unsigned long flags)
+{
+    extern uintptr_t _sheap;
+    extern uintptr_t _eor;
+
+    uintptr_t mm_start = (uintptr_t) &_sheap;
+    uintptr_t mm_end = (uintptr_t) &_eor;
+
+    size_t mm_available = mm_end - mm_start;
+
+    for (int i = 0; i < ARRAY_SIZE(stm32_mm_regions); i++) {
+        /*
+         * memory regions are power of two.
+         * Look for the biggest memory region
+         */
+        int msb = find_msb(mm_available);
+
+        do {
+            size_t region_size = 1 << msb;
+            if (region_size < (1 << MIN_REGION_ORDER))
+                break;
+
+            /*
+             * memory regions are must be aligned on their sizes. check if the
+             * biggest memory region possible can fit and be aligned.
+             */
+            uintptr_t region_start = mm_start & ~(region_size - 1);
+            if (region_start < mm_start)
+                region_start += 1 << msb;
+
+            if (region_start >= mm_start &&
+                region_start + region_size <= mm_end) {
+                stm32_mm_regions[i].start = region_start;
+                stm32_mm_regions[i].size = region_size;
+                stm32_mm_regions[i].flags = flags;
+                break;
+            }
+        } while (msb--);
+
+        if (stm32_mm_regions[i].size == 0)
+            break;
+
+        mm_available -= stm32_mm_regions[i].size;
+        kprintf("mm region: %lx -> %zx\n", stm32_mm_regions[i].start,
+                                           stm32_mm_regions[i].size);
+        mm_add_region(&stm32_mm_regions[i]);
+    }
+}
