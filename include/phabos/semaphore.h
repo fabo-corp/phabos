@@ -44,6 +44,7 @@ static inline unsigned semaphore_get_value(struct semaphore *semaphore)
 #define semaphore_lock(l) DEFINE_LOCK_WITH_BARRIER(_semaphore_lock, l)
 #define semaphore_down(l) DEFINE_LOCK_WITH_BARRIER(_semaphore_down, l)
 #define semaphore_trylock(l) DEFINE_TRYLOCK_WITH_BARRIER(_semaphore_trylock, l)
+#define semaphore_trydown(l) semaphore_trylock(l)
 
 #endif /* __SEMAPHORE_H__ */
 
