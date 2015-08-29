@@ -16,11 +16,6 @@ config APP_GPIO
     bool "GPIO"
     select GPIO
 
-config APP_GB_LOOPBACK
-    bool "Greybus Loopback exerciser"
-    select GREYBUS
-    select GREYBUS_LOOPBACK
-
 config APP_I2S
     bool "I2S"
     select ARA_BACKPORT

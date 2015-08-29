@@ -7,7 +7,6 @@ obj-y += shell.o
 obj-$(CONFIG_APP_UNIPRO) += unipro.o
 obj-$(CONFIG_APP_GPIO) += gpio.o
 obj-$(CONFIG_APP_I2S) += i2s.o
-obj-$(CONFIG_APP_GREYBUS_LOOPBACK) += gb-loopback.o
 obj-$(CONFIG_APP_FREE) += free.o
 obj-$(CONFIG_APP_LS) += ls.o
 obj-$(CONFIG_APP_YES) += yes.o
