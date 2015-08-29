@@ -37,6 +37,7 @@
 #include <phabos/gpio.h>
 #include <phabos/i2c.h>
 #include <phabos/serial/uart16550.h>
+#include <phabos/serial/tty.h>
 #include <phabos/usb/hcd-dwc2.h>
 #include <phabos/greybus.h>
 #include <phabos/greybus/ap.h>
@@ -151,14 +152,20 @@ static int tsb_i2c_power_off(struct device *device)
     return 0;
 }
 
-static struct uart16550_device uart16550_device = {
-    .base = (void*) UART_BASE,
-    .irq = TSB_IRQ_UART,
+static struct uart16550_pdata uart16550_pdata = {
+    .clk = 48000000,
+};
 
+static struct tty_device uart16550_device = {
     .device = {
         .name = "dw_apb_uart",
         .description = "Designware UART16550 compatible UART",
         .driver = "uart16550",
+
+        .reg_base = UART_BASE,
+        .irq = TSB_IRQ_UART,
+
+        .pdata = &uart16550_pdata,
     },
 };
 

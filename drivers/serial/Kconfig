@@ -22,3 +22,15 @@ endif
 
 menuconfig STM32_USART
     bool "STM32 USART"
+
+config TTY_MAX_CANON
+    int "Maximum number of bytes in a canonical input line"
+    default "256"
+
+config TTY_MAX_INPUT
+    int "Maximum input buffer size"
+    default "256"
+
+config TTY_MAX_OUTPUT
+    int "Maximum output buffer size"
+    default "256"

@@ -8,7 +8,7 @@
 
 #include <phabos/kprintf.h>
 #include <phabos/driver.h>
-#include <phabos/serial/uart.h>
+#include <phabos/serial/tty.h>
 #include <phabos/gpio.h>
 #include <phabos/gpio/tca64xx.h>
 #include <phabos/i2c.h>
@@ -161,7 +161,7 @@ struct gpio_device gpio_port[] = {
     },
 };
 
-static struct uart_device stm32_usart_device = {
+static struct tty_device stm32_usart_device = {
     .device = {
         .name = "usart-1",
         .description = "STM32 USART-1",
