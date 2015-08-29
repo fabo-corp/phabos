@@ -402,6 +402,7 @@ void machine_init(void)
     tsb_clk_init();
     tsb_uart_init();
 
+    mm_init(MM_KERNEL);
     for (int i = 0; i < ARRAY_SIZE(tsb_mm_regions); i++)
         mm_add_region(&tsb_mm_regions[i]);
 
