@@ -131,6 +131,21 @@ uint8_t gb_errno_to_op_result(int err)
     }
 }
 
+#ifdef CONFIG_GREYBUS_FEATURE_HAVE_TIMESTAMPS
+static void op_mark_send_time(struct gb_operation *operation)
+{
+    clock_gettime(CLOCK_MONOTONIC, &operation->send_ts);
+}
+
+static void op_mark_recv_time(struct gb_operation *operation)
+{
+    clock_gettime(CLOCK_MONOTONIC, &operation->recv_ts);
+}
+#else
+static void op_mark_send_time(struct gb_operation *operation) { }
+static void op_mark_recv_time(struct gb_operation *operation) { }
+#endif
+
 static int gb_compare_handlers(const void *data1, const void *data2)
 {
     const struct gb_operation_handler *handler1 = data1;
@@ -189,6 +204,7 @@ static void gb_process_request(struct gb_operation_hdr *hdr,
 
     if (hdr->id)
         gb_operation_send_response(operation, result);
+    op_mark_send_time(operation);
 }
 
 static bool gb_operation_has_timedout(struct gb_operation *operation)
@@ -281,6 +297,7 @@ static void gb_process_response(struct gb_operation_hdr *hdr,
         /* attach this response with the original request */
         gb_operation_ref(operation);
         op->response = operation;
+        op_mark_recv_time(op);
         if (op->callback)
             op->callback(op);
         gb_operation_unref(op);
@@ -374,6 +391,7 @@ static void greybus_rx_handler(struct unipro_cport_driver *cport_driver,
 
     memcpy(op->request_buffer, data, hdr_size);
     unipro_unpause_rx(greybus->unipro, cportid);
+    op_mark_recv_time(op);
 
     spinlock_lock(&cport->rx_fifo_lock);
     list_add(&cport->rx_fifo, &op->list);

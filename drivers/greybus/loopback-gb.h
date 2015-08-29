@@ -29,13 +29,9 @@
 #ifndef __LOOPBACK_GB_H__
 #define __LOOPBACK_GB_H__
 
+#include <phabos/list.h>
 #include <phabos/greybus-types.h>
-
-/* Greybus loopback request types */
-#define	GB_LOOPBACK_TYPE_PROTOCOL_VERSION		0x01
-#define	GB_LOOPBACK_TYPE_PING				0x02
-#define	GB_LOOPBACK_TYPE_TRANSFER			0x03
-#define	GB_LOOPBACK_TYPE_SINK				0x04
+#include <nuttx/greybus/loopback.h> /* For greybus loopback request types. */
 
 /* version request has no payload */
 struct gb_loopback_proto_version_response {
@@ -59,4 +55,3 @@ struct gb_loopback_sync_transfer {
 };
 
 #endif
-

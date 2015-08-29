@@ -26,19 +26,31 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * @author Mark Greer
+ * @author Fabien Parent
  */
 
 #ifndef __INCLUDE_NUTTX_DEVICE_TABLE_H
 #define __INCLUDE_NUTTX_DEVICE_TABLE_H
 
-struct device_ara *device_table_get_dev(unsigned int idx);
-struct device_ara *device_table_get_next_dev(struct device_ara *dev);
-int device_table_register(struct device_ara *table, unsigned int entries);
-void device_table_unregister(void);
+#include <phabos/list.h>
 
-#define device_table_for_each_dev(dev)          \
-    for (dev = device_table_get_dev(0);         \
-         dev != NULL;                           \
-         dev = device_table_get_next_dev(dev))
+struct device_table {
+    struct ara_device *device;
+    unsigned int device_count;
+    struct list_head list;
+};
+
+#define DEVICE_TABLE_ITER_INITIALIZER {0,}
+
+struct device_table_iter {
+    struct device_table *table;
+    unsigned int item;
+};
+
+int device_table_register(struct device_table *table);
+struct ara_device *device_table_iter_next(struct device_table_iter *iter);
+
+#define device_table_for_each_dev(dev, iter)          \
+    while ((dev = device_table_iter_next(iter)))
 
 #endif /* __INCLUDE_NUTTX_DEVICE_TABLE_H */

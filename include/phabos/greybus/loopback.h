@@ -31,17 +31,36 @@
 
 #include <phabos/list.h>
 
-struct gb_loopback;
+/* Greybus loopback request types */
+#define GB_LOOPBACK_TYPE_NONE                           0x00
+#define GB_LOOPBACK_TYPE_PROTOCOL_VERSION               0x01
+#define GB_LOOPBACK_TYPE_PING                           0x02
+#define GB_LOOPBACK_TYPE_TRANSFER                       0x03
+#define GB_LOOPBACK_TYPE_SINK                           0x04
 
-extern struct list_head gb_loopbacks;
+struct gb_loopback_statistics {
+    unsigned recv;
+    unsigned recv_err;
 
-struct gb_loopback *cport_to_loopback(unsigned int cportid);
-struct gb_loopback *list_to_loopback(struct list_head *iter);
-unsigned int gb_loopback_to_cport(struct gb_loopback *gb_loopback);
-int gb_loopback_cport_conf(struct gb_loopback *gb_loopback,
-                           int type, size_t size, int ms);
-int gb_loopback_status(struct gb_loopback *gb_loopback);
-int gb_loopback_send_req(struct gb_loopback *gb_loopback,
-                         size_t size, uint8_t type);
+    unsigned throughput_min;
+    unsigned throughput_max;
+    unsigned throughput_avg;
+
+    unsigned latency_min;
+    unsigned latency_max;
+    unsigned latency_avg;
+
+    unsigned reqs_per_sec_min;
+    unsigned reqs_per_sec_max;
+    unsigned reqs_per_sec_avg;
+};
+
+typedef int (*gb_loopback_cport_cb)(int, void *);
+
+int gb_loopback_get_cports(gb_loopback_cport_cb cb, void *data);
+int gb_loopback_send_req(int cport, size_t size, uint8_t type);
+int gb_loopback_get_stats(int cport, struct gb_loopback_statistics *stats);
+void gb_loopback_reset(int cport);
+int gb_loopback_cport_valid(int cport);
 
 #endif

@@ -353,6 +353,11 @@ static uint8_t gb_i2s_receiver_send_data_req_handler(
     struct gb_i2s_info *info;
     int ret;
 
+    if (gb_operation_get_request_payload_size(operation) < sizeof(*request)) {
+        gb_error("dropping short message\n");
+        return GB_OP_INVALID;
+    }
+
     info = gb_i2s_get_info_by_cport(operation->cport);
     if (!info) {
         gb_i2s_report_event(info, GB_I2S_EVENT_PROTOCOL_ERROR);
@@ -491,6 +496,9 @@ static void gb_i2s_tx_rb_thread(void *data)
         atomic_dec(&info->tx_rb_count);
         info->tx_rb = ring_buf_get_next(rb);
     }
+
+    /* NOTREACHED */
+    return NULL;
 }
 
 /* Callback for low-level i2s receive operations (GB transmits) */
@@ -777,7 +785,7 @@ static uint8_t gb_i2s_get_supported_configurations_req_handler(
     ret = device_i2s_get_supported_configurations(info->dev, &dev_cfg_cnt,
                                                   &dev_cfg);
     if (ret)
-        return GB_OP_MALFUNCTION;
+        return GB_OP_UNKNOWN_ERROR;
 
     dev_cfg_cnt = MIN(dev_cfg_cnt, GB_I2S_CONFIG_MAX);
     size = dev_cfg_cnt * sizeof(*gb_cfg);
@@ -804,6 +812,11 @@ static uint8_t gb_i2s_set_configuration_req_handler(
     struct gb_i2s_info *info;
     int ret;
 
+    if (gb_operation_get_request_payload_size(operation) < sizeof(*request)) {
+        gb_error("dropping short message\n");
+        return GB_OP_INVALID;
+    }
+
     info = gb_i2s_get_info(operation->cport);
     if (!info)
         return GB_OP_INVALID;
@@ -815,7 +828,7 @@ static uint8_t gb_i2s_set_configuration_req_handler(
 
     ret = device_i2s_set_configuration(info->dev, &dev_cfg);
     if (ret)
-        return GB_OP_MALFUNCTION;
+        return GB_OP_UNKNOWN_ERROR;
 
     info->sample_frequency = request->config.sample_frequency;
     info->sample_size = request->config.num_channels *
@@ -832,6 +845,11 @@ static uint8_t gb_i2s_set_samples_per_message_req_handler(
     struct gb_i2s_set_samples_per_message_request *request =
                 gb_operation_get_request_payload(operation);
     struct gb_i2s_info *info;
+
+    if (gb_operation_get_request_payload_size(operation) < sizeof(*request)) {
+        gb_error("dropping short message\n");
+        return GB_OP_INVALID;
+    }
 
     info = gb_i2s_get_info(operation->cport);
     if (!info)
@@ -863,7 +881,7 @@ static uint8_t gb_i2s_get_processing_delay_req_handler(
 
     ret = device_i2s_get_processing_delay(info->dev, &microseconds);
     if (ret)
-        return GB_OP_MALFUNCTION;
+        return GB_OP_UNKNOWN_ERROR;
 
     /* TODO Figure out a real delay value */
     response->microseconds = cpu_to_le32(microseconds + 0);
@@ -877,6 +895,11 @@ static uint8_t gb_i2s_set_start_delay_req_handler(
     struct gb_i2s_set_start_delay_request *request =
                 gb_operation_get_request_payload(operation);
     struct gb_i2s_info *info;
+
+    if (gb_operation_get_request_payload_size(operation) < sizeof(*request)) {
+        gb_error("dropping short message\n");
+        return GB_OP_INVALID;
+    }
 
     info = gb_i2s_get_info(operation->cport);
     if (!info)
@@ -899,7 +922,7 @@ static uint8_t gb_i2s_errno2gb(int ret)
         rc = GB_OP_SUCCESS;
         break;
     case EIO:
-        rc = GB_OP_MALFUNCTION;
+        rc = GB_OP_UNKNOWN_ERROR;
         break;
     case ENOMEM:
         rc = GB_OP_NO_MEMORY;
@@ -928,6 +951,11 @@ static uint8_t gb_i2s_activate_cport_req_handler(struct gb_operation *operation)
     struct gb_i2s_info *info;
     int allocated_dummy_data = 0;
     int ret = 0;
+
+    if (gb_operation_get_request_payload_size(operation) < sizeof(*request)) {
+        gb_error("dropping short message\n");
+        return GB_OP_INVALID;
+    }
 
     info = gb_i2s_get_info(operation->cport);
     if (!info)
@@ -1005,6 +1033,11 @@ static uint8_t gb_i2s_deactivate_cport_req_handler(
     struct gb_i2s_cport_list_entry *cple;
     struct gb_i2s_info *info;
     int ret = 0;
+
+    if (gb_operation_get_request_payload_size(operation) < sizeof(*request)) {
+        gb_error("dropping short message\n");
+        return GB_OP_INVALID;
+    }
 
     info = gb_i2s_get_info(operation->cport);
     if (!info)

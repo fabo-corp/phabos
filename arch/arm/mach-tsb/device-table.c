@@ -107,7 +107,7 @@ static struct device_resource tsb_i2s_resources_0[] = {
 };
 #endif
 
-static struct device_ara tsb_device_table[] = {
+static struct device_ara tsb_devices[] = {
 #ifdef CONFIG_TSB_PLL
     {
         .type           = DEVICE_TYPE_PLL_HW,
@@ -130,8 +130,12 @@ static struct device_ara tsb_device_table[] = {
 #endif
 };
 
+static struct device_table tsb_device_table = {
+    .device = tsb_devices,
+    .device_count = ARRAY_SIZE(tsb_devices),
+};
+
 int tsb_device_table_register(void)
 {
-    return device_table_register(tsb_device_table,
-                                 ARRAY_SIZE(tsb_device_table));
+    return device_table_register(&tsb_device_table);
 }
