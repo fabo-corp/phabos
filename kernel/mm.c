@@ -222,10 +222,6 @@ void *kmalloc(size_t size, unsigned int flags)
     if (!size)
         return NULL;
 
-    if (!is_initialized) {
-        return malloc(size);
-    }
-
     size += sizeof(*buffer);
 
     order = size_to_order(size);
@@ -260,11 +256,6 @@ void kfree(void *ptr)
 
     if (!ptr)
         return;
-
-    if (!is_initialized) {
-        free(ptr);
-        return;
-    }
 
     buffer = (struct mm_buffer*) ((char *) ptr - sizeof(*buffer));
     RET_IF_FAIL(buffer->list.prev == buffer->list.next,);
