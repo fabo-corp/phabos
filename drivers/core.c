@@ -35,18 +35,6 @@ static dev_t makedev(unsigned int major, unsigned int minor)
     return devnum;
 }
 
-static unsigned int major(dev_t dev)
-{
-    uint8_t *devnum = (uint8_t*) &dev;
-    return devnum[0];
-}
-
-static unsigned int minor(dev_t dev)
-{
-    uint8_t *devnum = (uint8_t*) &dev;
-    return devnum[1];
-}
-
 int devnum_alloc(struct driver *driver, struct device *device, dev_t *devnum)
 {
     int retval = -ENOMEM;

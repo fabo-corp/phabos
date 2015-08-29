@@ -77,5 +77,17 @@ void dev_error(struct device *device, const char *format, ...)
 void dev_debug(struct device *device, const char *format, ...)
     __attribute__((format(printf, 2, 3)));
 
+static inline unsigned int major(dev_t dev)
+{
+    uint8_t *devnum = (uint8_t*) &dev;
+    return devnum[0];
+}
+
+static inline unsigned int minor(dev_t dev)
+{
+    uint8_t *devnum = (uint8_t*) &dev;
+    return devnum[1];
+}
+
 #endif /* __DRIVER_H__ */
 
