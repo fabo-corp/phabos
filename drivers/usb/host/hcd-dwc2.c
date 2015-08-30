@@ -350,8 +350,23 @@ error_enqueue:
 
 int urb_dequeue(struct usb_hcd *hcd, struct urb *urb)
 {
-    dwc_otg_hcd_urb_dequeue(g_dev->hcd, urb->hcpriv);
-    return 0;
+    int retval;
+
+    DWC_SPINLOCK(g_dev->hcd->lock);
+
+    if (!urb->hcpriv) {
+        DWC_SPINUNLOCK(g_dev->hcd->lock);
+        return -EINVAL;
+    }
+
+    retval = dwc_otg_hcd_urb_dequeue(g_dev->hcd, urb->hcpriv);
+
+    free(urb->hcpriv);
+    urb->hcpriv = NULL;
+
+    DWC_SPINUNLOCK(g_dev->hcd->lock);
+
+    return retval;
 }
 
 /**
