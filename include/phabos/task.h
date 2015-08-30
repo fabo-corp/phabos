@@ -1,6 +1,7 @@
 #ifndef __TASK_H__
 #define __TASK_H__
 
+#include <config.h>
 #include <phabos/list.h>
 #include <phabos/mutex.h>
 
@@ -13,12 +14,17 @@ struct task_cond {
 #define TASK_RUNNING                    (1 << 1)
 
 struct hashtable;
+struct tty_device;
 
 struct task {
     const char *name;
 
     int id;
+    pid_t pid;
     pid_t ppid;
+    pid_t sid;
+    pid_t pgid;
+
     int priority;
     uint16_t state;
     struct hashtable *fd;
@@ -31,6 +37,8 @@ struct task {
 
     struct sched_policy *policy;
     struct list_head list;
+
+    struct tty_device *controlling_terminal;
 };
 
 typedef void (*task_entry_t)(void *data);
