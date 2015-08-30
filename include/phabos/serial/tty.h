@@ -42,7 +42,6 @@ struct tty_device {
 void tty_push_to_input_queue(struct tty_device *tty, char c);
 
 struct tty_ops {
-    ssize_t (*read)(struct tty_device *tty, char *buffer, size_t len);
     ssize_t (*write)(struct tty_device *tty, const char *buffer, size_t len);
 
     int (*tcdrain)(struct tty_device *tty);
