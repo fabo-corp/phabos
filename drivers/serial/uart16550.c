@@ -83,16 +83,8 @@ static void uart16550_interrupt(int irq, void *data)
 
     uart16550_read8(tty, UART_IIR);
 
-    while (uart16550_read8(tty, UART_LSR) & UART_LSR_DR) {
-        char data = (char) uart16550_read8(tty, UART_RBR);
-
-        if (semaphore_get_value(&tty->rx_semaphore) == TTY_MAX_INPUT)
-            continue;
-
-        tty->rx_buffer[tty->rx_end] = data;
-        tty->rx_end = (tty->rx_end + 1) % TTY_MAX_INPUT;
-        semaphore_up(&tty->rx_semaphore);
-    }
+    while (uart16550_read8(tty, UART_LSR) & UART_LSR_DR)
+        tty_push_to_input_queue(tty, (char) uart16550_read8(tty, UART_RBR));
 
     if (uart16550_read8(tty, UART_LSR) & UART_LSR_THRE) {
         for (int i = 0; i < CONFIG_UART16550_FIFO_DEPTH &&
@@ -129,24 +121,6 @@ static ssize_t uart16550_write(struct tty_device *tty, const char *buffer,
     mutex_unlock(&tty->tx_mutex);
 
     return nwrite;
-}
-
-static ssize_t uart16550_read(struct tty_device *tty, char *buffer, size_t len)
-{
-    ssize_t nread = 0;
-
-    mutex_lock(&tty->rx_mutex);
-    semaphore_down(&tty->rx_semaphore);
-
-    do {
-        buffer[nread++] = tty->rx_buffer[tty->rx_start++];
-        if (tty->rx_start >= TTY_MAX_INPUT)
-            tty->rx_start = 0;
-    } while (nread < len && semaphore_trydown(&tty->rx_semaphore));
-
-    mutex_unlock(&tty->rx_mutex);
-
-    return nread;
 }
 
 static int uart16550_tcsetattr(struct tty_device *tty, int action,
@@ -239,7 +213,6 @@ static int uart16550_tcsetattr(struct tty_device *tty, int action,
 }
 
 static struct tty_ops uart16550_ops = {
-    .read = uart16550_read,
     .write = uart16550_write,
 
     .tcsetattr = uart16550_tcsetattr,
