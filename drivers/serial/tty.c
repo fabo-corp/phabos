@@ -116,9 +116,11 @@ static int tty_ioctl(struct file *file, unsigned long cmd, va_list vl)
         return tty->ops->tcsetattr(tty, TCSAFLUSH, va_arg(vl, struct termios*));
 
     case TCGETS:
-        if (!tty->ops->tcgetattr)
-            return -ENOSYS;
-        return tty->ops->tcgetattr(tty, va_arg(vl, struct termios*));
+
+        ios = va_arg(vl, struct termios*);
+        memcpy(ios, &tty->termios, sizeof(*ios));
+
+        return 0;
 
     default:
         return -EINVAL;

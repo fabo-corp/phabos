@@ -48,7 +48,6 @@ struct tty_ops {
     int (*tcdrain)(struct tty_device *tty);
     int (*tcflow)(struct tty_device *tty, int action);
     int (*tcflush)(struct tty_device *tty, int queue_selector);
-    int (*tcgetattr)(struct tty_device *tty, struct termios *termios);
     int (*tcsendbreak)(struct tty_device *tty, int duration);
     int (*tcsetattr)(struct tty_device *tty, int optional_actions,
                      const struct termios *termios);
