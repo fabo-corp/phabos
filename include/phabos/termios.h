@@ -41,6 +41,8 @@
 #define TCSADRAIN   1
 #define TCSAFLUSH   2
 
+#define ISIG        (1 << 0)
+
 typedef unsigned long tcflag_t;
 
 struct termios {

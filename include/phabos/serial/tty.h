@@ -21,6 +21,7 @@ struct tty_device {
 
     unsigned int id;
     struct tty_ops *ops;
+    struct termios termios;
 
     char rx_buffer[TTY_MAX_INPUT];
     char tx_buffer[TTY_MAX_OUTPUT];
@@ -37,6 +38,8 @@ struct tty_device {
     struct semaphore rx_semaphore;
     struct semaphore tx_semaphore;
 };
+
+void tty_push_to_input_queue(struct tty_device *tty, char c);
 
 struct tty_ops {
     ssize_t (*read)(struct tty_device *tty, char *buffer, size_t len);
