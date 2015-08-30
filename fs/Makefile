@@ -11,3 +11,4 @@ obj-y += fs-libc.o
 obj-y += ramfs.o
 obj-y += devfs.o
 obj-$(CONFIG_BINFS) += binfs.o
+obj-$(CONFIG_PROCFS) += procfs.o
