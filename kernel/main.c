@@ -43,6 +43,18 @@ static void rootfs_init(void)
         kprintf("failed to mount devfs: %s\n", strerror(errno));
         panic("Cannot initialize kernel\n");
     }
+
+#ifdef CONFIG_PROCFS
+    retval = mkdir("/proc", 0);
+    if (retval) {
+        kprintf("mkdir: %s\n", strerror(errno));
+        kprintf("cannot create /proc/\n");
+    } else {
+        retval = mount(NULL, "/proc", "procfs", 0, NULL);
+        if (retval < 0)
+            kprintf("failed to mount procfs: %s\n", strerror(errno));
+    }
+#endif
 }
 
 static void open_std_fds(void)
