@@ -25,11 +25,6 @@ int CONFIG_INIT_TASK_NAME(int argc, char **argv);
 static void rootfs_init(void)
 {
     int retval;
-    extern struct fs ramfs_fs;
-    extern struct fs devfs_fs;
-
-    fs_register(&ramfs_fs);
-    fs_register(&devfs_fs);
 
     retval = mount(NULL, NULL, "ramfs", 0, NULL);
     if (retval < 0) {

@@ -1,4 +1,4 @@
-#include <config.h>
+#include <phabos/driver.h>
 #include <phabos/hashtable.h>
 #include <phabos/utils.h>
 #include <phabos/assert.h>
@@ -34,7 +34,7 @@ int devfs_mknod(const char *name, mode_t mode, dev_t dev)
     return ramfs_mknod(&devfs_root, name, mode, dev);
 }
 
-struct fs devfs_fs = {
+static struct fs devfs_fs = {
     .name = "devfs",
 
     .file_ops = {
@@ -49,4 +49,14 @@ struct fs devfs_fs = {
         .lookup = ramfs_lookup,
         .mknod = ramfs_mknod,
     },
+};
+
+static int devfs_init_driver(struct driver *driver)
+{
+    return fs_register(&devfs_fs);
+}
+
+__driver__ struct driver devfs_driver = {
+    .name = "devfs",
+    .init = devfs_init_driver,
 };

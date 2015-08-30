@@ -1,4 +1,5 @@
 #include <config.h>
+#include <phabos/driver.h>
 #include <phabos/hashtable.h>
 #include <phabos/utils.h>
 #include <phabos/assert.h>
@@ -274,7 +275,7 @@ ssize_t ramfs_read(struct file *file, void *buf, size_t count)
     return rcount;
 }
 
-struct fs ramfs_fs = {
+static struct fs ramfs_fs = {
     .name = "ramfs",
 
     .file_ops = {
@@ -289,4 +290,14 @@ struct fs ramfs_fs = {
         .lookup = ramfs_lookup,
         .mknod = ramfs_mknod,
     },
+};
+
+static int ramfs_init(struct driver *driver)
+{
+    return fs_register(&ramfs_fs);
+}
+
+__driver__ struct driver ramfs_driver = {
+    .name = "ramfs",
+    .init = ramfs_init,
 };
