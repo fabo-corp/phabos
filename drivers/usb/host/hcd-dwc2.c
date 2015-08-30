@@ -298,6 +298,10 @@ static int urb_enqueue(struct usb_hcd *hcd, struct urb *urb)
     int number_of_packets = 0;
     dwc_otg_hcd_urb_t *dwc_urb;
 
+    if (!urb->complete) {
+        return -EINVAL;
+    }
+
     switch (urb->pipe.type) {
     case USB_HOST_PIPE_CONTROL:
         ep_type = USB_HOST_ENDPOINT_XFER_CONTROL;
