@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 
-typedef int atomic_t;
+typedef volatile int atomic_t;
 
 static inline uint32_t atomic_get(atomic_t *atomic)
 {

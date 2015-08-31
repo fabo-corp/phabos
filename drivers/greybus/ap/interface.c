@@ -170,7 +170,11 @@ int gb_interface_init(struct gb_interface *iface)
         req_sent++;
         struct gb_operation *op = gb_operation_create(iface->bus, 1, 2, 504);
 
-        gb_operation_send_request(op, NULL, false);
+        retval = gb_operation_send_request(op, NULL, false);
+        if (retval) {
+            kprintf("failed at request %zu: %s\n", req_sent, strerror(-retval));
+            break;
+        }
         gb_operation_destroy(op);
     }
 #else

@@ -28,6 +28,7 @@ static struct usb_device_id apba_unipro_usb_id[] = {
 static void apba_unipro_send_cb(struct urb *urb)
 {
     apba.ep2 = urb->hcpriv_ep;
+    //dwc_otg_hcd_qh_free(urb->hcpriv_ep);
     urb_destroy(urb);
 }
 
@@ -52,15 +53,17 @@ static ssize_t apba_unipro_send(struct unipro_cport *cport, const void *buf,
     urb->pipe.type = USB_HOST_PIPE_BULK;
 
     urb->flags = USB_URB_GIVEBACK_ASAP;
-    urb->maxpacket = 0xff;
+    urb->maxpacket = 0x200;
     urb->hcpriv_ep = apba.ep2;
 
     urb->length = len;
     urb->buffer = (void*) buf;
 
     retval = urb_submit(urb);
-    if (retval)
+    if (retval) {
+        kprintf("failed to send urb %d\n", retval);
         goto out;
+    }
 
     return sent;
 
@@ -155,7 +158,7 @@ static int test(struct usb_device *dev, unsigned endpoint)
     urb->pipe.type = USB_HOST_PIPE_BULK;
 
     urb->flags = USB_URB_GIVEBACK_ASAP;
-    urb->maxpacket = 0xff;
+    urb->maxpacket = 0x200;
 
     urb->length = 4096;
     urb->buffer = page_alloc(size_to_order(urb->length / PAGE_SIZE), MM_DMA);
