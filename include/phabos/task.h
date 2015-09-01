@@ -16,6 +16,8 @@ struct task_cond {
 struct hashtable;
 struct tty_device;
 
+typedef int (*interrupt_lock_cb)(struct task *task, void *lock);
+
 struct task {
     const char *name;
 
@@ -37,6 +39,10 @@ struct task {
 
     struct sched_policy *policy;
     struct list_head list;
+
+    interrupt_lock_cb unlock;
+    void *lock_handle;
+    bool lock_interrupted;
 
     struct tty_device *controlling_terminal;
 };
