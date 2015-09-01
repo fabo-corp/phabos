@@ -91,29 +91,6 @@ error_alloc_task_name:
     return NULL;
 }
 
-struct task *task_fork(void)
-{
-    struct task *task = task_create(current->name);
-    if (!task)
-        return NULL;
-
-    task->sid = current->sid;
-    task->pgid = current->pgid;
-    task->controlling_terminal = current->controlling_terminal;
-
-    return task;
-}
-
-pid_t task_setsid(void)
-{
-    if (current->pid == current->pgid)
-        return -EPERM;
-
-    current->sid = current->pgid = current->pid;
-    current->controlling_terminal = NULL;
-    return current->pgid;
-}
-
 void task_cond_init(struct task_cond* cond)
 {
     list_init(&cond->wait_list);

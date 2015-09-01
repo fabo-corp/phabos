@@ -24,10 +24,6 @@ struct task {
     const char *name;
 
     int id;
-    pid_t pid;
-    pid_t ppid;
-    pid_t sid;
-    pid_t pgid;
 
     int priority;
     uint16_t state;
@@ -49,8 +45,6 @@ struct task {
     interrupt_lock_cb unlock;
     void *lock_handle;
     bool lock_interrupted;
-
-    struct tty_device *controlling_terminal;
 };
 
 typedef void (*task_entry_t)(void *data);
