@@ -5,6 +5,8 @@
 #include <phabos/list.h>
 #include <phabos/mutex.h>
 
+#include <sys/signal.h>
+
 extern bool kill_task;
 
 struct task_cond {
@@ -39,6 +41,10 @@ struct task {
 
     struct sched_policy *policy;
     struct list_head list;
+
+    struct list_head queued_signals;
+    struct list_head masked_queued_signals;
+    sigset_t masked_interrupts;
 
     interrupt_lock_cb unlock;
     void *lock_handle;
