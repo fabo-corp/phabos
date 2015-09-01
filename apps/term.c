@@ -54,7 +54,7 @@ static int term_main(int argc, char **argv)
         }
     }
 
-    task_kill(task_in);
+    task_annihilate(task_in);
 
     return 0;
 }

@@ -55,7 +55,7 @@ struct task *find_task_by_id(int id);
  *
  * tid: task ID
  */
-void task_kill(struct task *task);
+void task_annihilate(struct task *task);
 
 int task_wait(struct task *task);
 void task_exit(void);

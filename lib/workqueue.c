@@ -93,7 +93,7 @@ void workqueue_destroy(struct workqueue *wq)
 
     RET_IF_FAIL(wq->task,);
 
-    task_kill(wq->task);
+    task_annihilate(wq->task);
 
     list_foreach_safe(&wq->list, iter) {
         work = list_entry(iter, struct work, list);

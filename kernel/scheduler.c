@@ -127,7 +127,7 @@ void schedule(uint32_t *stack_top)
 
     if (kill_task) {
         kill_task = false;
-        task_kill(current_saved);
+        task_annihilate(current_saved);
     }
 }
 

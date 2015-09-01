@@ -58,7 +58,7 @@ int _kill(int pid, int sig)
         return -1;
     }
 
-    task_kill(task);
+    task_annihilate(task);
 
     return 0;
 }
@@ -69,7 +69,7 @@ void _exit(int code)
     if (current->id == 0)
         panic("scheduler: trying to exit from idle task.\n");
 
-    task_kill(current);
+    task_annihilate(current);
     panic("_exit: reach unreachable...\n");
 }
 
@@ -216,7 +216,7 @@ error_stack:
     return NULL;
 }
 
-void task_kill(struct task *task)
+void task_annihilate(struct task *task)
 {
     if (task->id == 0) {
         kprintf("Oops: trying to kill idle task...\n");
@@ -228,7 +228,7 @@ void task_kill(struct task *task)
         irq_enable(); // FIXME: force enable the interrupts in order for
                       // PendSV to work
         task_exit();
-        panic("task_kill: reach unreachable...\n");
+        panic("task_annihilate: reach unreachable...\n");
     }
 
     list_del(&task->list);
@@ -265,7 +265,7 @@ void sys_exit(int status)
     if (current->id == 0)
         panic("sys_exit: trying to exit from idle task.\n");
 
-    task_kill(current);
+    task_annihilate(current);
     panic("sys_exit: reach unreachable...\n");
 }
 DEFINE_SYSCALL(SYS_EXIT, exit, 0);
@@ -294,7 +294,7 @@ int sys_kill(pid_t pid, int sig)
         break;
 
     case SIGKILL:
-        task_kill(task);
+        task_annihilate(task);
         break;
 
     default:

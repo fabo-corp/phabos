@@ -1130,7 +1130,7 @@ static int gb_i2s_mgmt_init(unsigned int cport)
     return 0;
 
 err_kill_pthread:
-    task_kill(info->tx_rb_thread);
+    task_annihilate(info->tx_rb_thread);
 err_free_resources:
     watchdog_delete(&info->tx_wdog);
     memset(info, 0, sizeof(*info));
@@ -1149,7 +1149,7 @@ static void gb_i2s_mgmt_exit(unsigned int cport)
 
     device_close(dev_info->info->dev);
 
-    task_kill(dev_info->info->tx_rb_thread);
+    task_annihilate(dev_info->info->tx_rb_thread);
 
     watchdog_delete(&dev_info->info->tx_wdog);
 
