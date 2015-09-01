@@ -24,6 +24,7 @@ void _semaphore_lock(struct semaphore *semaphore);
 bool _semaphore_trylock(struct semaphore *semaphore);
 void semaphore_unlock(struct semaphore *semaphore);
 void semaphore_destroy(struct semaphore *semaphore);
+int _semaphore_down_interruptible(struct semaphore *semaphore);
 
 static inline void semaphore_up(struct semaphore *semaphore)
 {
@@ -45,6 +46,9 @@ static inline unsigned semaphore_get_value(struct semaphore *semaphore)
 #define semaphore_down(l) DEFINE_LOCK_WITH_BARRIER(_semaphore_down, l)
 #define semaphore_trylock(l) DEFINE_TRYLOCK_WITH_BARRIER(_semaphore_trylock, l)
 #define semaphore_trydown(l) semaphore_trylock(l)
+
+#define semaphore_down_interruptible(l) \
+    DEFINE_LOCK_WITH_BARRIER(_semaphore_down_interruptible, l)
 
 #endif /* __SEMAPHORE_H__ */
 

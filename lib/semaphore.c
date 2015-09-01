@@ -5,6 +5,7 @@
  * Provided under the three clause BSD license found in the LICENSE file.
  */
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -45,20 +46,54 @@ void semaphore_destroy(struct semaphore *semaphore)
     kfree(semaphore);
 }
 
-void _semaphore_lock(struct semaphore *semaphore)
+static int semaphore_interrupt(struct task *task, void *lock)
 {
-    RET_IF_FAIL(semaphore,);
+    task->lock_interrupted = true;
+    task_remove_from_wait_list(task);
+    return 0;
+}
+
+static int __semaphore_down_interruptible(struct semaphore *semaphore,
+                                          interrupt_lock_cb unlock_cb)
+{
+    struct task *task = task_get_running();
+
+    RET_IF_FAIL(semaphore, -EINVAL);
+
+    task->lock_interrupted = false;
 
     irq_disable();
-    while (atomic_get(&semaphore->count) <= 0) {
-        task_add_to_wait_list(task_get_running(), &semaphore->wait_list);
+    while (atomic_get(&semaphore->count) <= 0 && !task->lock_interrupted) {
+        task_add_to_wait_list(task, &semaphore->wait_list);
+        task->unlock = unlock_cb;
+        task->lock_handle = semaphore;
+
         irq_enable();
         sched_yield();
         irq_disable();
     }
 
+    task->lock_handle = NULL;
+    task->unlock = NULL;
     atomic_dec(&semaphore->count);
     irq_enable();
+
+    if (task->lock_interrupted) {
+        task->lock_interrupted = false;
+        return -EINTR;
+    }
+
+    return 0;
+}
+
+int _semaphore_down_interruptible(struct semaphore *semaphore)
+{
+    return __semaphore_down_interruptible(semaphore, semaphore_interrupt);
+}
+
+void _semaphore_lock(struct semaphore *semaphore)
+{
+    __semaphore_down_interruptible(semaphore, NULL);
 }
 
 bool _semaphore_trylock(struct semaphore *semaphore)
