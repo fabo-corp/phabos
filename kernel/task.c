@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
-#include <signal.h>
 
 #define DEFAULT_STACK_ORDER         4
 #define DEFAULT_STACK_SIZE          ((1 << DEFAULT_STACK_ORDER) << PAGE_ORDER)
@@ -48,19 +47,6 @@ struct task *find_task_by_id(int id)
 int _getpid(void)
 {
     return current->id;
-}
-
-int _kill(int pid, int sig)
-{
-    struct task *task = find_task_by_id(pid);
-    if (!task) {
-        errno = ESRCH;
-        return -1;
-    }
-
-    task_annihilate(task);
-
-    return 0;
 }
 
 void _exit(int code)
@@ -275,32 +261,3 @@ pid_t sys_getpid(void)
     return current->id;
 }
 DEFINE_SYSCALL(SYS_GETPID, getpid, 0);
-
-int sys_kill(pid_t pid, int sig)
-{
-    struct task *task;
-
-    if (pid <= 0) {
-        return -ENOSYS;
-    }
-
-    task = find_task_by_id(pid);
-
-    if (!task)
-        return -ESRCH;
-
-    switch (sig) {
-    case 0:
-        break;
-
-    case SIGKILL:
-        task_annihilate(task);
-        break;
-
-    default:
-        return -ENOSYS;
-    }
-
-    return 0;
-}
-DEFINE_SYSCALL(SYS_KILL, kill, 2);
