@@ -69,6 +69,8 @@ struct task *task_create(const char *name)
     task_cond_init(&task->wait_cond);
     mutex_init(&task->wait_mutex);
 
+    list_init(&task->masked_queued_signals);
+    list_init(&task->queued_signals);
     list_init(&task->list);
     task->fd = hashtable_create_uint();
 
