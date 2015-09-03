@@ -393,7 +393,10 @@ static void greybus_rx_handler(struct unipro_cport_driver *cport_driver,
     if (!op)
         return;
 
-    memcpy(op->request_buffer, data, hdr_size);
+    mcache_free(buffer_slab, op->request_buffer);
+    op->request_buffer = data;
+
+    unipro_switch_buffer(greybus->unipro, cportid, mcache_alloc(buffer_slab));
     unipro_unpause_rx(greybus->unipro, cportid);
     op_mark_recv_time(op);
 
