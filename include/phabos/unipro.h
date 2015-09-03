@@ -26,6 +26,7 @@ struct unipro_cport_ops {
                           void *user_priv);
 
     int (*unpause_rx)(struct unipro_cport *cport);
+    int (*switch_buffer)(struct unipro_cport *cport, void *buffer);
     int (*init)(struct unipro_cport *cport);
 };
 
@@ -139,6 +140,12 @@ static inline int unipro_unpause_rx(struct unipro_device *device,
                                     unsigned cportid)
 {
     return device->ops->cport.unpause_rx(&device->cports[cportid]);
+}
+
+static inline int unipro_switch_buffer(struct unipro_device *device,
+                                       unsigned cportid, void *buffer)
+{
+    return device->ops->cport.switch_buffer(&device->cports[cportid], buffer);
 }
 
 #endif /* __PHABOS_UNIPRO_H__ */
