@@ -534,6 +534,14 @@ static void enable_int(struct unipro_cport *cport)
     irq_enable_line(irqn);
 }
 
+static int tsb_unipro_switch_buffer(struct unipro_cport *cport, void *buffer)
+{
+    struct device *device = &cport->device->device;
+    tsb_unipro_write(device, AHM_ADDRESS_00 + (cport->id * sizeof(uint32_t)),
+                     (uint32_t) buffer);
+    return 0;
+}
+
 static int tsb_unipro_init_cport(struct unipro_cport *cport)
 {
     struct device *device = &cport->device->device;
@@ -600,6 +608,7 @@ static struct unipro_ops tsb_unipro_ops = {
         .send = tsb_unipro_send,
         .send_async = tsb_unipro_send_async,
         .unpause_rx = tsb_unipro_unpause_rx,
+        .switch_buffer = tsb_unipro_switch_buffer,
         .init = tsb_unipro_init_cport,
     },
 };
