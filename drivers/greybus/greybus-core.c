@@ -52,6 +52,10 @@
 #define ONE_SEC_IN_MSEC         1000
 #define ONE_MSEC_IN_NSEC        1000000
 
+static struct greybus *bus;
+static struct mcache *op_slab;
+static struct mcache *buffer_slab;
+
 static struct gb_operation_hdr timedout_hdr = {
     .size = sizeof(timedout_hdr),
     .result = GB_OP_TIMEOUT,
@@ -557,6 +561,18 @@ int gb_operation_send_request(struct gb_operation *operation,
         spinlock_unlock(&cport->tx_fifo_lock);
     }
 
+    //kprintf("Z");
+
+#if 0
+    kprintf("%s()\n");
+    for (int i = 0; i < hdr->size; i++) {
+        char *buf = operation->request_buffer;
+        kprintf("%X ", buf[i]);
+        if ((i % 16) == 0)
+            kprintf("\n");
+    }
+#endif
+
     gb_dump(operation->request_buffer, hdr->size);
     retval = unipro_send(greybus->unipro, operation->cport,
                          operation->request_buffer, le16_to_cpu(hdr->size));
@@ -635,7 +651,16 @@ int gb_operation_send_response(struct gb_operation *operation, uint8_t result)
     resp_hdr = operation->response_buffer;
     resp_hdr->result = result;
 
-    gb_dump(operation->response_buffer, resp_hdr->size);
+#if 0
+    kprintf("%s()\n");
+    for (int i = 0; i < resp_hdr->size; i++) {
+        char *buf = operation->response_buffer;
+        kprintf("%X ", buf[i]);
+        if ((i % 16) == 0)
+            kprintf("\n");
+    }
+#endif
+
     retval = unipro_send(greybus->unipro, operation->cport,
                          operation->response_buffer,
                          le16_to_cpu(resp_hdr->size));
@@ -700,12 +725,15 @@ void gb_operation_unref(struct gb_operation *operation)
         return;
     }
 
-    free(operation->request_buffer);
     free(operation->response_buffer);
+    operation->response_buffer = NULL;
+
     if (operation->response) {
         gb_operation_unref(operation->response);
     }
-    free(operation);
+    operation->response = NULL;
+
+    mcache_free(op_slab, operation);
 }
 
 
@@ -713,37 +741,23 @@ struct gb_operation *gb_operation_create(struct greybus *greybus,
                                          unsigned int cportid, uint8_t type,
                                          uint32_t req_size)
 {
-    struct gb_cport *cport = gb_get_cport(greybus, cportid);
     struct gb_operation *operation;
     struct gb_operation_hdr *hdr;
 
-    if (!cport)
-        return NULL;
-
-    operation = malloc(sizeof(*operation));
+    operation = mcache_alloc(op_slab);
     if (!operation)
         return NULL;
 
-    memset(operation, 0, sizeof(*operation));
-    operation->cport = cportid;
-    operation->greybus = greybus;
-
-    operation->request_buffer = malloc(req_size + sizeof(*hdr));
-    if (!operation->request_buffer)
-        goto malloc_error;
-
     memset(operation->request_buffer, 0, req_size + sizeof(*hdr));
+    operation->has_responded = false;
+    operation->cport = cportid;
+    atomic_init(&operation->ref_count, 1);
+
     hdr = operation->request_buffer;
     hdr->size = cpu_to_le16(req_size + sizeof(*hdr));
     hdr->type = type;
 
-    list_init(&operation->list);
-    atomic_init(&operation->ref_count, 1);
-
     return operation;
-malloc_error:
-    free(operation);
-    return NULL;
 }
 
 size_t gb_operation_get_request_payload_size(struct gb_operation *operation)
@@ -884,13 +898,35 @@ static void *gb_get_buffer(void)
     return page_alloc(MM_DMA, size_to_order(GREYBUS_MTU / PAGE_SIZE));
 }
 
+static void operation_ctor(void *ptr)
+{
+    struct gb_operation *operation = ptr;
+
+    memset(operation, 0, sizeof(*operation));
+    operation->greybus = bus;
+
+    operation->request_buffer = mcache_alloc(buffer_slab);
+    if (!operation->request_buffer)
+        return;
+
+    list_init(&operation->list);
+    atomic_init(&operation->ref_count, 1);
+}
+
 static int gb_probe(struct device *device)
 {
     struct greybus *greybus = containerof(device, struct greybus, device);
+    bus = greybus;
 
     greybus->cport_map = hashtable_create_uint();
     atomic_init(&greybus->request_id, 0);
     greybus->tape_fd = -EBADF;
+
+    buffer_slab = mcache_create("greybus-operation-buffer", 2048, 0,
+                                MM_DMA, NULL, NULL);
+    op_slab = mcache_create("greybus-operation",
+                            sizeof(struct gb_operation), 0,
+                            MM_DMA, operation_ctor, NULL);
 
     greybus->unipro_cport_driver.get_buffer = gb_get_buffer,
     greybus->unipro_cport_driver.rx_handler = greybus_rx_handler;
