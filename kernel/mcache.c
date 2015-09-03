@@ -131,7 +131,7 @@ static void *slab_alloc_object(struct mcache_slab *slab)
 
 static struct mcache_slab *mcache_allocate_new_slab(struct mcache *cache)
 {
-    const size_t num_objects = 32; // XXX: find an algorith that will find
+    const size_t num_objects = 5; // XXX: find an algorith that will find
                                    // a good value for this
     struct mm_usage *mm_usage;
 
