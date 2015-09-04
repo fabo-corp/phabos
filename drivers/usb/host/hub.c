@@ -127,7 +127,7 @@ static int hub_check_changes(struct usb_device *dev, struct urb *urb)
     urb->actual_length = 0;
     urb->complete = hub_state_changed;
     urb->pipe.type = USB_HOST_PIPE_INTERRUPT;
-    urb->pipe.endpoint = 1 << 15;
+    urb->pipe.endpoint = 1;
     urb->pipe.device = dev->address;
     urb->pipe.direction = USB_HOST_DIR_IN;
     urb->maxpacket = 0x40;
