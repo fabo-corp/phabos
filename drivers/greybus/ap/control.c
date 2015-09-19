@@ -139,6 +139,34 @@ out:
     return retval;
 }
 
+int gb_control_disconnect_cport(struct gb_interface *iface, unsigned cport)
+{
+    struct gb_control_connected_request *req;
+    struct gb_operation *op;
+    ssize_t retval;
+
+    op = gb_operation_create(iface->bus, iface->control_connection.cport1,
+                             GB_CONTROL_TYPE_DISCONNECTED, sizeof(*req));
+    if (!op)
+        return -ENOMEM;
+
+    req = gb_operation_get_request_payload(op);
+    req->cport_id = cpu_to_le16(cport);
+
+    retval = gb_operation_send_request_sync(op);
+    if (retval)
+        goto out;
+
+    if (gb_operation_get_request_result(op) != GB_OP_SUCCESS) {
+        retval = -EIO;
+        goto out;
+    }
+
+out:
+    gb_operation_destroy(op);
+    return retval;
+}
+
 static uint8_t gb_control_probe_ap(struct gb_operation *op)
 {
     return GB_OP_SUCCESS;
