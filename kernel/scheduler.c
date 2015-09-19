@@ -78,6 +78,9 @@ int sched_add_to_runqueue(struct task *task)
         return retval;
 
     sched_set_tick_multiplier(1);
+    if (task->priority > current->priority)
+        sched_yield();
+
     return 0;
 }
 
