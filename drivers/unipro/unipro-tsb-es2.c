@@ -714,34 +714,44 @@ static void irq_unipro(int irq, void *data)
         return;
 }
 
+#define TSB_INTERRUPTSTATUS_MAILBOX (1 << 15)
 int tsb_unipro_mbox_set(struct unipro_device *device, uint32_t val, int peer)
 {
     int rc;
+    uint32_t irq_status, retries = 2048;
 
-    rc = tsb_unipro_attr_access(device, TSB_MAILBOX, &val, 0, peer, 1, NULL);
+    rc = tsb_unipro_attr_access(device, TSB_MAILBOX, &val, 0, peer, /*write = */1, NULL);
     if (rc) {
         kprintf("TSB_MAILBOX write failed: %d\n", rc);
         return rc;
     }
 
-    /*
-     * Silicon bug?: There seems to be a problem in the switch regarding
-     * lost mailbox sets. It seems to happen when a bridge writes to the
-     * mailbox and immediately reads the value back.
-     *
-     * Workaround for now by inserting a small delay.
-     *
-     * @jira{ENG-436}
-     */
-    udelay(MBOX_RACE_HACK_DELAY);
+    do {
+        rc = tsb_unipro_attr_access(device, TSB_INTERRUPTSTATUS, &irq_status, 0, peer, /*write = */0, NULL);
+        if (rc) {
+            kprintf("%s(): TSB_INTERRUPTSTATUS poll failed: %d\n", __func__,
+                    rc);
+            return rc;
+        }
+    } while ((irq_status & TSB_INTERRUPTSTATUS_MAILBOX) && --retries > 0);
+
+    if (!retries) {
+        return -ETIMEDOUT;
+    } else {
+        retries = 2048;
+    }
 
     do {
-        rc = tsb_unipro_attr_access(device, TSB_MAILBOX, &val, 0, peer,
-                                    0, NULL);
+        rc = tsb_unipro_attr_access(device, TSB_MAILBOX, &val, 0, peer, /*write = */0, NULL);
         if (rc) {
             kprintf("%s(): TSB_MAILBOX poll failed: %d\n", __func__, rc);
+            return rc;
         }
-    } while (!rc && val != TSB_MAIL_RESET);
+    } while (val != TSB_MAIL_RESET && --retries > 0);
+
+    if (!retries) {
+        return -ETIMEDOUT;
+    }
 
     return rc;
 }

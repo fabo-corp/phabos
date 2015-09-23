@@ -199,7 +199,7 @@ int dev_main(int argc, char **argv)
 
     kprintf("%6s\n", "hello");
 
-#if 0
+#if 1
 #if defined(CONFIG_TSB_APB2)
     extern struct unipro_device tsb_unipro;
     tsb_unipro_mbox_set(&tsb_unipro, TSB_MAIL_READY_OTHER, true);
