@@ -35,6 +35,10 @@ choice
     config BOARD_ARA_SVC_BDB2
         bool "BDB2 - ARA SVC"
         select BOARD_ARA_SVC
+
+    config BOARD_ARA_SVC_SDB
+        bool "SDB - ARA SVC"
+        select BOARD_ARA_SVC
 endchoice
 
 config MACH_LINKER_SCRIPT

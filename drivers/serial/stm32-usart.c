@@ -12,7 +12,7 @@
 #include <phabos/assert.h>
 #include <phabos/utils.h>
 #include <phabos/termios.h>
-#include <phabos/serial/uart.h>
+#include <phabos/serial/tty.h>
 
 #include <errno.h>
 #include <stdarg.h>
@@ -54,13 +54,7 @@ static void stm32_usart_interrupt(int irq, void *data)
 
     while (stm32_usart_read32(tty, STM32_USART1_SR) & STM32_USART_SR_RXNE) {
         char data = (char) stm32_usart_read32(tty, STM32_USART1_DR);
-
-        if (semaphore_get_value(&tty->rx_semaphore) == TTY_MAX_INPUT)
-            continue;
-
-        tty->rx_buffer[tty->rx_end] = data;
-        tty->rx_end = (tty->rx_end + 1) % TTY_MAX_INPUT;
-        semaphore_up(&tty->rx_semaphore);
+        tty_push_to_input_queue(tty, data);
     }
 
     while (tty->tx_start != tty->tx_end &&
@@ -123,27 +117,7 @@ static ssize_t stm32_usart_write(struct tty_device *tty, const char *buffer,
     return nwrite;
 }
 
-static ssize_t stm32_usart_read(struct tty_device *tty, char *buffer,
-                                size_t len)
-{
-    ssize_t nread = 0;
-
-    mutex_lock(&tty->rx_mutex);
-    semaphore_down(&tty->rx_semaphore);
-
-    do {
-        buffer[nread++] = tty->rx_buffer[tty->rx_start++];
-        if (tty->rx_start >= TTY_MAX_INPUT)
-            tty->rx_start = 0;
-    } while (nread < len && semaphore_trydown(&tty->rx_semaphore));
-
-    mutex_unlock(&tty->rx_mutex);
-
-    return nread;
-}
-
 static struct tty_ops stm32_usart_ops = {
-    .read = stm32_usart_read,
     .write = stm32_usart_write,
 };
 

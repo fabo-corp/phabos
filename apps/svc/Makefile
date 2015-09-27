@@ -13,5 +13,6 @@ obj-y += up_bdb_pm.o
 
 obj-$(CONFIG_BOARD_ARA_SVC_BDB1B) += board-bdb1b.o
 obj-$(CONFIG_BOARD_ARA_SVC_BDB2) += board-bdb2a.o
+obj-$(CONFIG_BOARD_ARA_SVC_SDB) += board-sdb.o
 
 CFLAGS += -Iapps/greybus-utils

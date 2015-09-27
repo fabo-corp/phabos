@@ -33,20 +33,16 @@
 
 #define DBG_COMP DBG_SVC     /* DBG_COMP macro of the component */
 
-#include <nuttx/config.h>
-#include <nuttx/arch.h>
-#include <nuttx/util.h>
-#include <nuttx/i2c.h>
-#include <nuttx/gpio.h>
-
-#include "nuttx/gpio/stm32_gpio_chip.h"
-#include "nuttx/gpio/tca64xx.h"
+#include <asm/hwio.h>
+#include <asm/delay.h>
+#include <asm/gpio.h>
+#include <phabos/gpio.h>
+#include <phabos/utils.h>
 
 #include "up_debug.h"
 #include "ara_board.h"
 #include "interface.h"
 #include "tsb_switch_driver_es2.h"
-#include "stm32.h"
 
 #define SVC_LED_GREEN       (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_PORTB | \
                              GPIO_PIN0 | GPIO_OUTPUT_SET)
@@ -316,7 +312,8 @@ static struct ara_board_info sdb_board_info = {
     .nr_io_expanders = ARRAY_SIZE(sdb_io_expanders),
 };
 
-struct ara_board_info *board_init(void) {
+struct ara_board_info *board_init(void)
+{
     int i;
 
     /* Pretty lights */
@@ -328,21 +325,13 @@ struct ara_board_info *board_init(void) {
     stm32_gpiowrite(SVC_RST_IOEXP, false);
 
     /*
-     * Register the STM32 GPIOs to Gpio Chip
-     *
-     * This needs to happen before the I/O Expanders registration, which
-     * uses some STM32 pins
-     */
-    stm32_gpio_init();
-
-    /*
      * Configure the switch and I/O Expander reset and power supply lines.
      * Hold all the lines low while we turn on the power rails.
      */
     vreg_config(&ioexp_vreg);
     vreg_config(&sw_vreg);
     stm32_configgpio(sdb_board_info.sw_data.gpio_reset);
-    up_udelay(POWER_SWITCH_OFF_STAB_TIME_US);
+    udelay(POWER_SWITCH_OFF_STAB_TIME_US);
 
     /*
      * Configure the SVC DETECT_IN lines
@@ -355,55 +344,14 @@ struct ara_board_info *board_init(void) {
      */
     vreg_get(&ioexp_vreg);
 
-    /* Register the TCA64xx I/O Expanders GPIOs to Gpio Chip */
-    for (i = 0; i < sdb_board_info.nr_io_expanders; i++) {
-        struct io_expander_info *io_exp = &sdb_board_info.io_expanders[i];
-
-        io_exp->i2c_dev = up_i2cinitialize(io_exp->i2c_bus);
-        if (!io_exp->i2c_dev) {
-            dbg_error("%s(): Failed to get I/O Expander I2C bus %u\n",
-                      __func__, io_exp->i2c_bus);
-        } else {
-            if (tca64xx_init(&io_exp->io_exp_driver_data,
-                             io_exp->part,
-                             io_exp->i2c_dev,
-                             io_exp->i2c_addr,
-                             io_exp->reset,
-                             io_exp->irq,
-                             io_exp->gpio_base) < 0) {
-                dbg_error("%s(): Failed to register I/O Expander(0x%02x)\n",
-                          __func__, io_exp->i2c_addr);
-                up_i2cuninitialize(io_exp->i2c_dev);
-            }
-        }
-    }
-
     /* Hold USB_HUB_RESET high */
     gpio_direction_out(USB_HUB_RESET, 1);
 
     return &sdb_board_info;
 }
 
-void board_exit(void) {
-    int i;
-    /*
-     * First unregister the TCA64xx I/O Expanders and associated I2C bus(ses).
-     * Done in reverse order from registration to account for IRQ chaining
-     * between I/O Expander chips.
-     */
-    for (i = sdb_board_info.nr_io_expanders - 1; i >= 0; i--) {
-        struct io_expander_info *io_exp = &sdb_board_info.io_expanders[i];
-
-        if (io_exp->io_exp_driver_data)
-            tca64xx_deinit(io_exp->io_exp_driver_data);
-
-        if (io_exp->i2c_dev)
-            up_i2cuninitialize(io_exp->i2c_dev);
-    }
-
+void board_exit(void)
+{
     /* Disable the I/O Expanders power */
     vreg_put(&ioexp_vreg);
-
-    /* Lastly unregister the GPIO Chip driver */
-    stm32_gpio_deinit();
 }

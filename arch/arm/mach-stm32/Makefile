@@ -6,5 +6,6 @@
 obj-y += stm32f4-lowio.o
 obj-$(CONFIG_BOARD_ARA_SVC_BDB1B) += board-bdb1b.o
 obj-$(CONFIG_BOARD_ARA_SVC_BDB2) += board-bdb2.o
+obj-$(CONFIG_BOARD_ARA_SVC_SDB) += board-sdb.o
 obj-y += gpio.o
 obj-y += rcc.o
